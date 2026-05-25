@@ -1,0 +1,165 @@
+<header>
+  <div class="announcement-bar">
+    <div class="container">
+      Visit <a href="https://pharmascript.ca" target="_blank" rel="noopener">PharmaScript.ca</a> for not only the Minor Ailment Prescribing Tool, but also the Biosimilar Assessment Tool.
+    </div>
+  </div>
+
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="/page-landing.html" class="nav-logo">
+        <img src="/images/pamca.png" alt="PAMCA Logo" />
+      </a>
+
+      <div class="nav-toggle" id="mobile-menu" aria-label="Open menu" role="button" tabindex="0">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+
+      <ul class="nav-menu" id="nav-menu">
+        <li class="nav-close-item">
+          <button id="nav-close" class="nav-close-btn" aria-label="Close menu">X</button>
+        </li>
+        <li><a href="/page-landing.html" id="nav-home">Home</a></li>
+        <li><a href="/pharmacy-products.html" id="nav-pharmacy">Pharmacy Products</a></li>
+        <li><a href="/Incident-Reporting.html" id="nav-incident">Incident Reporting</a></li>
+        <li><a href="/pamca_minor_ailments.html" id="nav-minor">Minor Ailments Prescribing Solution</a></li>
+        <li><a href="/pamca_about.html" id="nav-about">About Us</a></li>
+        <li><a href="/contact-us.html" id="nav-contact">Contact Us</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <button class="nav-login-btn" id="nav-login-btn">Profile</button>
+        <div class="nav-cart" id="nav-cart">
+          <img src="/images/shopping-cart.png" alt="Shopping Cart" width="24" height="24" />
+          <span class="cart-badge" id="cart-badge">0</span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Auth Modal -->
+  <div class="auth-modal" id="auth-modal">
+    <div class="auth-overlay"></div>
+    <div class="auth-card">
+      <button class="auth-close" id="auth-close">×</button>
+
+      <div id="auth-login-view">
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login">Login</button>
+        <button class="auth-tab" data-tab="signup">Sign Up</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" class="auth-form active">
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" name="email" required />
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <div class="password-field">
+            <input type="password" id="login-password" name="password" required autocomplete="current-password" />
+            <button type="button" class="password-toggle" data-target="login-password" onclick="window.togglePasswordVisibility && window.togglePasswordVisibility(this); return false;" aria-label="Show password" aria-pressed="false">
+              <svg class="password-toggle-icon password-toggle-icon-show" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5C7 5 2.73 8.11 1 13c1.73 4.89 6 8 11 8s9.27-3.11 11-8c-1.73-4.89-6-8-11-8zm0 13c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8a3 3 0 100 6 3 3 0 000-6z" />
+              </svg>
+              <svg class="password-toggle-icon password-toggle-icon-hide" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2 5.27 3.28 4 20 20.72 18.73 22l-2.02-2.02C15.44 20.6 13.77 21 12 21c-5 0-9.27-3.11-11-8 .83-2.35 2.22-4.35 4.03-5.87L2 5.27zm10 1.73c2.76 0 5 2.24 5 5 0 .45-.06.88-.17 1.29l-1.57-1.57A3 3 0 0012 8a3 3 0 00-2.71 4.31l-1.54-1.54A5 5 0 0112 7zm7.71 7.73A10.71 10.71 0 0022 13c-1.73-4.89-6-8-10-8-.65 0-1.28.06-1.89.17l1.8 1.8c.03 0 .06 0 .09-.01 2.76 0 5 2.24 5 5 0 .03 0 .06-.01.09l2.72 2.72z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="auth-submit-btn">Login</button>
+        <div class="auth-message" id="login-message"></div>
+      </form>
+
+      <!-- Signup Form -->
+      <form id="signup-form" class="auth-form">
+        <div class="form-group">
+          <label for="signup-email">Email</label>
+          <input type="email" id="signup-email" name="email" required />
+        </div>
+        <div class="form-group">
+          <label for="signup-password">Password</label>
+          <div class="password-field">
+            <input type="password" id="signup-password" name="password" required minlength="8" autocomplete="new-password" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}" title="Use at least 8 characters with uppercase, lowercase, number, and symbol." />
+            <button type="button" class="password-toggle" data-target="signup-password" onclick="window.togglePasswordVisibility && window.togglePasswordVisibility(this); return false;" aria-label="Show password" aria-pressed="false">
+              <svg class="password-toggle-icon password-toggle-icon-show" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5C7 5 2.73 8.11 1 13c1.73 4.89 6 8 11 8s9.27-3.11 11-8c-1.73-4.89-6-8-11-8zm0 13c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8a3 3 0 100 6 3 3 0 000-6z" />
+              </svg>
+              <svg class="password-toggle-icon password-toggle-icon-hide" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2 5.27 3.28 4 20 20.72 18.73 22l-2.02-2.02C15.44 20.6 13.77 21 12 21c-5 0-9.27-3.11-11-8 .83-2.35 2.22-4.35 4.03-5.87L2 5.27zm10 1.73c2.76 0 5 2.24 5 5 0 .45-.06.88-.17 1.29l-1.57-1.57A3 3 0 0012 8a3 3 0 00-2.71 4.31l-1.54-1.54A5 5 0 0112 7zm7.71 7.73A10.71 10.71 0 0022 13c-1.73-4.89-6-8-10-8-.65 0-1.28.06-1.89.17l1.8 1.8c.03 0 .06 0 .09-.01 2.76 0 5 2.24 5 5 0 .03 0 .06-.01.09l2.72 2.72z" />
+              </svg>
+            </button>
+          </div>
+          <ul class="password-criteria" id="signup-criteria" aria-live="polite">
+            <li data-rule="len">At least 8 characters</li>
+            <li data-rule="lower">A lowercase letter</li>
+            <li data-rule="upper">An uppercase letter</li>
+            <li data-rule="num">A number</li>
+            <li data-rule="sym">A symbol</li>
+          </ul>
+        </div>
+        <div class="form-group">
+          <label for="signup-confirm">Confirm Password</label>
+          <div class="password-field">
+            <input type="password" id="signup-confirm" name="confirm" required minlength="8" autocomplete="new-password" />
+            <button type="button" class="password-toggle" data-target="signup-confirm" onclick="window.togglePasswordVisibility && window.togglePasswordVisibility(this); return false;" aria-label="Show password" aria-pressed="false">
+              <svg class="password-toggle-icon password-toggle-icon-show" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5C7 5 2.73 8.11 1 13c1.73 4.89 6 8 11 8s9.27-3.11 11-8c-1.73-4.89-6-8-11-8zm0 13c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8a3 3 0 100 6 3 3 0 000-6z" />
+              </svg>
+              <svg class="password-toggle-icon password-toggle-icon-hide" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2 5.27 3.28 4 20 20.72 18.73 22l-2.02-2.02C15.44 20.6 13.77 21 12 21c-5 0-9.27-3.11-11-8 .83-2.35 2.22-4.35 4.03-5.87L2 5.27zm10 1.73c2.76 0 5 2.24 5 5 0 .45-.06.88-.17 1.29l-1.57-1.57A3 3 0 0012 8a3 3 0 00-2.71 4.31l-1.54-1.54A5 5 0 0112 7zm7.71 7.73A10.71 10.71 0 0022 13c-1.73-4.89-6-8-10-8-.65 0-1.28.06-1.89.17l1.8 1.8c.03 0 .06 0 .09-.01 2.76 0 5 2.24 5 5 0 .03 0 .06-.01.09l2.72 2.72z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="auth-submit-btn">Sign Up</button>
+        <div class="auth-message" id="signup-message"></div>
+      </form>
+
+      <div class="auth-divider">OR</div>
+      <p class="auth-note">Need access without an account? Use your <a href="#" id="open-purchase-id" class="auth-link">Purchase ID</a> to get started.</p>
+      </div><!-- /#auth-login-view -->
+
+      <!-- Purchase ID entry (opened from the link above) -->
+      <div id="auth-purchase-view" class="auth-purchase-view" style="display:none;">
+        <button type="button" class="auth-back" id="auth-purchase-back">← Back</button>
+        <h2 class="auth-purchase-title">Enter your Purchase ID</h2>
+        <p class="auth-purchase-sub">Enter the Purchase ID from your order to get started — no account needed.</p>
+        <form id="purchase-id-form" class="auth-form active">
+          <div class="form-group">
+            <label for="purchase-id-input">Purchase ID</label>
+            <input type="text" id="purchase-id-input" name="purchaseId" placeholder="e.g. PAMCA-1234-5678" autocomplete="off" required />
+          </div>
+          <button type="submit" class="auth-submit-btn">Continue</button>
+          <div class="auth-message" id="purchase-id-message"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="cart-modal" id="cart-modal">
+    <div class="cart-overlay" data-close-cart="1"></div>
+    <div class="cart-content">
+      <div class="cart-header">
+        <h3>Your Cart</h3>
+        <button class="cart-close" data-close-cart="1">X</button>
+      </div>
+
+      <div class="cart-items" id="cart-items">
+        <p class="empty-cart">No products in the cart.</p>
+      </div>
+
+      <div class="cart-footer">
+        <div class="cart-total">
+          <div class="cart-total-label" aria-hidden="true">Total</div>
+          <strong class="cart-total-amount">$0.00</strong>
+        </div>
+        <button type="button" class="checkout-btn" id="checkout-btn">Proceed to Checkout</button>
+      </div>
+    </div>
+  </div>
+</header>

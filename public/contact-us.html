@@ -1,0 +1,1010 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/shared-styles.css">
+  <title>PAMCA</title>
+</head>
+<body>
+<div id="header-placeholder"></div>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Hero Section */
+        .contact-hero {
+            background: linear-gradient(135deg, #008080, #87CEEB);
+            padding: 120px 0 80px 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .contact-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="%23ffffff" opacity="0.1"><path d="M0,50 Q250,0 500,50 T1000,50 V100 H0 V50Z"/></svg>') repeat-x bottom;
+            background-size: 1000px 100px;
+        }
+
+        .contact-hero h1 {
+            font-size: 3.5rem;
+            color: white;
+            margin-bottom: 20px;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+        }
+
+        .contact-hero p {
+            font-size: 1.3rem;
+            color: rgba(255, 255, 255, 0.9);
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Contact Overview Section */
+        .contact-overview {
+            background: #f8f9fa;
+            padding: 80px 0;
+        }
+
+        .overview-content {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .overview-content h2 {
+            font-size: 2.8rem;
+            color: #008080;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .overview-content p {
+            font-size: 1.2rem;
+            color: #555;
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.7;
+        }
+
+        .contact-methods-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+            margin-top: 50px;
+        }
+
+        /* Main Content Section */
+        .contact-main {
+            padding: 100px 0;
+            background: white;
+        }
+
+        .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: start;
+        }
+
+        /* Contact Form */
+        .contact-form-section {
+            background: #f8f9fa;
+            padding: 50px 40px;
+            border-radius: 25px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .contact-form-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(135deg, #008080, #87CEEB);
+        }
+
+        .contact-form-section h2 {
+            font-size: 2.5rem;
+            color: #008080;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #008080;
+            box-shadow: 0 0 0 3px rgba(0, 128, 128, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #008080, #87CEEB);
+            color: white;
+            padding: 18px 40px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 128, 128, 0.3);
+        }
+
+    /* visually hide honeypot but keep it accessible to some bots */
+        .hp-field {
+            position: absolute !important;
+            left: -9999px !important;
+            top: auto !important;
+            width: 1px !important;
+            height: 1px !important;
+            overflow: hidden !important;
+        }
+
+        .contact-method {
+            background: white;
+            padding: 35px;
+            border-radius: 20px;
+            border: 2px solid #f0f0f0;
+            transition: all 0.3s ease;
+            position: relative;
+            text-align: center;
+        }
+
+        .contact-method:hover {
+            border-color: #008080;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 128, 128, 0.15);
+        }
+
+        .contact-method-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .contact-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #008080, #87CEEB);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            font-size: 1.8rem;
+            color: white;
+        }
+
+        .contact-method h3 {
+            font-size: 1.5rem;
+            color: #008080;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .contact-method p {
+            color: #555;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin: 15px 0 10px 0;
+        }
+
+        .contact-method small {
+            color: #888;
+            font-size: 0.95rem;
+            font-style: italic;
+        }
+
+        .contact-method a {
+            color: #008080;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .contact-method a:hover {
+            text-decoration: underline;
+        }
+
+        /* Business Hours Section */
+        .business-hours-section {
+            background: #f8f9fa;
+            padding: 40px;
+            border-radius: 25px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .business-hours-section h2 {
+            font-size: 2.2rem;
+            color: #008080;
+            margin-bottom: 30px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        /* Business Hours */
+        .business-hours {
+            background: linear-gradient(135deg, #162950, #008080);
+            color: white;
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 40px;
+        }
+
+        .business-hours h3 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: #87CEEB;
+            text-align: center;
+        }
+
+        /* Contact Form */
+        .contact-form-section {
+            background: #f8f9fa;
+            padding: 50px 40px;
+            border-radius: 25px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .contact-form-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(135deg, #008080, #87CEEB);
+        }
+
+        .contact-form-section h2 {
+            font-size: 2.5rem;
+            color: #008080;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .form-subtitle {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        /* Quick Response Info */
+        .quick-response-info {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            border: 2px solid #e0e0e0;
+            margin-top: 30px;
+        }
+
+        .quick-response-info h3 {
+            font-size: 1.5rem;
+            color: #008080;
+            margin-bottom: 20px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .response-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #008080;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.95rem;
+            color: #555;
+            margin-top: 5px;
+        }
+
+        /* Location Section */
+        .location-section {
+            background: #f8f9fa;
+            padding: 80px 0;
+        }
+
+        .location-content {
+            text-align: center;
+        }
+
+        .location-content h2 {
+            font-size: 2.8rem;
+            color: #008080;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .location-content > p {
+            font-size: 1.2rem;
+            color: #555;
+            max-width: 700px;
+            margin: 0 auto 50px auto;
+            line-height: 1.7;
+        }
+
+        .location-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 50px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .address-card,
+        .parking-info {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .address-card h3,
+        .parking-info h3 {
+            font-size: 1.3rem;
+            color: #008080;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .address-card p,
+        .parking-info p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .hours-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .hours-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+        }
+
+        .hours-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .hours-item span:first-child {
+            font-weight: 600;
+            min-width: 100px;
+            text-align: left;
+        }
+
+        .hours-item span:last-child {
+            font-weight: 400;
+            text-align: right;
+        }
+
+        /* Location Map */
+        .location-section {
+            margin-top: 60px;
+            text-align: center;
+        }
+
+        .location-section h2 {
+            font-size: 2.5rem;
+            color: #008080;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+
+        .map-container {
+            border-radius: 20px;
+            overflow: hidden;
+            height: 400px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+            margin-top: 40px;
+            max-width: 1000px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .map-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+
+        /* Footer Fixes for Contact Page */
+        .footer {
+            margin-top: 0 !important;
+            clear: both;
+        }
+
+        .footer .map-container {
+            height: 200px !important;
+            margin-top: 15px !important;
+        }
+
+        .footer .map-container iframe {
+            border-radius: 8px !important;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 968px) {
+            .contact-grid {
+                grid-template-columns: 1fr;
+                gap: 50px;
+            }
+
+            .contact-methods-grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .location-details {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .hours-grid {
+                gap: 6px;
+            }
+
+            .hours-item {
+                padding: 10px 16px;
+            }
+
+            .response-stats {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .contact-hero {
+                padding: 100px 0 60px 0;
+            }
+
+            .contact-hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .contact-overview,
+            .contact-main,
+            .location-section {
+                padding: 60px 0;
+            }
+
+            .overview-content h2,
+            .location-content h2 {
+                font-size: 2.2rem;
+            }
+
+            .contact-form-section,
+            .business-hours-section,
+            .business-hours {
+                padding: 30px 25px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .contact-method {
+                padding: 25px;
+            }
+
+            .contact-methods-grid {
+                gap: 25px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .contact-hero {
+                padding: 80px 0 40px 0;
+            }
+
+            .contact-hero h1 {
+                font-size: 2rem;
+            }
+
+            .contact-overview,
+            .contact-main,
+            .location-section {
+                padding: 40px 0;
+            }
+
+            .overview-content h2,
+            .location-content h2 {
+                font-size: 1.8rem;
+            }
+
+            .contact-methods-grid {
+                gap: 20px;
+            }
+
+            .location-details {
+                gap: 20px;
+            }
+        }
+    </style>
+
+ <!-- Hero Section -->
+    <section class="contact-hero">
+        <div class="container">
+            <h1>Get in Touch</h1>
+            <p>We're here to help you every step of the way with personalized support and expert guidance.</p>
+        </div>
+    </section>
+
+    <!-- Contact Information Overview -->
+    <section class="contact-overview">
+        <div class="container">
+            <div class="overview-content">
+                <h2>How to Reach Us</h2>
+                <p>Choose the method that works best for you. We're committed to providing prompt, professional support for all your pharmacy automation needs.</p>
+            </div>
+            
+            <div class="contact-methods-grid">
+                <div class="contact-method">
+                    <div class="contact-method-header">
+                        <div class="contact-icon">📧</div>
+                        <h3>Email Support</h3>
+                    </div>
+                    <p>Get a response within 24 hours<br>
+                    <a href="mailto:sales@pamca.ca">sales@pamca.ca</a></p>
+                </div>
+
+                <div class="contact-method">
+                    <div class="contact-method-header">
+                        <div class="contact-icon">📞</div>
+                        <h3>Phone Support</h3>
+                    </div>
+                    <p>Speak directly with our team<br>
+                    <a href="tel:+14163223444">(416) 322-3444</a></p>
+                </div>
+
+                <div class="contact-method">
+                    <div class="contact-method-header">
+                        <div class="contact-icon">📍</div>
+                        <h3>Visit Our Office</h3>
+                    </div>
+                    <p>1920 Yonge Street<br>
+                    Toronto, ON, M4S 3E6</p>
+                    <small>For pre-purchased item collection only</small>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Business Hours & Contact Form -->
+    <section class="contact-main">
+        <div class="container">
+            <div class="contact-grid">
+                <!-- Contact Form -->
+                <div class="contact-form-section">
+                    
+<div class="contact-form">
+    <h2>Send Us a Message</h2>
+
+                    <p class="form-subtitle">Ready to transform your pharmacy? Tell us about your needs and we'll get back to you with a customized solution.</p>
+                    <form id="contactForm" method="post" action="">
+    <input type="hidden" name="contact_form_submitted" value="1">
+    
+<!-- Honeypot field (invisible to users) -->
+    <div class="hp-field" aria-hidden="true">
+        <label for="website_hp">If you are human, leave this empty</label>
+        <input type="text" id="website_hp" name="website_hp" autocomplete="off" tabindex="-1" />
+    </div>
+    
+
+
+    
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="firstName">First Name *</label>
+                                <input type="text" id="firstName" name="firstName" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="lastName">Last Name *</label>
+                                <input type="text" id="lastName" name="lastName" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="email">Email Address *</label>
+                                <input type="email" id="email" name="email" required placeholder="email@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="phone">Phone Number</label>
+                                <input type="tel" id="phone" name="phone" placeholder="(XXX) XXX-XXXX" maxlength="14">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="inquiryType">Inquiry Type *</label>
+                            <select id="inquiryType" name="inquiryType" required>
+                                <option value="">Select an inquiry type</option>
+                                <option value="demo">Request a Demo</option>
+                                <option value="pricing">Pricing Information</option>
+                                <option value="support">Technical Support</option>
+                                <option value="implementation">Implementation Questions</option>
+                                <option value="partnership">Partnership Opportunities</option>
+                                <option value="general">General Information</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="message">Message *</label>
+                            <textarea id="message" name="message" required placeholder="Tell us how we can help you..."></textarea>
+                        </div>
+
+                       <button type="button" class="submit-btn" onclick="onContactSubmit()">Send Message</button>
+                        <!-- Container where the invisible v2 widget will be rendered -->
+<div id="recaptcha-container" aria-hidden="true"></div>
+</form>
+                </div>
+                </div>
+
+                <!-- Business Hours -->
+                <div class="business-hours-section">
+                    <h2>Business Hours</h2>
+                    <div class="business-hours">
+                        <div class="hours-grid">
+                            <div class="hours-item">
+                                <span>Monday</span>
+                                <span>9:00 AM - 7:00 PM</span>
+                            </div>
+                            <div class="hours-item">
+                                <span>Tuesday</span>
+                                <span>9:00 AM - 7:00 PM</span>
+                            </div>
+                            <div class="hours-item">
+                                <span>Wednesday</span>
+                                <span>9:00 AM - 7:00 PM</span>
+                            </div>
+                            <div class="hours-item">
+                                <span>Thursday</span>
+                                <span>9:00 AM - 7:00 PM</span>
+                            </div>
+                            <div class="hours-item">
+                                <span>Friday</span>
+                                <span>9:00 AM - 7:00 PM</span>
+                            </div>
+                            <div class="hours-item">
+                                <span>Saturday</span>
+                                <span>9:00 AM - 3:00 PM</span>
+                            </div>
+                            <div class="hours-item">
+                                <span>Sunday</span>
+                                <span>10:00 AM - 3:00 PM</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="quick-response-info">
+                        <h3>Response Times</h3>
+                        <div class="response-stats">
+                            <div class="stat-item">
+                                <span class="stat-number">< 24h</span>
+                                <span class="stat-label">Email Response</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number">Same Day</span>
+                                <span class="stat-label">Phone Support</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+
+    <!-- Location Section -->
+    <section class="location-section">
+        <div class="container">
+            <div class="location-content">
+                <h2>Find Us</h2>
+                <p>Located in the heart of Midtown Toronto, we're just steps from the Toronto Transit Commission and offer convenient on-site visitor parking.</p>
+                
+                <div class="location-details">
+                    <div class="address-card">
+                        <h3>📍 Our Address</h3>
+                        <p>1920 Yonge Street<br>
+                        Toronto, ON, M4S 3E6<br>
+                        Canada</p>
+                    </div>
+                    
+                    <div class="parking-info">
+                        <h3>🚗 Parking & Transit</h3>
+                        <p>• On-site visitor parking available<br>
+                        • Steps from TTC stations<br>
+                        • Accessible entrance</p>
+                    </div>
+                </div>
+                
+                <div class="map-container">
+                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2883.6439686107395!2d-79.39482842404734!3d43.70090747111759!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x882b3338f2c18bbf%3A0x1a3c0b0f8c8b1234!2s1920%20Yonge%20St%2C%20Toronto%2C%20ON%20M4S%203E6%2C%20Canada!5e0!3m2!1sen!2sus!4v1642084737123!5m2!1sen!2sus" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <script>
+    // Called when user clicks Send — triggers reCAPTCHA execute
+/* ---------- reCAPTCHA v2 (invisible) — programmatic render + execute ---------- */
+let recaptchaWidgetId = null;
+let recaptchaInitInterval = null;
+
+function initRecaptcha() {
+  // Only render once
+  if (typeof grecaptcha === 'undefined' || typeof grecaptcha.render !== 'function') {
+    return;
+  }
+  if (recaptchaWidgetId !== null) return;
+
+  try {
+    recaptchaWidgetId = grecaptcha.render('recaptcha-container', {
+      'sitekey': '6Lf0leErAAAAAEyjZ6N7aEm9K9QuCrXwZ0_Uzkhn', // <-- REPLACE with your site key
+      'size': 'invisible',
+      'callback': onReCaptchaSuccess,
+      'badge': 'inline' // optional; change if you want badge position
+    });
+    console.log('reCAPTCHA rendered, widgetId =', recaptchaWidgetId);
+
+    // If we started an interval to wait for grecaptcha, clear it
+    if (recaptchaInitInterval) {
+      clearInterval(recaptchaInitInterval);
+      recaptchaInitInterval = null;
+    }
+  } catch (err) {
+    console.error('initRecaptcha render error:', err);
+  }
+}
+
+// Attempt to init when grecaptcha is available.
+// Some themes/scripts load the recaptcha script async — so poll a few times.
+(function waitForRecaptcha() {
+  // Try immediately if grecaptcha already present
+  if (typeof grecaptcha !== 'undefined' && typeof grecaptcha.render === 'function') {
+    initRecaptcha();
+    return;
+  }
+  // Otherwise poll every 200ms up to a short limit
+  let tries = 0;
+  recaptchaInitInterval = setInterval(function() {
+    tries++;
+    if (typeof grecaptcha !== 'undefined' && typeof grecaptcha.render === 'function') {
+      initRecaptcha();
+    } else if (tries > 50) { // ~10 seconds
+      clearInterval(recaptchaInitInterval);
+      recaptchaInitInterval = null;
+      console.warn('reCAPTCHA did not load in time.');
+    }
+  }, 200);
+})();
+
+function onContactSubmit() {
+  console.log('onContactSubmit called; widgetId=', recaptchaWidgetId);
+
+  // If grecaptcha isn't ready, try to initialize and wait a tiny bit.
+  if (typeof grecaptcha === 'undefined') {
+    alert('reCAPTCHA still loading — please wait a second and try again.');
+    return;
+  }
+
+  if (recaptchaWidgetId === null) {
+    // try to render synchronously now
+    initRecaptcha();
+    // short delay to allow render -> then execute
+    setTimeout(function() {
+      if (recaptchaWidgetId !== null) {
+        try { grecaptcha.execute(recaptchaWidgetId); }
+        catch(e) { console.error('execute error after init:', e); alert('reCAPTCHA error — check console.'); }
+      } else {
+        alert('reCAPTCHA not ready — please wait a second.');
+      }
+    }, 250);
+    return;
+  }
+
+  // Normal path: execute the rendered widget
+  try {
+    grecaptcha.execute(recaptchaWidgetId);
+  } catch (e) {
+    console.error('grecaptcha.execute error:', e);
+    alert('reCAPTCHA error — check console.');
+  }
+}
+
+// Called by reCAPTCHA when token is received
+function onReCaptchaSuccess(token) {
+  console.log('reCAPTCHA token received:', token);
+  // `g-recaptcha-response` will be automatically added to the form by the grecaptcha lib.
+  var form = document.getElementById('contactForm');
+  if (!form) {
+    console.error('contactForm element not found');
+    return;
+  }
+  form.submit();
+}
+        // Phone number formatting
+        function formatPhoneNumber(value) {
+            // Remove all non-digit characters
+            const phoneNumber = value.replace(/\D/g, '');
+            
+            // Format based on length
+            if (phoneNumber.length === 0) return '';
+            if (phoneNumber.length <= 3) return `(${phoneNumber}`;
+            if (phoneNumber.length <= 6) return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+            return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+        }
+
+        // Add phone number formatting event listener
+        document.addEventListener('DOMContentLoaded', function() {
+            const phoneInput = document.getElementById('phone');
+            
+            phoneInput.addEventListener('input', function(e) {
+                const formatted = formatPhoneNumber(e.target.value);
+                e.target.value = formatted;
+            });
+
+            // Handle backspace and delete properly
+            phoneInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Backspace' || e.key === 'Delete') {
+                    // Allow normal backspace/delete behavior
+                    return;
+                }
+                
+                // Only allow numbers and certain keys
+                if (!/[\d]/.test(e.key) && !['Tab', 'Shift', 'Control', 'Alt', 'Meta', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
+                    e.preventDefault();
+                }
+            });
+
+            // Paste event handler
+            phoneInput.addEventListener('paste', function(e) {
+                e.preventDefault();
+                const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+                const formatted = formatPhoneNumber(pastedText);
+                e.target.value = formatted;
+            });
+        });
+
+        // Scroll animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Animate elements on scroll
+        document.addEventListener('DOMContentLoaded', function() {
+            const animateElements = document.querySelectorAll('.contact-method, .contact-form-section, .stat-item');
+            
+            animateElements.forEach(element => {
+                element.style.opacity = '0';
+                element.style.transform = 'translateY(30px)';
+                element.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                observer.observe(element);
+            });
+        });
+    </script>
+
+    <div id="footer-placeholder"></div>
+
+<script src="/auth.js"></script>
+<script src="/shared-scripts.js"></script>
+</body>
+</html>
+
+

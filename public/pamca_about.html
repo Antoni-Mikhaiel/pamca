@@ -1,0 +1,566 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/shared-styles.css">
+  <title>PAMCA</title>
+</head>
+<body>
+<div id="header-placeholder"></div>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* About Hero Section */
+        .about-hero {
+            background: linear-gradient(135deg, #008080, #87CEEB);
+            padding: 100px 0 60px 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .about-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="%23ffffff" opacity="0.1"><path d="M0,50 Q250,0 500,50 T1000,50 V100 H0 V50Z"/></svg>') repeat-x bottom;
+            background-size: 1000px 100px;
+        }
+
+        .about-hero h1 {
+            font-size: 3.5rem;
+            color: white;
+            margin-bottom: 20px;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+        }
+
+        .about-hero .subtitle {
+            font-size: 1.3rem;
+            color: rgba(255, 255, 255, 0.9);
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Timeline Section */
+        .timeline-section {
+            padding: 100px 0;
+            background: #f8f9fa;
+            position: relative;
+        }
+
+        .timeline-container {
+            position: relative;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .timeline-line {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, #008080, #87CEEB);
+            border-radius: 2px;
+        }
+
+        .timeline-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 80px;
+            position: relative;
+        }
+
+        .timeline-item:nth-child(even) {
+            flex-direction: row;
+        }
+
+        .timeline-content {
+            width: 45%;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+            position: relative;
+            transform: translateY(0);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .timeline-content:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+        }
+
+        .timeline-content::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border: 4px solid #008080;
+            border-radius: 50%;
+            transform: translateY(-50%);
+        }
+
+        .timeline-item:nth-child(odd) .timeline-content::after {
+            left: -50px;
+        }
+
+        .timeline-item:nth-child(even) .timeline-content::after {
+            right: -50px;
+        }
+
+        .timeline-year {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #008080;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .timeline-year .icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #008080, #87CEEB);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .timeline-text {
+            font-size: 1.1rem;
+            color: #555;
+            line-height: 1.8;
+        }
+
+        .timeline-empty {
+            width: 45%;
+        }
+
+        /* Highlight Box */
+        .highlight-section {
+            background: linear-gradient(135deg, #162950, #008080);
+            padding: 80px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .highlight-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="%23ffffff" opacity="0.05"><circle cx="50" cy="50" r="2"/><circle cx="20" cy="20" r="1"/><circle cx="80" cy="30" r="1.5"/><circle cx="30" cy="80" r="1"/><circle cx="70" cy="70" r="1"/></svg>') repeat;
+            background-size: 100px 100px;
+        }
+
+        .highlight-content {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 60px;
+            border-radius: 25px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .highlight-content::before {
+            content: '💊';
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 20px;
+        }
+
+        .highlight-content p {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #162950;
+            line-height: 1.8;
+            margin: 0;
+        }
+
+        /* Patents Section */
+        .patents-section {
+            padding: 100px 0;
+            background: white;
+        }
+
+        .patents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .patent-card {
+            background: linear-gradient(135deg, #f8f9fa, #ffffff);
+            border: 2px solid #008080;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .patent-card:hover {
+            transform: scale(1.05);
+        }
+
+        .patent-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(0, 128, 128, 0.1), transparent);
+            transform: rotate(45deg);
+            transition: transform 0.6s ease;
+        }
+
+        .patent-card:hover::before {
+            transform: rotate(45deg) translate(50%, 50%);
+        }
+
+        .patent-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #008080, #87CEEB);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px auto;
+            font-size: 2rem;
+            color: white;
+            position: relative;
+            z-index: 1;
+        }
+
+        .patent-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #008080;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .patent-number {
+            font-size: 1.1rem;
+            color: #162950;
+            font-weight: 600;
+            background: rgba(0, 128, 128, 0.1);
+            padding: 10px 20px;
+            border-radius: 25px;
+            display: inline-block;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Section Headers */
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-header h2 {
+            font-size: 3rem;
+            color: #008080;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .section-header p {
+            font-size: 1.2rem;
+            color: #555;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .about-hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .about-hero .subtitle {
+                font-size: 1.1rem;
+            }
+
+            .timeline-line {
+                left: 30px;
+            }
+
+            .timeline-item {
+                flex-direction: column;
+                align-items: flex-start;
+                padding-left: 60px;
+            }
+
+            .timeline-item:nth-child(even) {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .timeline-content {
+                width: 100%;
+            }
+
+            .timeline-content::after {
+                left: -50px !important;
+            }
+
+            .timeline-empty {
+                display: none;
+            }
+
+            .timeline-year {
+                font-size: 2rem;
+            }
+
+            .highlight-content {
+                padding: 40px 30px;
+            }
+
+            .highlight-content p {
+                font-size: 1.1rem;
+            }
+
+            .patents-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .section-header h2 {
+                font-size: 2.2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .about-hero {
+                padding: 80px 0 40px 0;
+            }
+
+            .about-hero h1 {
+                font-size: 2rem;
+            }
+
+            .timeline-section,
+            .patents-section,
+            .highlight-section {
+                padding: 60px 0;
+            }
+
+            .timeline-content {
+                padding: 30px 20px;
+            }
+
+            .highlight-content {
+                padding: 30px 20px;
+            }
+
+            .patent-card {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+
+
+
+    <!-- About Hero Section -->
+    <section class="about-hero">
+        <div class="container">
+            <h1>Our Journey in Pharmacy Innovation</h1>
+            <p class="subtitle">Pioneering automated mechanisms for safer pharmacy practices since 2010</p>
+        </div>
+    </section>
+
+    <!-- Timeline Section -->
+    <section class="timeline-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Our Story</h2>
+                <p>From humble beginnings to patent-holding innovators in pharmacy automation</p>
+            </div>
+
+            <div class="timeline-container">
+                <div class="timeline-line"></div>
+
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <div class="timeline-year">
+                            <span class="icon">🏥</span>
+                            1984 - Present
+                        </div>
+                        <div class="timeline-text">
+                            Pharmacy Automated Mechanisms is a Canadian-owned and operated company. Its Founder and President has proudly been a pharmacist since 1984, actively practicing in a variety of community pharmacy settings including: Chain, Banner and Independent Pharmacies for over two decades in Ontario.
+                        </div>
+                    </div>
+                    <div class="timeline-empty"></div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-empty"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-year">
+                            <span class="icon">💡</span>
+                            2010
+                        </div>
+                        <div class="timeline-text">
+                            Our company has been in operation since 2010, proposing innovative technologies that promote error-free pharmacy workflow platforms, which have been patented both in Canada and the USA.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <div class="timeline-year">
+                            <span class="icon">🔬</span>
+                            Innovation
+                        </div>
+                        <div class="timeline-text">
+                            The Prescriptions Check Point is an innovative system that enables pharmacists to remotely oversee the dispensing procedures, helping to minimize or even eliminate human errors in dispensing prescriptions. The system, along with its custom designed hardware (Desktop Kiosk), was recognized as unique and subsequently granted U.S. Patent #US-20170169188-A1 and #US-9886555-B2.
+                        </div>
+                    </div>
+                    <div class="timeline-empty"></div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-empty"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-year">
+                            <span class="icon">🍁</span>
+                            2022
+                        </div>
+                        <div class="timeline-text">
+                            On December 6, 2022 - after 11 years of an extensive work - we received Canadian Patent #Ca 2,755,611 for the same procedure and apparatus.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Patents Section -->
+    <section class="patents-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Our Patents</h2>
+                <p>Recognition of our innovative contributions to pharmacy safety</p>
+            </div>
+
+            <div class="patents-grid">
+                <div class="patent-card">
+                    <div class="patent-icon">🇺🇸</div>
+                    <div class="patent-title">United States Patents</div>
+                    <div class="patent-number">US-20170169188-A1</div>
+                    <br>
+                    <div class="patent-number">US-9886555-B2</div>
+                </div>
+
+                <div class="patent-card">
+                    <div class="patent-icon">🇨🇦</div>
+                    <div class="patent-title">Canadian Patent</div>
+                    <div class="patent-number">Ca 2 755 611</div>
+                    <br>
+                    <p style="margin-top: 15px; color: #555;">Granted December 6, 2022</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Highlight Section -->
+    <section class="highlight-section">
+        <div class="container">
+            <div class="highlight-content">
+                <p>Because of the recent exciting news released by the Ontario Government to recognize the pharmacist's role and fund Minor Ailment Services in Ontario Pharmacies, we decided to focus on this initiative and help our colleague pharmacists in their practice to serve Ontarians better.</p>
+            </div>
+        </div>
+    </section>
+    
+    <script>
+        // Scroll animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe timeline items for animation
+        document.addEventListener('DOMContentLoaded', function() {
+            const timelineItems = document.querySelectorAll('.timeline-content');
+            const patentCards = document.querySelectorAll('.patent-card');
+            
+            timelineItems.forEach(item => {
+                item.style.opacity = '0';
+                item.style.transform = 'translateY(50px)';
+                item.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                observer.observe(item);
+            });
+
+            patentCards.forEach(card => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(30px)';
+                card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                observer.observe(card);
+            });
+        });
+    </script>
+    
+    <div id="footer-placeholder"></div>
+<script src="/auth.js"></script>
+<script src="/shared-scripts.js"></script>
+</body>
+</html>
+
+

@@ -1,0 +1,732 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/shared-styles.css">
+  <title>PAMCA</title>
+</head>
+<body>
+<div id="header-placeholder"></div>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Breadcrumb */
+        .breadcrumb {
+            background: #f8f9fa;
+            padding: 20px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .breadcrumb a {
+            color: #008080;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .breadcrumb span {
+            color: #666;
+            margin: 0 10px;
+        }
+
+        /* Product Section */
+        .product-section {
+            padding: 80px 0;
+            background: white;
+        }
+
+        .product-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: start;
+        }
+
+        /* Product Images */
+        .product-images {
+            position: sticky;
+            top: 140px;
+        }
+
+        .main-image {
+            width: 100%;
+            height: 500px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .main-image::before {
+            content: '📦';
+            font-size: 6rem;
+            opacity: 0.3;
+        }
+
+        .main-image .placeholder-text {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 128, 128, 0.8);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .sale-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            z-index: 2;
+        }
+
+        .thumbnail-images {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .thumbnail {
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .thumbnail:hover {
+            border-color: #008080;
+            transform: translateY(-2px);
+        }
+
+        .thumbnail::before {
+            content: '🖼️';
+            font-size: 1.5rem;
+            opacity: 0.5;
+        }
+
+        /* Product Details */
+        .product-details h1 {
+            font-size: 1.8rem;
+            color: #008080;
+            margin-bottom: 15px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .product-price {
+            margin-bottom: 25px;
+        }
+
+        .price {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #008080;
+            margin-bottom: 8px;
+        }
+
+        .sale-price {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .sale-price-horizontal {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .original-price {
+            font-size: 1rem;
+            color: #999;
+            text-decoration: line-through;
+        }
+
+        .current-price {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #e74c3c;
+        }
+
+/* Regular price */
+.product-details .woocommerce-Price-amount,
+#product-price .woocommerce-Price-amount {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #008080;
+}
+
+/* If product has a sale price: the crossed-out part */
+.product-details del .woocommerce-Price-amount,
+#product-price del .woocommerce-Price-amount {
+    font-size: 1rem;
+    font-weight: 400;
+    color: #999;
+    text-decoration: line-through;
+    margin-right: 0.5rem;
+}
+
+/* If product has a sale price: the active price */
+.product-details ins,
+#product-price ins {
+    text-decoration: none !important;
+}
+
+.product-details ins .woocommerce-Price-amount,
+#product-price ins .woocommerce-Price-amount {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #e74c3c;
+    text-decoration: none;
+}
+
+
+        .savings {
+            font-size: 0.9rem;
+            color: #27ae60;
+            font-weight: 600;
+        }
+
+        .product-description {
+            margin-bottom: 30px;
+        }
+
+        .product-description h3 {
+            font-size: 1.2rem;
+            color: #008080;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .product-description p {
+            font-size: 0.95rem;
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        .product-description ul {
+            margin-left: 18px;
+            margin-bottom: 15px;
+        }
+
+        .product-description li {
+            font-size: 0.95rem;
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 6px;
+        }
+
+        /* Product Options */
+        .product-options {
+            margin-bottom: 30px;
+        }
+
+        .options-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 20px;
+        }
+
+        .option-group {
+            flex: 1;
+        }
+
+        .option-group label {
+            display: block;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .option-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .option-group select:focus {
+            outline: none;
+            border-color: #008080;
+            box-shadow: 0 0 0 3px rgba(0, 128, 128, 0.1);
+        }
+
+        /* Quantity and Add to Cart */
+        .purchase-section {
+
+            margin-bottom: 30px;
+        }
+        form.cart {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap; /* keeps it responsive on mobile */
+}
+
+
+        .quantity-selector {
+            display: flex;
+            align-items: center;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .quantity-btn {
+            background: #f8f9fa;
+            border: none;
+            padding: 12px 16px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .quantity-btn:hover {
+            background: #e9ecef;
+        }
+
+        .quantity-input {
+            border: none;
+            padding: 12px 16px;
+            text-align: center;
+            font-size: 0.95rem;
+            font-weight: 600;
+            width: 70px;
+            background: white;
+        }
+
+        .quantity-input:focus {
+            outline: none;
+        }
+
+        .add-to-cart-btn {
+            background: linear-gradient(135deg, #008080, #87CEEB);
+            color: white;
+            padding: 14px 32px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+
+        .add-to-cart-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 128, 128, 0.3);
+        }
+
+        /* Pickup Information */
+        .pickup-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border-left: 4px solid #008080;
+        }
+
+        .pickup-text {
+            font-size: 0.95rem;
+            color: #333;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        .store-location-link {
+            color: #008080;
+            text-decoration: underline;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        .store-location-link:hover {
+            color: #006666;
+        }
+
+        /* Product Features */
+        .product-features {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+        }
+
+        .product-features h3 {
+            font-size: 1.1rem;
+            color: #008080;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        .feature-item::before {
+            content: '✓';
+            color: #27ae60;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        /* Back Button */
+      .back-to-products {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #008080;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .back-to-products:hover {
+            color: #006060;
+            text-decoration: none;
+            transform: translateX(-5px);
+        }
+
+        .back-to-products::before {
+            content: '←';
+            font-size: 1.3rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 968px) {
+            .product-container {
+                grid-template-columns: 1fr;
+                gap: 50px;
+            }
+
+            .product-images {
+                position: static;
+            }
+
+            .thumbnail-images {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .options-row {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .purchase-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .product-section {
+                padding: 60px 0;
+            }
+
+            .product-details h1 {
+                font-size: 1.6rem;
+            }
+
+            .price,
+            .current-price {
+                font-size: 1.6rem;
+            }
+
+            .sale-price-horizontal {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .main-image {
+                height: 350px;
+            }
+
+            .thumbnail-images {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .product-section {
+                padding: 40px 0;
+            }
+
+            .product-details h1 {
+                font-size: 1.4rem;
+            }
+
+            .price,
+            .current-price {
+                font-size: 1.4rem;
+            }
+
+            .main-image {
+                height: 280px;
+            }
+
+            .product-features,
+            .pickup-info {
+                padding: 15px;
+            }
+        }
+    </style>
+
+
+    <!-- Breadcrumb -->
+    <section class="breadcrumb">
+        <div class="container">
+            <a href="/pharmacy-products">Products</a>
+            <span>/</span>
+            <span>Gel Dispenser, Hands-Free</span>
+        </div>
+    </section>
+
+    <!-- Product Section -->
+    <section class="product-section">
+        <div class="container">
+            <a href="/pharmacy-products"  class="back-to-products">Back to Products</a>
+            
+            <div class="product-container">
+                <!-- Product Images -->
+                <div class="product-images">
+                    <div class="main-image">
+                        <div class="sale-badge">Sale</div>
+                        <div class="placeholder-text">Main Product Image</div>
+                    </div>
+                    <div class="thumbnail-images">
+                        <div class="thumbnail"></div>
+                        <div class="thumbnail"></div>
+                        <div class="thumbnail"></div>
+                        <div class="thumbnail"></div>
+                    </div>
+                </div>
+
+                <!-- Product Details -->
+                <div class="product-details">
+                    <h1>Gel Dispenser, Hands-Free</h1>
+                    
+                    
+
+
+<div class="product-price" id="product-price"></div>
+
+
+                    <div class="product-options">
+                        <div class="options-row">
+                            
+                            <div class="option-group">
+                                <label for="style">Style</label>
+                                
+
+    <select id="style" name="attribute_style" required>
+        
+            <option value=""
+                    data-id=""
+                    data-price=""
+                    >
+                
+            </option>
+        
+    </select>
+
+</div>
+
+
+                            <div class="option-group">
+                                <label for="color">Color</label>
+                                <select id="color" name="color" required>
+                                    <option value="white">White</option>
+                                    <option value="white-grey">White-Grey</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+<div class="purchase-section">
+<form class="cart" action="" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="add-to-cart" value="86">
+    <input type="hidden" name="product_id" value="86">
+    <input type="hidden" id="variation_id" name="variation_id" value="">
+
+    <div class="quantity-selector">
+        <button type="button" class="quantity-btn" onclick="decreaseQuantity()">-</button>
+        <input type="number" class="quantity-input" id="quantity" name="quantity" value="1" min="1" max="10">
+        <button type="button" class="quantity-btn" onclick="increaseQuantity()">+</button>
+    </div>
+    <button type="submit" class="add-to-cart-btn">Add to Cart</button>
+</form>
+
+</div>
+
+
+
+                    <div class="pickup-info">
+                        <div class="pickup-text">
+                            <strong>Pickup Available at 1920 Yonge Street</strong><br>
+                            Usually ready in 24 hours
+                        </div>
+                        <a href="#footer-placeholder" class="store-location-link">View store location</a>
+                    </div>
+
+                    <div class="product-description">
+                        <h3>Product Description</h3>
+                        <p>Advanced hands-free gel dispenser designed for optimal hygiene and convenience in professional healthcare environments. Features touchless operation with reliable sensor technology.</p>
+                        
+                        <h3>Specifications</h3>
+                        <ul>
+                            <li>Touchless infrared sensor technology</li>
+                            <li>Adjustable dispensing volume (0.5ml - 2.5ml)</li>
+                            <li>Large 1000ml capacity reservoir</li>
+                            <li>Battery operated with low battery indicator</li>
+                            <li>Compatible with most hand sanitizers and soaps</li>
+                            <li>Multiple mounting options available</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer will be loaded here -->
+    <div id="footer-placeholder"></div>
+
+    <script>
+        // Quantity selector functions
+function increaseQuantity() {
+    const quantityInput = document.getElementById('quantity');
+    let currentValue = parseInt(quantityInput.value);
+    if (currentValue < 10) {
+        quantityInput.value = currentValue + 1;
+    }
+}
+
+function decreaseQuantity() {
+    const quantityInput = document.getElementById('quantity');
+    let currentValue = parseInt(quantityInput.value);
+    if (currentValue > 1) {
+        quantityInput.value = currentValue - 1;
+    }
+}
+
+
+    
+        // Thumbnail image switching (placeholder functionality)
+        document.addEventListener('DOMContentLoaded', function() {
+            const thumbnails = document.querySelectorAll('.thumbnail');
+            
+            thumbnails.forEach((thumbnail, index) => {
+                thumbnail.addEventListener('click', function() {
+                    // Remove active class from all thumbnails
+                    thumbnails.forEach(t => t.style.borderColor = 'transparent');
+                    // Add active class to clicked thumbnail
+                    this.style.borderColor = '#008080';
+                    
+                    // In a real application, you would switch the main image here
+                    console.log(`Switched to image ${index + 1}`);
+                });
+            });
+        });
+        
+
+document.getElementById('style').addEventListener('change', function() {
+    let selectedOption = this.options[this.selectedIndex];
+    let variationId    = selectedOption.getAttribute('data-id');
+    let price          = selectedOption.getAttribute('data-price');
+
+    // Update hidden variation_id field
+    document.getElementById('variation_id').value = variationId;
+
+    // Update displayed price
+    if (price) {
+        document.getElementById('product-price').innerHTML = price;
+    } else {
+        document.getElementById('product-price').innerHTML = "$0.00";
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const styleSelect = document.getElementById('style');
+    if (styleSelect) {
+        // Trigger change once to load default
+        styleSelect.dispatchEvent(new Event('change'));
+    }
+});
+    </script>
+   
+<script src="/auth.js"></script>
+<script src="/shared-scripts.js"></script>
+</body>
+</html>
+
+

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/shared-styles.css">
+  <title>Product — PAMCA</title>
+  <style>
+    /* Site-wide base — matches every other page so the injected header/footer
+       (and this page's own content) share the same typography and spacing. */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; }
+
+    .pd-wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+
+    .breadcrumb { background: #f8f9fa; padding: 20px 0; border-bottom: 1px solid #e0e0e0; }
+    .breadcrumb a { color: #008080; text-decoration: none; font-weight: 500; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .breadcrumb span { color: #666; margin: 0 10px; }
+
+    .product-section { padding: 24px 0 60px; background: #fff; }
+    .back-to-products {
+      display: inline-flex; align-items: center; gap: 8px; color: #008080;
+      text-decoration: none; font-weight: 600; font-size: 0.95rem; margin-bottom: 25px;
+      transition: transform 0.3s ease;
+    }
+    .back-to-products::before { content: '←'; font-size: 1.3rem; }
+    .back-to-products:hover { transform: translateX(-5px); }
+
+    .product-container { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: start; }
+
+    .product-images { position: sticky; top: 140px; }
+    .main-image {
+      width: 100%; height: 460px; background-color: #f1f3f5;
+      border-radius: 20px; display: flex; align-items: center; justify-content: center;
+      position: relative; overflow: hidden; margin-bottom: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+      /* contain = show the whole image, never crop it */
+      background-size: contain; background-position: center; background-repeat: no-repeat;
+    }
+    .main-image.is-empty::after { content: '📦'; font-size: 6rem; opacity: 0.3; }
+    .sale-badge {
+      position: absolute; top: 20px; right: 20px; background: linear-gradient(135deg, #e74c3c, #c0392b);
+      color: #fff; padding: 10px 18px; border-radius: 25px; font-size: 0.95rem; font-weight: 600; z-index: 2;
+    }
+    .thumbnail-images { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .thumbnail {
+      width: 100%; height: 90px; background-color: #f1f3f5;
+      background-position: center; background-repeat: no-repeat; background-size: contain;
+      border-radius: 12px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s ease;
+    }
+    .thumbnail:hover, .thumbnail.active { border-color: #008080; transform: translateY(-2px); }
+
+    .product-details h1 { font-size: 1.9rem; color: #008080; margin-bottom: 14px; font-weight: 700; line-height: 1.2; }
+    .product-price { margin-bottom: 24px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+    .pd-current { font-size: 1.9rem; font-weight: 700; color: #008080; }
+    .pd-original { font-size: 1.1rem; color: #999; text-decoration: line-through; }
+    .pd-current.is-sale { color: #e74c3c; }
+
+    .pd-stock { font-size: 0.95rem; font-weight: 600; margin-bottom: 22px; }
+    .pd-stock.in { color: #27ae60; }
+    .pd-stock.out { color: #e74c3c; }
+
+    .product-options { margin-bottom: 26px; display: grid; gap: 16px; }
+    .option-group label { display: block; font-size: 0.95rem; font-weight: 600; color: #333; margin-bottom: 8px; }
+    .option-group select {
+      width: 100%; padding: 12px 14px; border: 2px solid #e0e0e0; border-radius: 10px;
+      font-size: 0.95rem; font-family: inherit; background: #fff; transition: all 0.2s ease;
+    }
+    .option-group select:focus { outline: none; border-color: #008080; box-shadow: 0 0 0 3px rgba(0,128,128,0.1); }
+
+    .purchase-section { display: flex; gap: 14px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+    .quantity-selector { display: flex; align-items: center; border: 2px solid #e0e0e0; border-radius: 10px; overflow: hidden; }
+    .quantity-btn { background: #f8f9fa; border: none; padding: 12px 16px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    .quantity-btn:hover { background: #e9ecef; }
+    .quantity-input { border: none; padding: 12px; text-align: center; font-size: 0.95rem; font-weight: 600; width: 64px; }
+    .quantity-input:focus { outline: none; }
+    .add-to-cart-btn {
+      background: linear-gradient(135deg, #008080, #87CEEB); color: #fff; padding: 14px 32px; border: none;
+      border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; flex: 1; min-width: 180px;
+    }
+    .add-to-cart-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,128,128,0.3); }
+    .add-to-cart-btn.sold-out { background: #6c757d; cursor: not-allowed; }
+    .add-to-cart-btn.sold-out:hover { transform: none; box-shadow: none; }
+    .pd-available { font-size: 0.95rem; font-weight: 600; color: #27ae60; margin: -4px 0 18px; }
+    .pd-msg { font-size: 0.9rem; color: #008080; margin-bottom: 24px; min-height: 1.2em; }
+
+    .product-description { margin-top: 30px; padding-top: 26px; border-top: 1px solid #eef2f5; }
+    .product-description h3 {
+      font-size: 1.15rem; color: #0f5f5c; font-weight: 700; letter-spacing: -0.01em;
+      margin: 30px 0 16px; padding-bottom: 10px; position: relative;
+    }
+    .product-description h3:first-child { margin-top: 0; }
+    .product-description h3::after {
+      content: ''; position: absolute; left: 0; bottom: 0;
+      width: 46px; height: 3px; border-radius: 3px;
+      background: linear-gradient(90deg, #008080, #87CEEB);
+    }
+    .product-description > p {
+      font-size: 1rem; color: #4b5563; line-height: 1.8; margin: 0;
+    }
+    /* Specifications — a clean, scannable checklist instead of a plain bullet list */
+    .product-description ul {
+      list-style: none; margin: 0; padding: 0;
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+    }
+    .product-description ul li {
+      position: relative; padding: 13px 14px 13px 44px;
+      background: #f8fafc; border: 1px solid #eef2f5; border-radius: 12px;
+      font-size: 0.92rem; color: #334155; line-height: 1.45;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .product-description ul li::before {
+      content: '✓'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      width: 22px; height: 22px; border-radius: 50%;
+      background: linear-gradient(135deg, #008080, #87CEEB); color: #fff;
+      font-size: 0.72rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .product-description ul li:hover {
+      border-color: #008080; box-shadow: 0 6px 16px rgba(0,128,128,0.10); transform: translateY(-1px);
+    }
+    @media (max-width: 600px) { .product-description ul { grid-template-columns: 1fr; } }
+
+    .pd-state { text-align: center; padding: 80px 20px; color: #555; }
+    .pd-state h2 { color: #008080; margin-bottom: 12px; }
+
+    @media (max-width: 968px) {
+      .product-container { grid-template-columns: 1fr; gap: 40px; }
+      .product-images { position: static; }
+      .features-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="header-placeholder"></div>
+
+  <section class="product-section">
+    <div class="pd-wrap">
+      <a href="/pharmacy-products.html" class="back-to-products">Back to Products</a>
+      <div id="pd-root"></div>
+    </div>
+  </section>
+
+  <div id="footer-placeholder"></div>
+
+  <script src="/auth.js"></script>
+  <script src="/shared-scripts.js"></script>
+  <script>
+    (function () {
+      const root = document.getElementById('pd-root');
+      const slug = new URLSearchParams(location.search).get('slug');
+
+      function escapeHtml(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+      function money(n) { return '$' + (Number(n) || 0).toFixed(2); }
+
+      function showState(title, message) {
+        root.innerHTML =
+          '<div class="pd-state"><h2>' + escapeHtml(title) + '</h2><p>' + escapeHtml(message) +
+          '</p><p><a class="back-to-products" href="/pharmacy-products.html">Back to Products</a></p></div>';
+      }
+
+      if (!slug) { showState('Product not specified', 'No product was selected.'); return; }
+
+      // 1) Paint instantly from cache so the page isn't blank while the request runs.
+      //    Prefer a per-product cache, then fall back to the products-list cache that
+      //    the listing page stores (you usually arrive here from there).
+      var shownFromCache = false;
+      try {
+        var cachedProduct = JSON.parse(localStorage.getItem('pamca_cache_product_' + slug) || 'null');
+        if (cachedProduct) {
+          render(cachedProduct);
+          shownFromCache = true;
+        } else {
+          var cachedList = JSON.parse(localStorage.getItem('pamca_cache_products') || 'null');
+          if (Array.isArray(cachedList)) {
+            var hit = cachedList.find(function (x) { return x && x.slug === slug; });
+            if (hit) { render(hit); shownFromCache = true; }
+          }
+        }
+      } catch (_) {}
+
+      // 2) Revalidate from the API and refresh the cache.
+      fetch('/api/products/' + encodeURIComponent(slug), { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (payload) {
+          const p = payload && payload.success ? payload.data : null;
+          if (p) {
+            render(p);
+            try { localStorage.setItem('pamca_cache_product_' + slug, JSON.stringify(p)); } catch (_) {}
+          } else if (!shownFromCache) {
+            showState('Product not found', 'We couldn’t find that product. It may have been removed.');
+          }
+        })
+        .catch(function () { if (!shownFromCache) showState('Something went wrong', 'Please try again in a moment.'); });
+
+      function render(p) {
+        document.title = (p.name || 'Product') + ' — PAMCA';
+        const nameEl = document.getElementById('pd-breadcrumb-name');
+        if (nameEl) nameEl.textContent = p.name || 'Product';
+
+        const images = Array.isArray(p.images) ? p.images.filter(Boolean) : [];
+        const onSale = !!p.is_on_sale && Number(p.sale_percent) > 0;
+        const baseRegular = Number(p.price_regular || 0);
+
+        const thumbs = images.map(function (src, i) {
+          return '<div class="thumbnail' + (i === 0 ? ' active' : '') + '" style="background-image:url(\'' +
+            escapeHtml(src) + '\')" data-src="' + escapeHtml(src) + '"></div>';
+        }).join('');
+
+        const optionsHtml = (Array.isArray(p.option_groups) ? p.option_groups : []).map(function (g, gi) {
+          const affects = g.affectsPricing ? '1' : '0';
+          const opts = (g.options || []).map(function (o) {
+            // Empty data-sale/data-stock means "inherit the product-level value".
+            return '<option value="' + escapeHtml(o.value) + '"' +
+              ' data-price="' + (o.price == null ? '' : Number(o.price)) + '"' +
+              ' data-sale="' + (o.salePercent == null ? '' : (Number(o.salePercent) || 0)) + '"' +
+              ' data-stock="' + (o.stock == null ? '' : Math.max(0, Math.round(Number(o.stock) || 0))) + '">' +
+              escapeHtml(o.value) + '</option>';
+          }).join('');
+          if (!opts) return '';
+          const groupLabel = g.label || ('Option ' + (gi + 1));
+          return '<div class="option-group"><label>' + escapeHtml(groupLabel) +
+            '</label><select data-group="' + gi + '" data-affects="' + affects + '" data-label="' + escapeHtml(groupLabel) + '">' + opts + '</select></div>';
+        }).join('');
+
+        const features = (Array.isArray(p.key_features) ? p.key_features : []);
+        const featuresHtml = features.length
+          ? '<h3>Specifications</h3><ul>' + features.map(function (f) { return '<li>' + escapeHtml(f) + '</li>'; }).join('') + '</ul>'
+          : '';
+
+        // Base (fallback) figures — used directly in "Mode 1" and as the starting
+        // point that price-affecting dropdowns override in "Mode 2".
+        const baseStock = Math.max(0, Math.round(Number(p.stock || 0)));
+        const baseSale = onSale ? (Number(p.sale_percent) || 0) : 0;
+
+        root.innerHTML =
+          '<div class="product-container">' +
+            '<div class="product-images">' +
+              '<div class="main-image' + (images.length ? '' : ' is-empty') + '" id="pd-main"' +
+                (images.length ? ' style="background-image:url(\'' + escapeHtml(images[0]) + '\')"' : '') + '>' +
+                '<div class="sale-badge" id="pd-sale-badge" style="display:none;"></div>' +
+              '</div>' +
+              (images.length > 1 ? '<div class="thumbnail-images">' + thumbs + '</div>' : '') +
+            '</div>' +
+            '<div class="product-details">' +
+              '<h1>' + escapeHtml(p.name || 'Product') + '</h1>' +
+              '<div class="product-price" id="pd-price"></div>' +
+              '<div class="pd-stock in" id="pd-stock"></div>' +
+              (optionsHtml ? '<div class="product-options">' + optionsHtml + '</div>' : '') +
+              '<div class="purchase-section">' +
+                '<div class="quantity-selector">' +
+                  '<button type="button" class="quantity-btn" id="pd-minus">-</button>' +
+                  '<input type="number" class="quantity-input" id="pd-qty" value="1" min="1" max="1">' +
+                  '<button type="button" class="quantity-btn" id="pd-plus">+</button>' +
+                '</div>' +
+                '<button type="button" class="add-to-cart-btn" id="pd-add">Add to Cart</button>' +
+              '</div>' +
+              '<div class="pd-available" id="pd-available"></div>' +
+              '<div class="pd-msg" id="pd-msg"></div>' +
+              (p.description ? '<div class="product-description"><h3>Product Description</h3><p>' +
+                escapeHtml(p.description) + '</p>' + featuresHtml + '</div>' : (featuresHtml ? '<div class="product-description">' + featuresHtml + '</div>' : '')) +
+            '</div>' +
+          '</div>';
+
+        const priceEl = document.getElementById('pd-price');
+        const stockEl = document.getElementById('pd-stock');
+        const availEl = document.getElementById('pd-available');
+        const badgeEl = document.getElementById('pd-sale-badge');
+        const qty = document.getElementById('pd-qty');
+        const minus = document.getElementById('pd-minus');
+        const plus = document.getElementById('pd-plus');
+        const addBtn = document.getElementById('pd-add');
+        const msg = document.getElementById('pd-msg');
+        let maxQty = 1;
+
+        function priceHtml(regular, salePercent) {
+          if (salePercent > 0) {
+            const saleVal = +(regular * (1 - salePercent / 100)).toFixed(2);
+            return '<span class="pd-original">' + money(regular) + '</span>' +
+                   '<span class="pd-current is-sale">' + money(saleVal) + '</span>';
+          }
+          return '<span class="pd-current">' + money(regular) + '</span>';
+        }
+
+        // Resolve the active price / sale% / stock from the current selection.
+        // Price & sale come from the single pricing dropdown (data-affects="1");
+        // a blank option price keeps the base price. Available stock is the
+        // smallest selected-option stock across every dropdown (each chosen
+        // attribute must be in stock), falling back to the base stock.
+        function getActiveSelection() {
+          let regular = baseRegular;
+          let salePercent = baseSale;
+          var stockCandidates = [];
+          var pricingApplied = false;
+          document.querySelectorAll('#pd-root select[data-group]').forEach(function (sel) {
+            const opt = sel.options[sel.selectedIndex];
+            if (!opt) return;
+            if (sel.getAttribute('data-affects') === '1' && !pricingApplied) {
+              pricingApplied = true;
+              const praw = opt.getAttribute('data-price');
+              if (praw !== '' && praw != null && !isNaN(Number(praw))) regular = Number(praw);
+              const sraw = opt.getAttribute('data-sale');   // '' => inherit base sale
+              if (sraw !== '' && sraw != null) salePercent = Math.max(0, Math.min(100, Number(sraw) || 0));
+            }
+            const straw = opt.getAttribute('data-stock');    // '' => no limit from this option
+            if (straw !== '' && straw != null) stockCandidates.push(Math.max(0, Math.round(Number(straw) || 0)));
+          });
+          const stock = stockCandidates.length ? Math.min.apply(null, stockCandidates) : baseStock;
+          return { regular: regular, salePercent: salePercent, stock: stock };
+        }
+
+        function refreshSelection() {
+          const s = getActiveSelection();
+          priceEl.innerHTML = priceHtml(s.regular, s.salePercent);
+          if (badgeEl) {
+            if (s.salePercent > 0) { badgeEl.style.display = ''; badgeEl.textContent = '-' + Math.round(s.salePercent) + '%'; }
+            else { badgeEl.style.display = 'none'; }
+          }
+          const soldOut = s.stock <= 0;
+          stockEl.className = 'pd-stock ' + (soldOut ? 'out' : 'in');
+          stockEl.textContent = soldOut ? 'Sold out' : 'In stock';
+          availEl.textContent = soldOut ? '' : (s.stock + ' available');
+          availEl.style.display = soldOut ? 'none' : '';
+          maxQty = Math.max(1, s.stock);
+          qty.max = String(maxQty);
+          qty.value = String(Math.min(maxQty, Math.max(1, parseInt(qty.value, 10) || 1)));
+          addBtn.disabled = soldOut;
+          addBtn.classList.toggle('sold-out', soldOut);
+          addBtn.textContent = soldOut ? 'Sold Out' : 'Add to Cart';
+        }
+
+        document.querySelectorAll('#pd-root select[data-group]').forEach(function (sel) {
+          sel.addEventListener('change', refreshSelection);
+        });
+
+        // Thumbnail switching
+        document.querySelectorAll('#pd-root .thumbnail').forEach(function (t) {
+          t.addEventListener('click', function () {
+            const main = document.getElementById('pd-main');
+            if (main) main.style.backgroundImage = "url('" + (t.getAttribute('data-src') || '') + "')";
+            document.querySelectorAll('#pd-root .thumbnail').forEach(function (x) { x.classList.remove('active'); });
+            t.classList.add('active');
+          });
+        });
+
+        // Quantity — never let the shopper request more than the selection's stock.
+        function clampQty() { qty.value = String(Math.min(maxQty, Math.max(1, parseInt(qty.value, 10) || 1))); }
+        if (minus) minus.addEventListener('click', function () { qty.value = String(Math.max(1, (parseInt(qty.value, 10) || 1) - 1)); });
+        if (plus) plus.addEventListener('click', function () { qty.value = String(Math.min(maxQty, (parseInt(qty.value, 10) || 1) + 1)); });
+        qty.addEventListener('input', clampQty);
+        qty.addEventListener('change', clampQty);
+
+        // Add to cart — collects the selected options and posts to the cart API
+        // via the shared helper, then opens the mini-cart.
+        addBtn.addEventListener('click', async function () {
+          if (addBtn.disabled) return;
+          const options = [];
+          document.querySelectorAll('#pd-root select[data-group]').forEach(function (sel) {
+            const opt = sel.options[sel.selectedIndex];
+            if (opt) options.push({ label: sel.getAttribute('data-label') || 'Option', value: opt.value });
+          });
+          const quantity = Math.max(1, parseInt(qty.value, 10) || 1);
+
+          addBtn.disabled = true;
+          if (msg) { msg.style.color = '#008080'; msg.textContent = 'Adding…'; }
+          try {
+            const ok = window.pamcaAddToCart
+              ? await window.pamcaAddToCart({ slug: slug, quantity: quantity, options: options })
+              : false;
+            if (ok) {
+              if (msg) { msg.style.color = '#27ae60'; msg.textContent = 'Added to cart ✓'; }
+              if (window.pamcaOpenCart) window.pamcaOpenCart();
+            } else {
+              if (msg) { msg.style.color = '#e74c3c'; msg.textContent = 'Could not add to cart. Please try again.'; }
+            }
+          } catch (_) {
+            if (msg) { msg.style.color = '#e74c3c'; msg.textContent = 'Could not add to cart. Please try again.'; }
+          } finally {
+            refreshSelection();
+          }
+        });
+
+        refreshSelection();
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,568 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/shared-styles.css">
+  <title>PAMCA</title>
+</head>
+<body>
+<div id="header-placeholder"></div>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f8f9fa;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+
+        }
+
+        /* Page Header */
+        .page-header {
+            background: linear-gradient(135deg, #008080, #87CEEB);
+            color: white;
+            padding: 80px 0 60px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .page-header .container {
+            position: relative;
+            z-index: 2;
+        }
+
+        .page-header h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .page-header p {
+            font-size: 1.2rem;
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.6;
+            opacity: 0.95;
+        }
+
+        .page-header .website-url {
+            font-weight: 600;
+            color: #FFE4B5;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .page-header .website-url:hover {
+            color: white;
+        }
+
+        /* Navigation Menu */
+        .privacy-nav {
+            background: white;
+ 
+            border-bottom: 1px solid #e0e0e0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 25px;
+            list-style: none;
+        }
+
+        .nav-menu li a {
+            color: #008080;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .nav-menu li a:hover {
+            background: #008080;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* Privacy Content */
+        .privacy-content {
+            padding: 80px 0;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #008080;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 40px;
+            transition: all 0.3s ease;
+        }
+
+
+
+        .back-button::before {
+            content: '←';
+            font-size: 1.3rem;
+        }
+
+        /* Section Styles */
+        .privacy-section {
+            background: white;
+            margin-bottom: 40px;
+            border-radius: 16px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+
+
+        .section-header {
+            background: linear-gradient(135deg, #008080, #20B2AA);
+            color: white;
+            padding: 25px 30px;
+            position: relative;
+        }
+
+        .section-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .section-content {
+            padding: 35px 30px;
+        }
+
+        .section-content p {
+            font-size: 1rem;
+            line-height: 1.7;
+            color: #444;
+            margin-bottom: 20px;
+        }
+
+        .section-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-content strong {
+            color: #008080;
+            font-weight: 600;
+        }
+
+        .section-content a {
+            color: #008080;
+            text-decoration: underline;
+            transition: color 0.3s ease;
+        }
+
+
+
+        /* Special Styling for Introduction */
+        .intro-section {
+            border-left: 5px solid #008080;
+            background: linear-gradient(135deg, #f8fdff, #e6f7ff);
+        }
+
+        .intro-section .section-header {
+            background: linear-gradient(135deg, #008080, #4682B4);
+        }
+
+        /* List Styling */
+        .section-content ul {
+            margin: 15px 0 20px 20px;
+        }
+
+        .section-content li {
+            font-size: 1rem;
+            line-height: 1.7;
+            color: #444;
+            margin-bottom: 8px;
+        }
+
+        /* Highlight Boxes */
+        .highlight-box {
+            background: #e6f7ff;
+            border: 1px solid #87CEEB;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .highlight-box p {
+            margin-bottom: 10px;
+        }
+
+        .highlight-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Contact Section Special Styling */
+        .contact-section {
+            background: linear-gradient(135deg, #008080, #20B2AA);
+            color: white;
+            text-align: center;
+        }
+
+        .contact-section .section-content {
+            color: white;
+        }
+
+        .contact-section .section-content p {
+            color: white;
+        }
+
+        .contact-section .section-content a {
+            color: #FFE4B5;
+            font-weight: 600;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .page-header {
+                padding: 60px 0 40px;
+            }
+
+            .page-header h1 {
+                font-size: 2.2rem;
+            }
+
+            .page-header p {
+                font-size: 1rem;
+            }
+
+            .privacy-nav {
+                opacity: 0;
+            }
+
+            .nav-menu {
+                gap: 15px;
+            }
+
+            .nav-menu li a {
+                font-size: 0.85rem;
+                padding: 6px 12px;
+            }
+
+            .privacy-content {
+                padding: 60px 12px;
+            }
+
+            .section-header {
+                padding: 20px 25px;
+            }
+
+            .section-header h2 {
+                font-size: 1.3rem;
+            }
+
+            .section-content {
+                padding: 25px 25px;
+            }
+
+            .section-content p,
+            .section-content li {
+                font-size: 0.95rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .page-header h1 {
+                font-size: 1.8rem;
+            }
+
+            .nav-menu {
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .section-header {
+                padding: 15px 20px;
+            }
+
+            .section-content {
+                padding: 20px 20px;
+            }
+
+            .highlight-box {
+                padding: 15px;
+            }
+        }
+
+        /* Smooth scrolling offset for fixed nav */
+        .privacy-section {
+            scroll-margin-top: 170px;
+        }
+    </style>
+
+    <!-- Navigation will be loaded here -->
+    <div id="navbar-placeholder"></div>
+
+    <!-- Page Header -->
+    <section class="page-header">
+        <div class="container">
+            <h1>Privacy Policy</h1>
+            <p>This Privacy Policy describes how your personal information is collected, used, and shared when you visit or make a purchase from <a href="https://www.pamca.net/" class="website-url" target="_blank">https://www.pamca.net/</a> (the "Site").</p>
+        </div>
+    </section>
+
+    <!-- Navigation Menu -->
+    <section class="privacy-nav">
+        <div class="container">
+            <ul class="nav-menu">
+                <li><a href="#personal-info">Personal Information</a></li>
+                <li><a href="#how-we-use">How We Use Info</a></li>
+                <li><a href="#sharing">Sharing Information</a></li>
+                <li><a href="#advertising">Behavioral Advertising</a></li>
+                <li><a href="#do-not-track">Do Not Track</a></li>
+                <li><a href="#data-retention">Data Retention</a></li>
+                <li><a href="#changes">Policy Changes</a></li>
+                <li><a href="#contact">Contact Us</a></li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Privacy Content -->
+    <section class="privacy-content">
+        <div class="container">
+            <a href="/" class="back-button">Back to Home</a>
+
+            <!-- What Personal Information Do We Collect -->
+            <div id="personal-info" class="privacy-section intro-section">
+                <div class="section-header">
+                    <h2>What Personal Information Do We Collect?</h2>
+                </div>
+                <div class="section-content">
+                    <p>When you visit <strong>Pharmacy Automated Mechanisms</strong> website, we automatically collect certain information about your device, including information about your web browser, IP address, time zone, and some of the cookies that are installed on your device. Additionally, as you browse the Site, we collect information about the individual web pages or products that you view, what websites or search terms referred you to the Site, and information about how you interact with the Site. We refer to this automatically-collected information as <strong>"Device Information."</strong></p>
+                    
+                    <div class="highlight-box">
+                        <p><strong>Device Information includes:</strong></p>
+                        <ul>
+                            <li>Web browser type and version</li>
+                            <li>IP address and time zone</li>
+                            <li>Cookie data from your device</li>
+                            <li>Pages and products you view</li>
+                            <li>Referring websites or search terms</li>
+                            <li>Site interaction patterns</li>
+                        </ul>
+                    </div>
+                    
+                    <p>Additionally when you make a purchase or attempt to make a purchase through the Site, we collect certain information from you, including your name, billing address, shipping address, payment information (including credit card numbers, email address, and phone number). We refer to this information as <strong>"Order Information."</strong></p>
+                </div>
+            </div>
+
+            <!-- How Do We Use Your Personal Information -->
+            <div id="how-we-use" class="privacy-section">
+                <div class="section-header">
+                    <h2>How Do We Use Your Personal Information?</h2>
+                </div>
+                <div class="section-content">
+                    <p>We use the <strong>Order Information</strong> that we collect generally to fulfill any orders placed through the Site (including processing your payment information, arranging for shipping, and providing you with invoices and/or order confirmations).</p>
+                    
+                    <p>Additionally, we use this Order Information to:</p>
+                    <ul>
+                        <li><strong>Communicate with you</strong> about your orders and account</li>
+                        <li><strong>Screen our orders</strong> for potential risk or fraud</li>
+                        <li><strong>Provide you with information or advertising</strong> relating to our products or services, when in line with the preferences you have shared with us</li>
+                    </ul>
+                    
+                    <p>We use the <strong>Device Information</strong> that we collect to help us screen for potential risk and fraud (in particular, your IP address), and more generally to improve and optimize our Site (for example, by generating analytics about how our customers browse and interact with the Site, and to assess the success of our marketing and advertising campaigns).</p>
+                </div>
+            </div>
+
+            <!-- Sharing Your Personal Information -->
+            <div id="sharing" class="privacy-section">
+                <div class="section-header">
+                    <h2>Sharing Your Personal Information</h2>
+                </div>
+                <div class="section-content">
+                    <p>We share your Personal Information with third parties to help us use your Personal Information, as described above. For example, we use <strong>GoDaddy</strong> to power our online store--you can read more about how Shopify uses your Personal Information here: <a href="https://www.godaddy.com/en/agreements/privacy" target="_blank">https://www.godaddy.com/en/agreements/privacy</a>.</p>
+                    
+                    <p>We also use <strong>Google Analytics</strong> to help us understand how our customers use the Site--you can read more about how Google uses your Personal Information here: <a href="https://www.google.com/intl/en/policies/privacy/" target="_blank">https://www.google.com/intl/en/policies/privacy/</a>. You can also opt-out of Google Analytics here: <a href="https://tools.google.com/dlpage/gaoptout" target="_blank">https://tools.google.com/dlpage/gaoptout</a>.</p>
+                    
+                    <div class="highlight-box">
+                        <p><strong>Legal Compliance:</strong> Finally, we may also share your Personal Information to comply with applicable laws and regulations, to respond to a subpoena, search warrant or other lawful request for information we receive, or to otherwise protect our rights.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Behavioral Advertising -->
+            <div id="advertising" class="privacy-section">
+                <div class="section-header">
+                    <h2>Behavioral Advertising</h2>
+                </div>
+                <div class="section-content">
+                    <p>As described above, we use your Personal Information to provide you with targeted advertisements or marketing communications we believe may be of interest to you. For more information about how targeted advertising works, you can visit the Network Advertising Initiative's ("NAI") educational page at <a href="http://www.networkadvertising.org/understanding-online-advertising/how-does-it-work" target="_blank">http://www.networkadvertising.org/understanding-online-advertising/how-does-it-work</a>.</p>
+                    
+                    <div class="highlight-box">
+                        <p><strong>Opt-Out Options:</strong> Additionally, you can opt out of some of these services by visiting the Digital Advertising Alliance's opt-out portal at: <a href="http://optout.aboutads.info/" target="_blank">http://optout.aboutads.info/</a>.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Do Not Track -->
+            <div id="do-not-track" class="privacy-section">
+                <div class="section-header">
+                    <h2>Do Not Track</h2>
+                </div>
+                <div class="section-content">
+                    <p>Please note that we do not alter our Site's data collection and use practices when we see a Do Not Track signal from your browser.</p>
+                </div>
+            </div>
+
+            <!-- Data Retention -->
+            <div id="data-retention" class="privacy-section">
+                <div class="section-header">
+                    <h2>Data Retention</h2>
+                </div>
+                <div class="section-content">
+                    <p>When you place an order through the Site, we will maintain your Order Information for our records unless and until you ask us to delete this information.</p>
+                    
+                    <div class="highlight-box">
+                        <p><strong>Your Rights:</strong> You have the right to request deletion of your personal information at any time by contacting us using the information provided below.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Changes -->
+            <div id="changes" class="privacy-section">
+                <div class="section-header">
+                    <h2>Policy Changes</h2>
+                </div>
+                <div class="section-content">
+                    <p>We may update this privacy policy from time to time in order to reflect, for example, changes to our practices or for other operational, legal or regulatory reasons.</p>
+                    
+                    <p>When we make changes to this Privacy Policy, we will update the effective date and notify you by posting the revised policy on our website. We encourage you to review this Privacy Policy periodically to stay informed about how we are protecting your information.</p>
+                </div>
+            </div>
+
+            <!-- Contact Us -->
+            <div id="contact" class="privacy-section contact-section">
+                <div class="section-content">
+                    <h2 style="color: white; font-size: 1.5rem; margin-bottom: 20px; font-weight: 700;">Contact Us</h2>
+                    <p>For more information about our privacy practices, if you have questions, or if you would like to make a complaint, please contact us by email:</p>
+                    <p><a href="mailto:sales@pamca.net">sales@pamca.net</a></p>
+                    <p style="margin-top: 20px; font-size: 0.9rem; opacity: 0.9;">We are committed to resolving any privacy-related concerns promptly and transparently.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer will be loaded here -->
+    <div id="footer-placeholder"></div>
+
+    <script>
+        // Smooth scrolling for navigation links
+        document.addEventListener('DOMContentLoaded', function() {
+            const navLinks = document.querySelectorAll('.nav-menu a[href^="#"]');
+            
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    const targetElement = document.querySelector(targetId);
+                    
+                    if (targetElement) {
+                        const offsetTop = targetElement.offsetTop - 150; // Account for sticky nav
+                        window.scrollTo({
+                            top: offsetTop,
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+        });
+
+        // Highlight active navigation item on scroll
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('.privacy-section[id]');
+            const navLinks = document.querySelectorAll('.nav-menu a[href^="#"]');
+            
+            let currentSection = '';
+            
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop - 200;
+                const sectionHeight = section.offsetHeight;
+                
+                if (window.scrollY >= sectionTop && window.scrollY < sectionTop + sectionHeight) {
+                    currentSection = section.getAttribute('id');
+                }
+            });
+            
+            navLinks.forEach(link => {
+                link.style.background = '';
+                link.style.color = '#008080';
+                
+                if (link.getAttribute('href') === `#${currentSection}`) {
+                    link.style.background = '#008080';
+                    link.style.color = 'white';
+                }
+            });
+        });
+
+        // Smooth scrolling for back button
+        document.querySelector('.back-button').addEventListener('click', function(e) {
+            if (this.getAttribute('href').startsWith('#')) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            }
+        });
+    </script>
+    
+<script src="/auth.js"></script>
+<script src="/shared-scripts.js"></script>
+</body>
+</html>
+
+

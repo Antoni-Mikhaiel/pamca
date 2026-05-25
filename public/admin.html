@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/shared-styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <title>Admin Console — PAMCA</title>
+  <style>
+    /* ============================================================
+       Dispensary Console — editorial clinical admin theme
+       Palette: warm paper canvas, deep navy ink rail, teal signal.
+       Type: Fraunces (display) · Hanken Grotesk (UI) · Plex Mono (data)
+       ============================================================ */
+    :root {
+      --ink: #14233f;            /* deep navy, primary text */
+      --ink-soft: rgba(20, 35, 63, 0.62);
+      --ink-faint: rgba(20, 35, 63, 0.40);
+      --paper: #f1efe8;          /* warm canvas */
+      --paper-2: #e9e6dc;
+      --surface: #ffffff;
+      --rail: #122039;           /* sidebar ink */
+      --rail-2: #0d1830;
+      --line: rgba(20, 35, 63, 0.14);
+      --line-strong: rgba(20, 35, 63, 0.24);
+      --signal: #0c7c74;         /* teal accent */
+      --signal-deep: #0a615b;
+      --sky: #5aa9c5;
+      --ember: #cf4626;          /* warm alert accent */
+      --shadow: 0 18px 44px rgba(20, 35, 63, 0.10);
+      --shadow-sm: 0 8px 22px rgba(20, 35, 63, 0.07);
+      --radius: 16px;
+      --radius-sm: 12px;
+      --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+      --font-sans: 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
+      --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    /* shared-styles.css reserves space for a fixed public navbar that
+       the admin page doesn't render — reclaim it. */
+    body {
+      padding-top: 0;
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font-sans);
+      color: var(--ink);
+      background: var(--paper);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* faint paper grain for atmosphere */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.5;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    }
+
+    .admin-shell {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 268px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    /* ---------- Left rail ---------- */
+    .admin-rail {
+      position: sticky;
+      top: 0;
+      align-self: start;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      padding: 30px 24px;
+      background: linear-gradient(190deg, var(--rail) 0%, var(--rail-2) 100%);
+      color: rgba(255, 255, 255, 0.92);
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .admin-brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .admin-mark {
+      width: 42px;
+      height: 42px;
+      flex: none;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      background: var(--signal);
+      color: #fff;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1.35rem;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18), 0 8px 18px rgba(12, 124, 116, 0.4);
+    }
+
+    .admin-brand h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1.18rem;
+      letter-spacing: -0.01em;
+      line-height: 1;
+    }
+
+    .admin-brand p {
+      margin: 5px 0 0;
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .rail-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .admin-tabs {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .admin-tab {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      text-align: left;
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.66);
+      font-family: var(--font-sans);
+      font-size: 0.96rem;
+      font-weight: 600;
+      padding: 12px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .admin-tab .tab-index {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      color: rgba(255, 255, 255, 0.38);
+      transition: color 0.2s ease;
+    }
+
+    .admin-tab:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: #fff;
+    }
+
+    .admin-tab.is-active {
+      background: rgba(255, 255, 255, 0.10);
+      color: #fff;
+    }
+
+    .admin-tab.is-active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 9px;
+      bottom: 9px;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: var(--signal);
+    }
+
+    .admin-tab.is-active .tab-index { color: var(--sky); }
+
+    .rail-foot {
+      margin-top: auto;
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      letter-spacing: 0.06em;
+      line-height: 1.7;
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    .rail-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .rail-status .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--signal);
+      box-shadow: 0 0 0 3px rgba(12, 124, 116, 0.25);
+    }
+
+    /* ---------- Main column ---------- */
+    .admin-main { min-width: 0; }
+
+    .admin-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 40px;
+      background: rgba(241, 239, 232, 0.86);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .topbar-crumb {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    .topbar-crumb b { color: var(--ink); font-weight: 600; }
+
+    .topbar-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--signal-deep);
+      background: rgba(12, 124, 116, 0.08);
+      border: 1px solid rgba(12, 124, 116, 0.2);
+      padding: 6px 12px;
+      border-radius: 999px;
+    }
+    .topbar-tag .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--signal);
+    }
+    /* "Return to PAMCA" pill button (replaces the old status bubble) */
+    .topbar-return {
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    }
+    .topbar-return:hover {
+      background: var(--signal);
+      border-color: var(--signal);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .admin-content {
+      width: 100%;
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 40px 40px 80px;
+    }
+
+    /* ---------- Panels ---------- */
+    .admin-panel {
+      display: none;
+      scroll-margin-top: 90px;
+    }
+    .admin-panel.is-active {
+      display: block;
+      animation: adminFade 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    @keyframes adminFade {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .panel-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--signal-deep);
+      margin-bottom: 14px;
+    }
+    .panel-kicker::before {
+      content: '';
+      width: 26px;
+      height: 1px;
+      background: var(--signal);
+    }
+
+    /* ---------- Hero / intro blocks ---------- */
+    .admin-hero {
+      margin-bottom: 30px;
+      padding-bottom: 26px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .admin-hero h2 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: clamp(2rem, 4vw, 2.9rem);
+      line-height: 1.04;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+
+    .admin-hero p {
+      margin: 16px 0 0;
+      max-width: 64ch;
+      font-size: 1.04rem;
+      line-height: 1.65;
+      color: var(--ink-soft);
+    }
+
+    /* ---------- Cards ---------- */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 26px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card h3,
+    .admin-panel h3 {
+      margin: 0 0 18px;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1.32rem;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+
+    .admin-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    #panel-pam .card { width: min(100%, 1120px); margin: 0 auto; }
+    #panel-pam .editor { width: min(100%, 940px); margin: 0 auto; }
+    #panel-pam .save-row { width: min(100%, 940px); margin: 18px auto 0; }
+
+    /* ---------- Stat readouts ---------- */
+    .admin-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+
+    .stat-card {
+      padding: 20px 18px;
+      background: var(--surface);
+      border-right: 1px solid var(--line);
+    }
+    .stat-card:last-child { border-right: none; }
+
+    .stat-card .label {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      margin-bottom: 10px;
+    }
+
+    .stat-card .value {
+      font-family: var(--font-display);
+      font-size: 2.5rem;
+      font-weight: 500;
+      line-height: 0.9;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+
+    .stat-card .note {
+      font-size: 0.86rem;
+      line-height: 1.4;
+      color: var(--ink-soft);
+    }
+
+    /* ---------- Launchers (index list) ---------- */
+    .panel-launchers {
+      display: flex;
+      flex-direction: column;
+      margin-top: 4px;
+    }
+
+    .launcher {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+      padding: 16px 4px 16px 2px;
+      border-top: 1px solid var(--line);
+      transition: padding-left 0.2s ease, border-color 0.2s ease;
+    }
+    .launcher:first-child { border-top: none; }
+    .launcher:last-child { border-bottom: 1px solid transparent; }
+
+    .launcher::after {
+      content: '→';
+      font-size: 1.05rem;
+      color: var(--ink-faint);
+      transition: transform 0.2s ease, color 0.2s ease;
+    }
+
+    .launcher:hover {
+      padding-left: 12px;
+    }
+    .launcher:hover::after {
+      transform: translateX(4px);
+      color: var(--signal);
+    }
+
+    .launcher strong {
+      display: block;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1.05rem;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+
+    .launcher span {
+      color: var(--ink-soft);
+      font-size: 0.92rem;
+      line-height: 1.45;
+    }
+
+    /* ---------- Buttons ---------- */
+    .button {
+      appearance: none;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      font-family: var(--font-sans);
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: 0.01em;
+      padding: 12px 22px;
+      color: #fff;
+      background: var(--signal);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+      box-shadow: 0 8px 18px rgba(12, 124, 116, 0.22);
+    }
+    .button:hover {
+      background: var(--signal-deep);
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(12, 124, 116, 0.28);
+    }
+    .button:active { transform: translateY(0); }
+
+    .button.secondary {
+      background: transparent;
+      color: var(--ink);
+      border-color: var(--line-strong);
+      box-shadow: none;
+    }
+    .button.secondary:hover {
+      background: rgba(20, 35, 63, 0.04);
+      border-color: var(--ink);
+      transform: translateY(-1px);
+    }
+
+    .save-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-top: 22px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+    }
+
+    #save-msg, #incident-save-msg {
+      font-family: var(--font-mono) !important;
+      font-size: 0.78rem !important;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* ============================================================
+       Pillars accordion (markup generated by admin.js)
+       ============================================================ */
+    .pill-edit {
+      margin-bottom: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      overflow: hidden;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .pill-edit.is-open {
+      border-color: rgba(12, 124, 116, 0.45);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .pill-toggle {
+      appearance: none;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px 18px;
+      border: none;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .pill-toggle:hover { background: rgba(20, 35, 63, 0.03); }
+    .pill-edit.is-open .pill-toggle {
+      background: rgba(12, 124, 116, 0.06);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .pill-toggle-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+    .pill-toggle-left strong {
+      font-family: var(--font-sans);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .pill-toggle-right {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--signal-deep);
+    }
+
+    .panel-badge {
+      display: inline-flex;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 0.64rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 5px 9px;
+      border-radius: 6px;
+      background: var(--ink);
+      color: #fff;
+    }
+    .pill-edit.is-open .panel-badge { background: var(--signal); }
+
+    .pill-body {
+      display: none;
+      padding: 6px 18px 20px;
+    }
+    .pill-edit.is-open .pill-body { display: grid; }
+
+    .pill-edit label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      margin: 16px 0 7px;
+    }
+
+    .pill-edit input,
+    .pill-edit textarea {
+      width: 100%;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      padding: 12px 13px;
+      background: var(--paper);
+      color: var(--ink);
+      font: inherit;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    .pill-edit input:focus,
+    .pill-edit textarea:focus {
+      border-color: var(--signal);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(12, 124, 116, 0.14);
+    }
+    .pill-edit textarea { resize: vertical; min-height: 110px; line-height: 1.55; }
+
+    /* ============================================================
+       Incident editor (markup generated by admin.js)
+       ============================================================ */
+    .content-form { display: grid; gap: 0; }
+
+    .incident-editor-shell { display: grid; gap: 18px; }
+
+    .incident-batch {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow-sm);
+      padding: 24px 24px 22px;
+      margin-bottom: 18px;
+    }
+    .incident-batch:last-child { margin-bottom: 0; }
+
+    /* thin accent rule across the top — accent varies per batch */
+    .incident-batch::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--batch-accent-start), var(--batch-accent-end));
+    }
+
+    .incident-batch.hero      { --batch-accent-start: var(--ink);    --batch-accent-end: var(--signal); }
+    .incident-batch.prep      { --batch-accent-start: var(--signal); --batch-accent-end: var(--sky); }
+    .incident-batch.standards { --batch-accent-start: var(--signal); --batch-accent-end: var(--signal-deep); }
+    .incident-batch.cta       { --batch-accent-start: var(--ember);  --batch-accent-end: #e88a3c; }
+
+    .incident-batch-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .incident-batch-kicker {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      margin-bottom: 7px;
+    }
+    .incident-batch.cta .incident-batch-kicker { color: var(--ember); }
+
+    .incident-batch h4 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1.32rem;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+
+    .incident-batch-copy {
+      margin: 8px 0 0;
+      color: var(--ink-soft);
+      line-height: 1.6;
+      max-width: 760px;
+    }
+
+    .incident-batch-grid {
+      display: grid;
+      gap: 14px;
+    }
+    .incident-batch-grid > * { min-width: 0; }
+    .incident-batch-grid.hero-layout      { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .incident-batch-grid.standards-layout { grid-template-columns: minmax(0, 1fr) 1.1fr; }
+    .incident-batch-grid.prep-layout      { grid-template-columns: 1fr; }
+    .incident-batch-grid.cta-layout       { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    /* fields — unified calm system, accent on focus only */
+    .incident-field {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: 15px;
+      min-width: 0;
+    }
+
+    .incident-field label {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    .incident-field .helper {
+      margin: -2px 0 2px;
+      font-size: 0.84rem;
+      line-height: 1.45;
+      color: var(--ink-faint);
+    }
+
+    .incident-field input,
+    .incident-field textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      padding: 12px 13px;
+      background: var(--surface);
+      color: var(--ink);
+      font: inherit;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .incident-field input:focus,
+    .incident-field textarea:focus {
+      border-color: var(--signal);
+      box-shadow: 0 0 0 3px rgba(12, 124, 116, 0.14);
+    }
+    .incident-field textarea { resize: vertical; min-height: 104px; line-height: 1.55; }
+
+    .incident-field-compact { gap: 6px; }
+
+    /* featured hero title — the one field that earns emphasis */
+    .incident-field.hero-featured {
+      margin-bottom: 14px;
+      border-color: rgba(12, 124, 116, 0.3);
+      background: linear-gradient(135deg, rgba(12, 124, 116, 0.06), rgba(90, 169, 197, 0.08));
+    }
+    .incident-field.hero-featured input {
+      min-height: 54px;
+      font-family: var(--font-display);
+      font-size: 1.08rem;
+      font-weight: 600;
+    }
+
+    .incident-field.hero-subheader-field textarea { min-height: 88px; }
+    .incident-field.bullet-field textarea { min-height: 150px; }
+
+    /* tag / bullet repeater */
+    .incident-tags-field { background: var(--paper-2); }
+
+    .incident-tag-list {
+      display: grid;
+      gap: 9px;
+      max-height: 230px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .incident-tag-list::-webkit-scrollbar { width: 9px; }
+    .incident-tag-list::-webkit-scrollbar-track { background: transparent; }
+    .incident-tag-list::-webkit-scrollbar-thumb {
+      background: rgba(12, 124, 116, 0.3);
+      border-radius: 999px;
+    }
+
+    .incident-tag-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 9px;
+      align-items: center;
+    }
+    .incident-tag-row input { min-width: 0; }
+
+    .incident-tag-add,
+    .incident-tag-remove {
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .incident-tag-add {
+      width: fit-content;
+      margin-top: 11px;
+      border: 1px solid var(--signal);
+      background: rgba(12, 124, 116, 0.08);
+      color: var(--signal-deep);
+    }
+    .incident-tag-add:hover {
+      background: var(--signal);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .incident-tag-remove {
+      border: 1px solid var(--line-strong);
+      background: var(--surface);
+      color: var(--ember);
+    }
+    .incident-tag-remove:hover {
+      border-color: var(--ember);
+      background: rgba(207, 70, 38, 0.06);
+      transform: translateY(-1px);
+    }
+
+    .incident-batch-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    /* ============================================================
+       Pharmacy Products manager
+       ============================================================ */
+    .pm-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 22px;
+    }
+    .pm-toolbar .pm-count {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    .pm-search {
+      flex: 1;
+      min-width: 200px;
+      max-width: 340px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      padding: 11px 13px;
+      font: inherit;
+      color: var(--ink);
+      background: var(--surface);
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .pm-search:focus { border-color: var(--signal); box-shadow: 0 0 0 3px rgba(12, 124, 116, 0.14); }
+
+    .pm-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .product-card {
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.18s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .product-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow);
+      border-color: var(--line-strong);
+    }
+
+    .pm-thumb {
+      position: relative;
+      height: 150px;
+      background: linear-gradient(135deg, var(--paper), var(--paper-2));
+      display: grid;
+      place-items: center;
+      background-size: cover;
+      background-position: center;
+    }
+    .pm-thumb.is-empty::before {
+      content: '📦';
+      font-size: 2.4rem;
+      opacity: 0.35;
+    }
+    .pm-saletag {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.64rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: #fff;
+      background: var(--ember);
+      padding: 5px 9px;
+      border-radius: 7px;
+      box-shadow: 0 6px 14px rgba(207, 70, 38, 0.3);
+    }
+    .pm-status {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink-soft);
+      border: 1px solid var(--line);
+    }
+    .pm-status.is-active { color: var(--signal-deep); border-color: rgba(12, 124, 116, 0.3); }
+
+    .product-card .pm-body { padding: 16px; display: grid; gap: 8px; flex: 1; }
+    .product-card .pm-name {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1.04rem;
+      line-height: 1.2;
+      color: var(--ink);
+    }
+    .pm-price { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+    .pm-price .now { font-weight: 700; color: var(--ink); }
+    .pm-price .now.is-sale { color: var(--ember); }
+    .pm-price .was { font-size: 0.86rem; color: var(--ink-faint); text-decoration: line-through; }
+
+    .pm-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+    .pm-chip {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: 7px;
+      background: var(--paper);
+      color: var(--ink-soft);
+      border: 1px solid var(--line);
+    }
+    .pm-chip.stock-out { color: var(--ember); border-color: rgba(207, 70, 38, 0.32); background: rgba(207, 70, 38, 0.06); }
+    .pm-chip.stock-low { color: #9a6b00; border-color: rgba(154, 107, 0, 0.3); background: rgba(154, 107, 0, 0.07); }
+    .pm-chip.stock-ok { color: var(--signal-deep); border-color: rgba(12, 124, 116, 0.28); }
+
+    .product-card .pm-actions {
+      display: flex;
+      border-top: 1px solid var(--line);
+    }
+    .product-card .pm-actions button {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease;
+    }
+    .product-card .pm-actions button + button { border-left: 1px solid var(--line); }
+    .product-card .pm-edit:hover { background: rgba(12, 124, 116, 0.08); color: var(--signal-deep); }
+    .product-card .pm-del:hover { background: rgba(207, 70, 38, 0.08); color: var(--ember); }
+
+    .pm-empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 48px 20px;
+      border: 1px dashed var(--line-strong);
+      border-radius: var(--radius);
+      color: var(--ink-soft);
+    }
+    .pm-empty strong { display: block; font-family: var(--font-display); font-size: 1.1rem; color: var(--ink); margin-bottom: 6px; }
+
+    /* ---- Editor modal ---- */
+    .pm-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      padding: 24px;
+      background: rgba(18, 32, 57, 0.45);
+      backdrop-filter: blur(4px);
+    }
+    .pm-modal.is-open { display: grid; place-items: center; animation: adminFade 0.2s ease; }
+
+    .pm-dialog {
+      width: min(900px, 96vw);
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 30px 80px rgba(18, 32, 57, 0.4);
+      overflow: hidden;
+    }
+    .pm-dialog-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 20px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+    }
+    .pm-dialog-head h3 { margin: 0; }
+    .pm-dialog-head .pm-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.64rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--signal-deep);
+      margin-bottom: 4px;
+    }
+    .pm-close {
+      border: 1px solid var(--line-strong);
+      background: transparent;
+      width: 34px; height: 34px;
+      border-radius: 9px;
+      font-size: 1.1rem;
+      line-height: 1;
+      color: var(--ink-soft);
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease;
+    }
+    .pm-close:hover { background: rgba(207, 70, 38, 0.08); color: var(--ember); }
+
+    .pm-dialog-body { padding: 22px 24px; overflow-y: auto; display: grid; gap: 22px; }
+
+    .pm-section {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: 18px;
+    }
+    .pm-section > h4 {
+      margin: 0 0 4px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--signal-deep);
+    }
+    .pm-section > .pm-section-note {
+      margin: 0 0 14px;
+      font-size: 0.84rem;
+      color: var(--ink-faint);
+    }
+
+    .pm-field { display: grid; gap: 6px; margin-bottom: 14px; }
+    .pm-field:last-child { margin-bottom: 0; }
+    .pm-field > label {
+      font-family: var(--font-mono);
+      font-size: 0.64rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    .pm-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .pm-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+    .pm-dialog-body input,
+    .pm-dialog-body textarea,
+    .pm-dialog-body select {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      padding: 11px 12px;
+      font: inherit;
+      color: var(--ink);
+      background: var(--paper);
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    .pm-dialog-body input:focus,
+    .pm-dialog-body textarea:focus,
+    .pm-dialog-body select:focus {
+      border-color: var(--signal);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(12, 124, 116, 0.14);
+    }
+    .pm-dialog-body textarea { resize: vertical; min-height: 96px; line-height: 1.55; }
+
+    /* repeaters (images / features / specs / options) */
+    .pm-repeat { display: grid; gap: 9px; }
+    .pm-repeat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; align-items: center; }
+    .pm-img-row { grid-template-columns: 22px 44px minmax(0, 1fr) auto auto; }
+    .pm-img-row.pm-dragging { opacity: 0.45; }
+    .pm-drag-handle {
+      border: none; background: none; cursor: grab; padding: 0;
+      color: var(--ink-faint); font-size: 1.05rem; line-height: 1;
+      align-self: center;
+    }
+    .pm-drag-handle:active { cursor: grabbing; }
+    .pm-img-preview {
+      width: 44px; height: 44px; border-radius: 9px;
+      border: 1px solid var(--line);
+      background: var(--paper-2) center/cover no-repeat;
+      display: grid; place-items: center;
+      font-size: 0.9rem; color: var(--ink-faint);
+    }
+    /* "MAIN" badge — only the first image (after reordering) is the main image. */
+    .pm-img-row .pm-main-flag {
+      font-family: var(--font-mono);
+      font-size: 0.56rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--signal-deep);
+      background: rgba(12, 124, 116, 0.1);
+      border-radius: 6px;
+      padding: 3px 7px;
+      align-self: center;
+      visibility: hidden;
+    }
+    .pm-img-row.is-main .pm-main-flag { visibility: visible; }
+
+    .pm-add, .pm-remove {
+      border-radius: 9px;
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+      padding: 10px 13px;
+      transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+    .pm-add {
+      width: fit-content;
+      margin-top: 4px;
+      border: 1px solid var(--signal);
+      background: rgba(12, 124, 116, 0.08);
+      color: var(--signal-deep);
+    }
+    .pm-add:hover { background: var(--signal); color: #fff; transform: translateY(-1px); }
+    .pm-remove {
+      border: 1px solid var(--line-strong);
+      background: var(--surface);
+      color: var(--ember);
+      padding: 10px;
+    }
+    .pm-remove:hover { border-color: var(--ember); background: rgba(207, 70, 38, 0.06); }
+
+    .pm-optgroup {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      background: var(--paper);
+      display: grid;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .pm-optgroup-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+    .pm-opt-list { display: grid; gap: 8px; }
+
+    /* Pricing-dropdown toggle (only one dropdown may set price & sale) */
+    .pm-toggle {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 0.82rem; color: var(--ink-soft); cursor: pointer;
+    }
+    .pm-toggle input { width: 16px; height: 16px; accent-color: var(--signal); cursor: pointer; }
+
+    /* 5-column option grid: label · price · sale% · stock · remove */
+    .pm-opt-list-head,
+    .pm-opt-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 0.7fr) minmax(0, 0.7fr) auto;
+      gap: 9px; align-items: center;
+    }
+    .pm-opt-list-head {
+      font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--ink-faint); padding: 0 1px;
+    }
+    .pm-opt-row .pm-opt-price-wrap,
+    .pm-opt-row .pm-opt-pct-wrap { position: relative; }
+    .pm-opt-row .pm-opt-price-wrap::before {
+      content: '$';
+      position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+      color: var(--ink-faint); font-size: 0.9rem;
+    }
+    .pm-opt-row .pm-opt-pct-wrap::after {
+      content: '%';
+      position: absolute; right: 11px; top: 50%; transform: translateY(-50%);
+      color: var(--ink-faint); font-size: 0.9rem;
+    }
+    .pm-opt-row .pm-opt-price-wrap input { padding-left: 22px; }
+
+    /* Stock-only group: only one dropdown sets price/sale, so non-pricing
+       dropdowns hide the price & sale cells and keep label · stock · remove. */
+    .pm-optgroup.is-stock-only .pm-opt-pricing { display: none; }
+    .pm-optgroup.is-stock-only .pm-opt-list-head,
+    .pm-optgroup.is-stock-only .pm-opt-row { grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.7fr) auto; }
+
+    /* Mode 2: base Pricing & sale section is muted when a dropdown drives pricing */
+    #pm-pricing-section.is-disabled { opacity: 0.55; }
+    .pm-pricing-mode-note {
+      margin: 0 0 12px; padding: 9px 11px; border-radius: 9px;
+      background: rgba(12, 124, 116, 0.08); border: 1px solid var(--line);
+      font-size: 0.8rem; color: var(--signal-deep);
+    }
+
+    .pm-price-preview {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      margin-top: 12px; padding-top: 12px;
+      border-top: 1px dashed var(--line);
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      color: var(--ink-soft);
+    }
+    .pm-price-preview b { color: var(--ink); font-weight: 600; }
+    .pm-price-preview .pp-sale { color: var(--ember); }
+
+    .pm-dialog-foot {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 16px 24px;
+      background: var(--surface);
+      border-top: 1px solid var(--line);
+    }
+    .pm-dialog-foot .pm-foot-msg {
+      margin-right: auto;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--ember);
+    }
+
+    /* ---- Image upload control (device upload) ---- */
+    .pm-img-control { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .pm-file-input { display: none; }
+    .pm-file-btn {
+      border: 1px solid var(--signal);
+      background: rgba(12, 124, 116, 0.08);
+      color: var(--signal-deep);
+      border-radius: 10px;
+      padding: 9px 13px;
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+    .pm-file-btn:hover { background: var(--signal); color: #fff; }
+    .pm-file-btn:disabled { opacity: 0.6; cursor: default; }
+    .pm-img-status { font-family: var(--font-mono); font-size: 0.66rem; color: var(--ink-faint); }
+    .pm-img-status.is-error { color: var(--ember); }
+
+    /* ---- Rail sign-out ---- */
+    .rail-signout {
+      display: inline-block;
+      margin-top: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: transparent;
+      color: rgba(255, 255, 255, 0.78);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-family: var(--font-mono);
+      font-size: 0.64rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+    .rail-signout:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+
+    /* ---- Auth gate ---- */
+    body.is-locked { overflow: hidden; }
+    body.is-locked .admin-shell { display: none; }
+    .auth-gate {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      place-items: center;
+      padding: 24px;
+      background: linear-gradient(190deg, var(--rail) 0%, var(--rail-2) 100%);
+    }
+    .auth-gate.is-visible { display: grid; }
+    .auth-card {
+      width: min(380px, 92vw);
+      display: grid;
+      gap: 9px;
+      background: var(--surface);
+      border-radius: 18px;
+      padding: 30px 28px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+    }
+    .auth-card .auth-mark {
+      width: 46px; height: 46px;
+      border-radius: 12px;
+      display: grid; place-items: center;
+      background: var(--signal); color: #fff;
+      font-family: var(--font-display); font-weight: 600; font-size: 1.5rem;
+      box-shadow: 0 8px 18px rgba(12, 124, 116, 0.4);
+    }
+    .auth-card h1 { margin: 10px 0 0; font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; color: var(--ink); }
+    .auth-sub { margin: 0 0 10px; color: var(--ink-soft); font-size: 0.92rem; line-height: 1.5; }
+    .auth-card label {
+      font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--ink-soft); margin-top: 2px;
+    }
+    .auth-card input {
+      border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 13px;
+      font: inherit; color: var(--ink); background: var(--paper); outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    .auth-card input:focus { border-color: var(--signal); background: #fff; box-shadow: 0 0 0 3px rgba(12, 124, 116, 0.14); }
+    .auth-card .button { margin-top: 10px; width: 100%; }
+    .auth-msg { margin: 6px 0 0; min-height: 1.2em; font-family: var(--font-mono); font-size: 0.74rem; color: var(--ember); }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 1040px) {
+      .admin-shell { grid-template-columns: 1fr; }
+
+      .admin-rail {
+        position: sticky;
+        top: 0;
+        height: auto;
+        flex-direction: row;
+        align-items: center;
+        gap: 18px;
+        padding: 14px 20px;
+        overflow-x: auto;
+        z-index: 30;
+      }
+      .admin-brand { flex: none; }
+      .admin-brand p { display: none; }
+      .rail-divider, .rail-foot { display: none; }
+      .admin-tabs {
+        flex-direction: row;
+        gap: 6px;
+      }
+      .admin-tab { white-space: nowrap; padding: 9px 13px; }
+      .admin-tab.is-active::before { display: none; }
+      .admin-tab.is-active { background: var(--signal); }
+      .admin-tab.is-active .tab-index { color: rgba(255,255,255,0.6); }
+
+      .admin-topbar { padding: 14px 22px; }
+      .admin-content { padding: 28px 22px 70px; }
+    }
+
+    @media (max-width: 760px) {
+      .admin-grid { grid-template-columns: 1fr; }
+      .admin-stats { grid-template-columns: 1fr; }
+      .stat-card { border-right: none; border-bottom: 1px solid var(--line); }
+      .stat-card:last-child { border-bottom: none; }
+      .incident-batch-grid.hero-layout,
+      .incident-batch-grid.standards-layout,
+      .incident-batch-grid.cta-layout { grid-template-columns: 1fr; }
+      .incident-batch-header { flex-direction: column; align-items: flex-start; }
+      .topbar-tag { display: none; }
+      .pm-row, .pm-row-3 { grid-template-columns: 1fr; }
+      .pm-opt-row { grid-template-columns: 1fr 1fr; }
+      .pm-dialog-body { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-gate" id="auth-gate">
+    <form class="auth-card" id="auth-form">
+      <span class="auth-mark">P</span>
+      <h1>PAM Admin</h1>
+      <p class="auth-sub">Sign in with your admin account to manage site content.</p>
+      <label for="auth-email">Email</label>
+      <input type="email" id="auth-email" autocomplete="username" placeholder="you@example.com" required>
+      <label for="auth-password">Password</label>
+      <input type="password" id="auth-password" autocomplete="current-password" placeholder="••••••••" required>
+      <button type="submit" class="button" id="auth-submit">Sign in</button>
+      <p class="auth-msg" id="auth-msg"></p>
+    </form>
+  </div>
+
+  <div class="admin-shell">
+    <aside class="admin-rail">
+      <a class="admin-brand" href="/index.html">
+        <span class="admin-mark">P</span>
+        <span>
+          <h1>PAM Admin</h1>
+          <p>Content Console</p>
+        </span>
+      </a>
+
+      <div class="rail-divider"></div>
+
+      <nav class="admin-tabs" aria-label="Admin panels">
+        <button class="admin-tab is-active" type="button" data-panel-target="panel-overview">
+          <span class="tab-index">01</span><span class="tab-label">Overview</span>
+        </button>
+        <button class="admin-tab" type="button" data-panel-target="panel-pam">
+          <span class="tab-index">02</span><span class="tab-label">Minor Ailments</span>
+        </button>
+        <button class="admin-tab" type="button" data-panel-target="panel-incident">
+          <span class="tab-index">03</span><span class="tab-label">Incident Report</span>
+        </button>
+        <button class="admin-tab" type="button" data-panel-target="panel-products">
+          <span class="tab-index">04</span><span class="tab-label">Pharmacy Products</span>
+        </button>
+      </nav>
+
+      <div class="rail-foot">
+        <span class="rail-status"><span class="dot"></span>Database · live</span><br>
+        <span id="admin-user-email">Signed in</span>
+        <button type="button" id="admin-signout" class="rail-signout">Sign out</button>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div class="topbar-crumb">PAMCA <b>/ Admin Console</b></div>
+        <a class="topbar-tag topbar-return" href="/" title="Back to the public site">← Return to PAMCA</a>
+      </div>
+
+      <div class="admin-content">
+        <section class="admin-panel is-active" id="panel-overview">
+          <div class="admin-hero">
+            <span class="panel-kicker">Console</span>
+            <h2>Dashboard Overview</h2>
+          </div>
+
+          <div class="card">
+            <h3>Open Panels</h3>
+            <div class="panel-launchers">
+              <a class="launcher" href="#" data-panel-target="panel-pam">
+                <span>
+                  <strong>Minor Ailments Prescribing</strong>
+                  <span>Edit the 3 pillars and keep the live frontend in sync.</span>
+                </span>
+              </a>
+              <a class="launcher" href="#" data-panel-target="panel-incident">
+                <span>
+                  <strong>Incident Reporting</strong>
+                  <span>Edit the AIMS-ready hero, features, and bullet list.</span>
+                </span>
+              </a>
+              <a class="launcher" href="#" data-panel-target="panel-products">
+                <span>
+                  <strong>Pharmacy Products</strong>
+                  <span>Add, edit, and remove products — images, pricing, options, stock.</span>
+                </span>
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <section class="admin-panel" id="panel-pam">
+          <div class="admin-hero">
+            <span class="panel-kicker">Panel 02</span>
+            <h2>Minor Ailments Solution</h2>
+            <p>Edit the three pillars shown on the public Minor Ailments page. Open a pillar to update its title, description, and bullet points.</p>
+          </div>
+          <div class="card">
+            <h3>Minor Ailments Pillars</h3>
+            <div class="editor" id="editor">
+              <!-- populated by admin.js -->
+            </div>
+            <div class="save-row">
+              <button id="save-btn" class="button" type="button">Save changes</button>
+              <span id="save-msg" style="margin-left:8px;color:#008080;font-weight:700;display:none;">Saved</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="admin-panel" id="panel-incident">
+          <div class="admin-hero">
+            <span class="panel-kicker">Panel 03</span>
+            <h2>Incident Report Page</h2>
+            <p>Edit each batch of the PharmaScript IR incident reporting page — top of page, pricing, features, and the call to action.</p>
+          </div>
+          <div class="card">
+            <h3>Incident Report Content</h3>
+            <div class="content-form" id="incident-editor">
+              <!-- populated by admin.js -->
+            </div>
+            <div class="save-row">
+              <button id="incident-save-btn" class="button" type="button">Save changes</button>
+              <span id="incident-save-msg" style="margin-left:8px;color:#008080;font-weight:700;display:none;">Saved</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="admin-panel" id="panel-products">
+          <div class="admin-hero">
+            <span class="panel-kicker">Panel 04</span>
+            <h2>Pharmacy Products</h2>
+            <p>Manage the products shown on the public store. Add a new product, edit an existing one, or remove it — including images, pricing, sale schedule, option dropdowns, stock, description, and key features.</p>
+          </div>
+
+          <div class="pm-toolbar">
+            <input type="search" class="pm-search" id="pm-search" placeholder="Search products…" aria-label="Search products">
+            <span class="pm-count" id="pm-count">0 products</span>
+            <button class="button" type="button" id="pm-add-product">+ Add product</button>
+          </div>
+
+          <div class="pm-grid" id="product-list">
+            <!-- product cards rendered by admin.js -->
+          </div>
+        </section>
+
+        <!-- Pharmacy Products editor modal -->
+        <div class="pm-modal" id="product-modal" role="dialog" aria-modal="true" aria-labelledby="pm-dialog-title">
+          <div class="pm-dialog">
+            <div class="pm-dialog-head">
+              <div>
+                <div class="pm-eyebrow" id="pm-dialog-eyebrow">New product</div>
+                <h3 id="pm-dialog-title">Add product</h3>
+              </div>
+              <button type="button" class="pm-close" id="pm-close" aria-label="Close editor">×</button>
+            </div>
+
+            <div class="pm-dialog-body">
+              <!-- Basics -->
+              <div class="pm-section">
+                <h4>Basics</h4>
+                <div class="pm-field">
+                  <label for="pm-name">Product name</label>
+                  <input type="text" id="pm-name" placeholder="e.g. Digital Thermometer Mono-Reading (12 Pieces)">
+                </div>
+                <div class="pm-row">
+                  <div class="pm-field">
+                    <label for="pm-slug">URL slug</label>
+                    <input type="text" id="pm-slug" placeholder="thermometer-mono">
+                  </div>
+                  <div class="pm-field">
+                    <label for="pm-status">Status</label>
+                    <select id="pm-status">
+                      <option value="active">Active (visible)</option>
+                      <option value="draft">Draft (hidden)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Images -->
+              <div class="pm-section">
+                <h4>Images</h4>
+                <p class="pm-section-note">Upload images from your device (max 5 MB each). The first image is the main image; the rest are gallery thumbnails.</p>
+                <div class="pm-repeat" id="pm-images"></div>
+                <button type="button" class="pm-add" id="pm-add-image">+ Add image</button>
+              </div>
+
+              <!-- Pricing & sale -->
+              <div class="pm-section" id="pm-pricing-section">
+                <h4>Pricing &amp; sale</h4>
+                <p class="pm-pricing-mode-note" id="pm-pricing-mode-note" style="display:none;">A dropdown below sets pricing per option, so these base fields are ignored. The first option of that dropdown is the product's default price, sale, and stock.</p>
+                <div class="pm-row-3">
+                  <div class="pm-field">
+                    <label for="pm-price">Base price (CAD)</label>
+                    <input type="number" id="pm-price" min="0" step="0.01" placeholder="0.00">
+                  </div>
+                  <div class="pm-field">
+                    <label for="pm-sale-percent">Sale discount (%)</label>
+                    <input type="number" id="pm-sale-percent" min="0" max="100" step="1" placeholder="0">
+                  </div>
+                  <div class="pm-field">
+                    <label for="pm-stock">Stock amount</label>
+                    <input type="number" id="pm-stock" min="0" step="1" placeholder="0">
+                  </div>
+                </div>
+                <div class="pm-row">
+                  <div class="pm-field">
+                    <label for="pm-sale-start">Sale starts</label>
+                    <input type="date" id="pm-sale-start">
+                  </div>
+                  <div class="pm-field">
+                    <label for="pm-sale-end">Sale ends</label>
+                    <input type="date" id="pm-sale-end">
+                  </div>
+                </div>
+                <div class="pm-price-preview" id="pm-price-preview"></div>
+              </div>
+
+              <!-- Option dropdowns -->
+              <div class="pm-section">
+                <h4>Option dropdowns</h4>
+                <div id="pm-option-groups"></div>
+                <button type="button" class="pm-add" id="pm-add-optgroup">+ Add dropdown</button>
+              </div>
+
+              <!-- Description -->
+              <div class="pm-section">
+                <h4>Description</h4>
+                <div class="pm-field">
+                  <textarea id="pm-description" rows="5" placeholder="Describe the product…"></textarea>
+                </div>
+              </div>
+
+              <!-- Specifications (bullet list shown on the product page) -->
+              <div class="pm-section">
+                <h4>Specifications</h4>
+                <p class="pm-section-note">Bullet points listed under “Specifications” on the product page.</p>
+                <div class="pm-repeat" id="pm-features"></div>
+                <button type="button" class="pm-add" id="pm-add-feature">+ Add specification</button>
+              </div>
+            </div>
+
+            <div class="pm-dialog-foot">
+              <span class="pm-foot-msg" id="pm-foot-msg"></span>
+              <button type="button" class="button secondary" id="pm-cancel">Cancel</button>
+              <button type="button" class="button" id="pm-save">Save product</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/content-defaults.js"></script>
+  <script src="/auth.js"></script>
+  <script src="/admin.js"></script>
+</body>
+</html>

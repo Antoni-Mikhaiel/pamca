@@ -1,0 +1,563 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/shared-styles.css">
+  <title>PAMCA</title>
+</head>
+<body>
+<div id="header-placeholder"></div>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Hero Section */
+        .minor-ailments-hero {
+            background: linear-gradient(135deg, #008080, #87CEEB);
+            padding: 120px 0 80px 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .minor-ailments-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="%23ffffff" opacity="0.1"><path d="M0,50 Q250,0 500,50 T1000,50 V100 H0 V50Z"/></svg>') repeat-x bottom;
+            background-size: 1000px 100px;
+        }
+
+        .minor-ailments-hero h1 {
+            font-size: 3.5rem;
+            color: white;
+            margin-bottom: 30px;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+        }
+
+        .intro-section {
+            background: white;
+            padding: 80px 0;
+            position: relative;
+        }
+
+        .intro-content {
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .pam-highlight {
+            font-size: 1.4rem;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+
+        .pam-letters {
+            font-weight: 700;
+            color: #008080;
+            font-size: 1.1em;
+            background: linear-gradient(135deg, #008080, #87CEEB);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .solution-statement {
+            font-size: 1.3rem;
+            color: #555;
+            font-style: italic;
+            margin-bottom: 20px;
+            line-height: 1.8;
+        }
+
+        .core-letters {
+            font-weight: 700;
+            color: #162950;
+            text-decoration: underline;
+            text-decoration-color: #008080;
+            text-decoration-thickness: 2px;
+        }
+
+        /* Pillars Section */
+        .pillars-section {
+            background: #f8f9fa;
+            padding: 100px 0;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+
+        .section-header h2 {
+            font-size: 3rem;
+            color: #008080;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .pillars-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 50px;
+            margin-top: 60px;
+        }
+
+        .pillar-card {
+            background: white;
+            border-radius: 25px;
+            padding: 50px 40px;
+            text-align: center;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .pillar-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        .pillar-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(135deg, #008080, #87CEEB);
+        }
+
+        .pillar-icon {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #008080, #87CEEB);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px auto;
+            font-size: 3rem;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0, 128, 128, 0.3);
+        }
+
+        .pillar-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #008080;
+            margin-bottom: 25px;
+        }
+
+        .pillar-description {
+            font-size: 1.1rem;
+            color: #555;
+            line-height: 1.8;
+        }
+
+        .pillar-list {
+            list-style: none;
+            text-align: left;
+            margin-top: 20px;
+        }
+
+        .pillar-list li {
+            font-size: 1.1rem;
+            color: #555;
+            margin-bottom: 12px;
+            padding-left: 30px;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        .pillar-list li::before {
+            content: '▶';
+            position: absolute;
+            left: 0;
+            color: #008080;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        /* Additional Sections */
+        .additional-sections {
+            padding: 100px 0;
+            background: white;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, #f8f9fa, #ffffff);
+            border: 2px solid #008080;
+            border-radius: 25px;
+            padding: 60px 50px;
+            margin-bottom: 50px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(135deg, #008080, #87CEEB, #008080);
+            border-radius: 25px;
+            z-index: -1;
+        }
+
+        .feature-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #008080;
+            margin-bottom: 25px;
+        }
+
+        .feature-description {
+            font-size: 1.2rem;
+            color: #555;
+            line-height: 1.8;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .minor-ailments-hero {
+                padding: 100px 0 60px 0;
+            }
+
+            .minor-ailments-hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .pam-highlight {
+                font-size: 1.2rem;
+            }
+
+            .solution-statement {
+                font-size: 1.1rem;
+            }
+
+            .pillars-grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .pillar-card {
+                padding: 40px 30px;
+            }
+
+            .pillar-title {
+                font-size: 1.8rem;
+            }
+
+            .feature-card {
+                padding: 40px 30px;
+            }
+
+            .feature-title {
+                font-size: 2rem;
+            }
+
+            .section-header h2 {
+                font-size: 2.2rem;
+            }
+
+            /* Responsive for new PAM section */
+            .additional-sections div[style*="display: flex"] {
+                flex-direction: column !important;
+                text-align: center;
+            }
+
+            .additional-sections div[style*="margin-left: 40px"] {
+                margin-left: 0 !important;
+                margin-top: 20px;
+            }
+
+            .additional-sections div[style*="margin-right: 40px"] {
+                margin-right: 0 !important;
+                margin-bottom: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .minor-ailments-hero {
+                padding: 80px 0 40px 0;
+            }
+
+            .minor-ailments-hero h1 {
+                font-size: 2rem;
+            }
+
+            .intro-section,
+            .pillars-section,
+            .additional-sections {
+                padding: 60px 0;
+            }
+
+            .pillar-card {
+                padding: 30px 20px;
+            }
+
+            .feature-card {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+
+
+    <!-- Hero Section -->
+    <section class="minor-ailments-hero">
+        <div class="container">
+            <h1>Minor Ailments Prescribing Solution</h1>
+        </div>
+    </section>
+
+    <!-- Introduction Section -->
+    <section class="intro-section">
+        <div class="container">
+            <div class="intro-content">
+                <p class="pam-highlight">
+                    <span class="pam-letters">P</span>harmacy 
+                    <span class="pam-letters">A</span>utomated 
+                    <span class="pam-letters">M</span>echanisms delivers innovative technology that transforms how Ontario pharmacists approach minor ailments prescribing.
+                </p>
+                <p class="solution-statement">
+                    Our <span class="core-letters">P</span>ractical,
+                    <span class="core-letters">A</span>ccessible, and
+                    <span class="core-letters">M</span>ulti-functional platform empowers pharmacists to deliver exceptional patient care with unprecedented confidence and efficiency.
+                </p>
+
+                <div class="pharmascript-cta" style="margin-top:36px;text-align:center;">
+                    <p style="font-size:1.05rem;color:#008080;font-weight:600;margin:0 0 16px;">Click below to go to pharmascript for prescribing solution</p>
+                    <a href="https://pharmascript.ca" target="_blank" rel="noopener" aria-label="Go to PharmaScript for the prescribing solution"
+                       style="display:inline-block;padding:18px 28px;background:#fff;border:1px solid #e6eef0;border-radius:14px;box-shadow:0 6px 20px rgba(0,128,128,0.12);transition:transform 0.25s ease,box-shadow 0.25s ease;"
+                       onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 12px 28px rgba(0,128,128,0.2)';"
+                       onmouseout="this.style.transform='';this.style.boxShadow='0 6px 20px rgba(0,128,128,0.12)';">
+                        <img src="/images/pharma-script-logo.png" alt="PharmaScript" style="display:block;max-width:240px;width:100%;height:auto;">
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Core Pillars Section -->
+    <section class="pillars-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>The PAM Advantage: Three Pillars of Excellence</h2>
+            </div>
+
+            <div class="pillars-grid">
+                <div class="pillar-card" id="pillar-1-card">
+                    <div class="pillar-icon">P</div>
+                    <h3 class="pillar-title" id="pillar-1-title">Practical</h3>
+                    <p class="pillar-description" id="pillar-1-desc">
+                        Born from real-world pharmacy experience. Every feature, workflow, and solution has been 
+                        crafted by a practicing pharmacist who understands the daily challenges, time pressures, 
+                        and patient care complexities you face in community pharmacy practice.
+                    </p>
+                    <ul class="pillar-list" id="pillar-1-list"></ul>
+                </div>
+
+                <div class="pillar-card" id="pillar-2-card">
+                    <div class="pillar-icon">A</div>
+                    <h3 class="pillar-title" id="pillar-2-title">Accessible</h3>
+                    <p class="pillar-description" id="pillar-2-desc">
+                        Breakthrough flexibility that works wherever you do. Whether you're on desktop, laptop, 
+                        tablet, or mobile device, seamlessly manage multiple pharmacy locations and coordinate 
+                        with your entire pharmacy team from anywhere, anytime.
+                    </p>
+                    <ul class="pillar-list" id="pillar-2-list"></ul>
+                </div>
+
+                <div class="pillar-card" id="pillar-3-card">
+                    <div class="pillar-icon">M</div>
+                    <h3 class="pillar-title" id="pillar-3-title">Multi-functional</h3>
+                    <p class="pillar-description" id="pillar-3-desc">
+                        Your complete minor ailments command center. Every tool, process, and requirement 
+                        integrated into one powerful platform:
+                    </p>
+                    <ul class="pillar-list" id="pillar-3-list">
+                        <li>Complete billing documentation with automated primary care provider notifications</li>
+                        <li>Intelligent patient eligibility verification including annual claim tracking</li>
+                        <li>Comprehensive care plan tools (non-pharmaceutical interventions, OTC recommendations, specialist referrals)</li>
+                        <li>Real-time access to allowable medications (Schedule 4 to O. Reg. 202/94 compliance)</li>
+                        <li>Automated billing PIN generation tailored to each service type</li>
+                        <li>Smart follow-up scheduling and patient care continuity management</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="additional-sections">
+        <div class="container">
+            <div class="section-header">
+                <h2>Why Pharmacists Choose PAM</h2>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 30px; margin-top: 60px;">
+                <div style="display: flex; align-items: center; background: linear-gradient(135deg, #f8f9fa, #ffffff); border-left: 6px solid #008080; padding: 40px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);">
+                    <div style="flex: 1;">
+                        <h3 style="font-size: 2.2rem; font-weight: 700; color: #008080; margin-bottom: 20px;">Paperless System</h3>
+                        <p style="font-size: 1.2rem; color: #555; line-height: 1.8; margin: 0;">
+                            The entire procedure can be completed electronically, reducing clutter and supporting 
+                            eco-friendly practices.
+                        </p>
+                    </div>
+                </div>
+
+                <div style="display: flex; align-items: center; background: linear-gradient(135deg, #f8f9fa, #ffffff); border-left: 6px solid #008080; padding: 40px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);">
+                    <div style="flex: 1;">
+                        <h3 style="font-size: 2.2rem; font-weight: 700; color: #008080; margin-bottom: 20px;">Built by Pharmacists, for Pharmacists</h3>
+                        <p style="font-size: 1.2rem; color: #555; line-height: 1.8; margin: 0;">
+                            Our platform supports your clinical expertise—never replaces it. Built by practicing pharmacists, PAM handles administrative complexity so you can focus on patient care and sound clinical decisions
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <script>
+        // Scroll animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Animate cards on scroll
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.pillar-card, .feature-card');
+            
+            cards.forEach(card => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(30px)';
+                card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                observer.observe(card);
+            });
+        });
+    </script>
+    <script src="/content-defaults.js"></script>
+    <script>
+        (function(){
+            const defaultPillars = (window.PAMCA_DEFAULTS && window.PAMCA_DEFAULTS.pillars) || [];
+            const CACHE_KEY = 'pamca_cache_pillars';
+
+            function renderBulletList(listElement, items, fallbackItems) {
+                if (!listElement) return;
+                listElement.innerHTML = '';
+                const source = Array.isArray(items) && items.length ? items : (fallbackItems || []);
+                if (!source.length) { listElement.style.display = 'none'; return; }
+                listElement.style.display = '';
+                source.forEach(li => {
+                    const item = document.createElement('li');
+                    item.textContent = li;
+                    listElement.appendChild(item);
+                });
+            }
+
+            function setText(id, value){
+                const el = document.getElementById(id);
+                if (el) el.textContent = value || '';
+            }
+
+            function renderPillars(pillars){
+                try{
+                    const p1 = pillars[0] || defaultPillars[0] || {};
+                    setText('pillar-1-title', p1.title);
+                    setText('pillar-1-desc', p1.desc);
+                    renderBulletList(document.getElementById('pillar-1-list'), p1.list, (defaultPillars[0] || {}).list);
+
+                    const p2 = pillars[1] || defaultPillars[1] || {};
+                    setText('pillar-2-title', p2.title);
+                    setText('pillar-2-desc', p2.desc);
+                    renderBulletList(document.getElementById('pillar-2-list'), p2.list, (defaultPillars[1] || {}).list);
+
+                    const p3 = pillars[2] || defaultPillars[2] || {};
+                    setText('pillar-3-title', p3.title);
+                    setText('pillar-3-desc', p3.desc);
+                    renderBulletList(document.getElementById('pillar-3-list'), p3.list, (defaultPillars[2] || {}).list);
+                }catch(e){ console.error('renderPillars', e); }
+            }
+
+            // Instant paint from the last-known content — avoids the flash of default
+            // values on repeat visits. This script sits after the markup, so the
+            // pillar elements already exist when it runs.
+            try {
+                const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+                if (Array.isArray(cached) && cached.length) renderPillars(cached);
+            } catch(_) {}
+
+            async function loadPillars(){
+                let pillars = defaultPillars;
+                try{
+                    const res = await fetch('/api/content/pillars', { credentials: 'same-origin' });
+                    if(res.ok){
+                        const json = await res.json();
+                        if(json && json.success && Array.isArray(json.data) && json.data.length){
+                            pillars = json.data;
+                            try { localStorage.setItem(CACHE_KEY, JSON.stringify(pillars)); } catch(_) {}
+                        }
+                    }
+                }catch(_){ /* keep cache/defaults if the API is unavailable */ }
+                renderPillars(pillars);
+            }
+
+            // Revalidate from the API as soon as possible (and on admin updates).
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', loadPillars);
+            } else {
+                loadPillars();
+            }
+            window.addEventListener('pillarsUpdated', loadPillars);
+            window.loadPamcaPillars = loadPillars;
+        })();
+    </script>
+    
+        <div id="footer-placeholder"></div>
+<script src="/auth.js"></script>
+<script src="/shared-scripts.js"></script>
+</body>
+</html>
+
+

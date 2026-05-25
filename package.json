@@ -1,0 +1,21 @@
+{
+  "name": "pamca-vercel-refactor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "dev": "tsx watch scripts/dev-server.ts",
+    "start": "tsx scripts/dev-server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "resend": "^4.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.4",
+    "typescript": "^5.7.2"
+  }
+}

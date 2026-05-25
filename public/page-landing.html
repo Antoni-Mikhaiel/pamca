@@ -1,0 +1,492 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/shared-styles.css">
+  <title>PAMCA</title>
+</head>
+<body>
+<div id="header-placeholder"></div>
+
+<head>
+    <link rel="preload" as="image" href="/images/handshake.jpeg">
+</head>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #008080, #87CEEB);
+            min-height: 80vh;
+            display: flex;
+            align-items: center;
+            padding: 60px 0;
+            margin-top: 0;
+        }
+
+        .hero-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+        .hero-left h3 {
+            font-size: 2.5rem;
+            color: white;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .hero-left p {
+            font-size: 1.2rem;
+            color: white;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+
+        .oval-btn {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #008080, #87CEEB);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .oval-btn:hover {
+            background: #162950;
+            border-color: #162950;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .hero-right {
+            display: flex;
+            justify-content: center;
+        }
+
+        .hero-image {
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border: 5px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Information Section */
+        .info-section {
+            padding: 80px 0;
+            background: #f8f9fa;
+        }
+
+        .info-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+            margin-bottom: 60px;
+        }
+
+        .info-image {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-text h2 {
+            font-size: 2.2rem;
+            color: #008080;
+            margin-bottom: 25px;
+            font-weight: 700;
+        }
+
+        .info-text p {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: #555;
+            line-height: 1.7;
+        }
+
+        .info-text p:first-of-type {
+            font-weight: 600;
+            color: #008080;
+        }
+
+        .exciting-update {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .exciting-update h3 {
+            font-size: 2rem;
+            color: #008080;
+            margin-bottom: 20px;
+        }
+
+        .exciting-update p {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .exciting-update p:first-of-type {
+            font-weight: 600;
+            color: #008080;
+        }
+
+        .salesforce-logo {
+            width: 100%;
+            max-width: 250px;
+            height: auto;
+        }
+
+        /* About Us Section */
+        .about-section {
+            padding: 80px 0;
+            background: white;
+            text-align: center;
+        }
+
+        .about-section h2 {
+            font-size: 2.5rem;
+            color: #008080;
+            margin-bottom: 25px;
+            font-weight: 700;
+        }
+
+        .about-section p {
+            font-size: 1.2rem;
+            color: #555;
+            max-width: 800px;
+            margin: 0 auto 40px auto;
+            line-height: 1.8;
+        }
+
+        .learn-more-btn {
+            display: inline-block;
+            padding: 15px 35px;
+            background: #008080;
+            border-radius: 50px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 128, 128, 0.3);
+        }
+
+        .learn-more-btn:hover {
+            background: #162950;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(22, 41, 80, 0.4);
+        }
+
+        /* Services Section */
+        .services-section {
+            padding: 80px 0;
+            background: #f8f9fa;
+        }
+
+        .services-content {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+        }
+
+        .service-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .service-card:hover {
+            transform: translateY(-5px);
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    transition: all 0.3s ease;
+        }
+
+        .service-image {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+        }
+
+        .service-content {
+            padding: 30px;
+        }
+
+        .service-content h3 {
+            font-size: 1.5rem;
+            color: #008080;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .service-content p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero-content,
+            .info-content,
+            .exciting-update {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .services-content {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-left h3 {
+                font-size: 2rem;
+            }
+
+            .hero-left p {
+                font-size: 1.1rem;
+            }
+
+            .hero-image {
+                width: 300px;
+                height: 300px;
+            }
+
+            .info-text h2,
+            .about-section h2 {
+                font-size: 1.8rem;
+            }
+
+            .exciting-update h3 {
+                font-size: 1.6rem;
+            }
+
+            .container {
+                padding: 0 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero {
+                padding: 40px 0;
+            }
+
+            .hero-left h3 {
+                font-size: 1.7rem;
+            }
+
+            .hero-left p {
+                font-size: 1rem;
+            }
+
+            .hero-image {
+                width: 250px;
+                height: 250px;
+            }
+
+            .oval-btn,
+            .learn-more-btn {
+                padding: 12px 25px;
+                font-size: 1rem;
+            }
+
+            .info-section,
+            .about-section,
+            .services-section {
+                padding: 50px 0;
+            }
+        }
+    </style>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-left">
+                    <h3>Change to Pharmacist's Scope of Practice</h3>
+                    <p>Pharmacy Automated Mechanisms (PAM) develops innovative solutions that empower pharmacists to practice more safely and easily</p>
+                    <a href="#services" class="oval-btn">Our Services ↓</a>
+                </div>
+                <div class="hero-right">
+                    <img src="https://ptcbtestprep.com/wp-content/uploads/2019/09/pharmacy-prescriptions.jpg" alt="Pharmacy Prescriptions" class="hero-image" loading="eager">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Information Section -->
+    <section class="info-section">
+        <div class="container">
+            <div class="info-content">
+                <div>
+                    <img src="https://tpfcu.com/wp-content/uploads/2023/10/quarters-stacked-on-a-table-and-a-jar-with-a-growing-sprout.jpg" alt="Affordable Solution" class="info-image" loading="eager">
+                </div>
+                <div class="info-text">
+                    <h2>Affordable Solution</h2>
+                    <p>FREE Access.. No Subscription Fee</p>
+                    <p>We believe that the pharmacist should access information to improve Patient's Care at, merely, No Cost.</p>
+                </div>
+            </div>
+
+            <div class="exciting-update">
+                <div>
+                    <h3>Exciting Update</h3>
+                    <p>Proud to partner with Salesforce!</p>
+                    <p>Salesforce, The most reliable cloud server, is hosting the application now. Start your assessment with confidence!</p>
+                </div>
+                <div>
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Salesforce.com_logo.svg/1200px-Salesforce.com_logo.svg.png" alt="Salesforce Logo" class="salesforce-logo" loading="eager">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Us Section -->
+    <section class="about-section" id="about">
+        <div class="container">
+            <h2>Pharmacy Automated Mechanisms</h2>
+            <p>Since 2010, Pharmacy Automated Mechanisms has been striving to be a leader in improving Patient Safety by promoting error-free workflow mechanisms in the Retail Pharmacy Industry.</p>
+            <a href="/about-us" class="learn-more-btn">Learn More</a>
+        </div>
+    </section>
+
+    <!-- Our Services Section -->
+    <section id="services" class="services-section">
+    <div class="container">
+        <div class="services-content">
+
+            <a href="/pharmacy-products" class="service-card">
+                <img src="https://images.squarespace-cdn.com/content/v1/5efa0fe78713d718e5a23e0d/1607942729498-WN51MEZMIPW4R5NEWCFI/pharma-1600-px.jpg" alt="Pharmacy Products" class="service-image" loading="eager">
+                <div class="service-content">
+                    <h3>Pharmacy Products</h3>
+                    <p>Explore reliable pharmacy essentials designed for everyday safety and convenience.</p>
+                </div>
+            </a>
+
+            <a href="/minor-ailments-prescribing-solution" class="service-card">
+                <img src="https://assets.avant.org.au/cdf6134c-01d7-0292-26f5-2f5cf1db96f8/9e3cf0b8-def9-4ce5-b895-a1f0926056f2/prescribing-drugs-of-dependence-.jpg" alt="Minor Ailments Prescribing" class="service-image" loading="eager">
+                <div class="service-content">
+                    <h3>Minor Ailments Prescribing Solution</h3>
+                    <p>Confidently assess, document, and prescribe for minor ailments. Fast, paperless, and secure.</p>
+                </div>
+            </a>
+
+            <a href="/Incident-Reporting.html" class="service-card">
+                <img src="/images/handshake.jpeg" alt="Incident Reporting System" class="service-image" loading="eager">
+                <div class="service-content">
+                    <h3>Incident Reporting System</h3>
+                    <p>A practical, compliant framework for pharmacists to document, analyze, and share safety learnings locally while the sector transitions to a permanent platform.</p>
+                </div>
+            </a>
+
+        </div>
+    </div>
+</section>
+
+    
+
+     <script>
+        // Active menu item highlighting
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('section');
+            const navLinks = document.querySelectorAll('.nav-menu a');
+            
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (window.scrollY >= (sectionTop - 200)) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Add loading animation for images
+        document.addEventListener('DOMContentLoaded', function() {
+            const images = document.querySelectorAll('img');
+            images.forEach(img => {
+                img.style.opacity = '0';
+                img.style.transition = 'opacity 0.3s ease';
+                const reveal = () => { img.style.opacity = '1'; };
+                if (img.complete) {
+                    // Delay reveal to ensure CSS transition applies
+                    setTimeout(reveal, 100);
+                } else {
+                    img.addEventListener('load', reveal);
+                }
+            });
+        });
+    </script>
+
+<div id="footer-placeholder"></div>
+<script src="/auth.js"></script>
+<script src="/shared-scripts.js"></script>
+</body>
+</html>
+
+

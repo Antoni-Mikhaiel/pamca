@@ -1,0 +1,552 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/shared-styles.css">
+  <title>PAMCA</title>
+</head>
+<body>
+<div id="header-placeholder"></div>
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+    }
+
+    .ir-page {
+        background: #f8f9fa;
+        color: #333;
+        font-family: Arial, sans-serif;
+    }
+
+    .ir-page .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+    }
+
+    .ir-hero {
+        background: linear-gradient(135deg, #162950, #008080 55%, #87CEEB);
+        color: #fff;
+        padding: 60px 0 60px;
+        text-align: center;
+    }
+
+    .ir-hero h1 {
+        font-size: clamp(2rem, 4.5vw, 3.2rem);
+        margin-bottom: 16px;
+        font-weight: 700;
+    }
+
+    .ir-hero p {
+        max-width: 780px;
+        margin: 0 auto;
+        font-size: 1.1rem;
+        line-height: 1.7;
+        opacity: 0.95;
+    }
+
+    .ir-pill-row {
+        margin-top: 24px;
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+        min-width: 0;
+    }
+
+    .ir-pill {
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        color: #fff;
+        border-radius: 999px;
+        padding: 7px 14px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        text-align: center;
+    }
+
+    .ir-main {
+        padding: 60px 0 40px;
+    }
+
+    .ir-card {
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        padding: 36px 30px;
+        margin-bottom: 28px;
+    }
+
+    .ir-card h2 {
+        color: #008080;
+        font-size: 2rem;
+        margin-bottom: 14px;
+        font-weight: 700;
+    }
+
+    .ir-card p {
+        color: #555;
+        line-height: 1.75;
+        font-size: 1rem;
+        margin-bottom: 14px;
+    }
+
+    .ir-highlight {
+        border-left: 5px solid #008080;
+        background: #eef8fb;
+        border-radius: 10px;
+        padding: 16px 18px;
+        color: #334;
+        font-weight: 600;
+        margin-top: 10px;
+    }
+
+    .ir-section-title {
+        font-size: 2rem;
+        color: #008080;
+        margin: 38px 0 16px;
+        font-weight: 700;
+    }
+
+    .ir-subtitle {
+        color: #666;
+        margin-bottom: 24px;
+        font-size: 1rem;
+    }
+
+    .ir-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        margin-bottom: 32px;
+    }
+
+    .ir-feature {
+        background: #fff;
+        border: 1px solid #e6ecef;
+        border-radius: 14px;
+        padding: 22px;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.05);
+    }
+
+    .ir-feature h3 {
+        color: #162950;
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+        font-weight: 700;
+    }
+
+    .ir-feature p {
+        color: #555;
+        line-height: 1.65;
+        margin: 0;
+    }
+
+    .ir-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 12px;
+    }
+
+    .ir-list li {
+        background: #fff;
+        border: 1px solid #e8eef1;
+        border-left: 4px solid #008080;
+        border-radius: 10px;
+        padding: 14px 16px;
+        color: #444;
+        line-height: 1.6;
+    }
+
+    .ir-list strong {
+        color: #162950;
+    }
+
+    .ir-standards {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 18px;
+        margin-bottom: 28px;
+    }
+
+    .ir-grid > *,
+    .ir-standards > *,
+    .ir-cta > * {
+        min-width: 0;
+    }
+
+    .ir-standards-intro {
+        background: linear-gradient(135deg, #162950, #008080);
+        border-radius: 16px;
+        padding: 24px 22px;
+        color: #fff;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+    }
+
+    .ir-standards-intro h2 {
+        margin: 0 0 10px;
+        font-size: 1.5rem;
+        line-height: 1.35;
+        color: #fff;
+    }
+
+    .ir-standards-intro p {
+        margin: 0;
+        font-size: 0.98rem;
+        line-height: 1.65;
+        color: rgba(255, 255, 255, 0.95);
+    }
+
+    .ir-standards-copy {
+        margin-top: 14px !important;
+        font-size: 0.98rem;
+        line-height: 1.65;
+    }
+
+    .ir-standards-list {
+        background: #fff;
+        border: 1px solid #dfe9ee;
+        border-radius: 16px;
+        padding: 16px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    }
+
+    .ir-standards-list .ir-list li {
+        border-left-width: 5px;
+        border-left-color: #20b2aa;
+    }
+
+    .ir-cta {
+        margin-top: 36px;
+        background: linear-gradient(135deg, #008080, #87CEEB);
+        border-radius: 18px;
+        padding: 36px 28px;
+        color: #fff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 18px;
+        flex-wrap: wrap;
+    }
+
+    .ir-cta h3 {
+        font-size: 1.7rem;
+        margin-bottom: 8px;
+        color: #fff;
+    }
+
+    .ir-cta p {
+        margin: 0;
+        max-width: 700px;
+        line-height: 1.6;
+        color: rgba(255, 255, 255, 0.95);
+    }
+
+    .ir-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        min-width: 0;
+    }
+
+    .ir-cta > div:first-child {
+        flex: 1 1 420px;
+        min-width: 0;
+    }
+
+    .ir-actions {
+        flex: 0 1 auto;
+    }
+
+    .ir-btn {
+        display: inline-block;
+        text-decoration: none;
+        border-radius: 10px;
+        padding: 12px 18px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        text-align: center;
+    }
+
+    .ir-btn-primary {
+        background: #fff;
+        color: #008080;
+    }
+
+    .ir-btn-primary:hover {
+        transform: translateY(-2px);
+    }
+
+    .ir-btn-ghost {
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        color: #fff;
+    }
+
+    .ir-btn-ghost:hover {
+        background: rgba(255, 255, 255, 0.12);
+    }
+
+    .ir-reveal {
+        opacity: 0;
+        transform: translateY(18px);
+        transition: opacity .45s ease, transform .45s ease;
+    }
+
+    .ir-reveal.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    @media (max-width: 900px) {
+        .ir-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .ir-standards {
+            grid-template-columns: 1fr;
+        }
+
+        .ir-hero {
+            padding: 50px 0 50px;
+        }
+
+        .ir-card h2,
+        .ir-section-title {
+            font-size: 1.6rem;
+        }
+
+        .ir-cta {
+            padding: 28px 20px;
+        }
+
+        .ir-cta > div:first-child,
+        .ir-actions {
+            flex: 1 1 100%;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .ir-page .container {
+            padding: 0 16px;
+        }
+
+        .ir-hero {
+            padding: 44px 0 44px;
+        }
+
+        .ir-btn {
+            width: 100%;
+        }
+    }
+</style>
+
+<main class="ir-page">
+    <section class="ir-hero">
+        <div class="container">
+            <h1 id="ir-hero-title">PharmaScript IR: Incident Reporting for Ontario Pharmacies</h1>
+            <p id="ir-hero-subheader">A purpose-built, AIMS-aligned platform designed for Ontario pharmacists — getting your pharmacy ready for the 2027 OCP requirements, starting now.</p>
+            <div class="ir-pill-row" id="ir-pill-row"></div>
+        </div>
+    </section>
+
+    <section class="ir-main">
+        <div class="container">
+            <div class="ir-card ir-reveal">
+                <h2 id="ir-prep-title">Prepare for 2027 Without Disrupting Daily Workflow</h2>
+                <div id="ir-prep-body">
+                    <p>
+                        New AIMS Program requirements take effect on January 1, 2027. This makes 2026 a critical transition and preparation year for pharmacies across Ontario.
+                    </p>
+                    <p>
+                        Join pharmacies already using PharmaScript for Minor Ailment Prescribing and start incident reporting with PharmaScript IR. Both tools are available free until December 31, 2026.
+                    </p>
+                </div>
+                <div class="ir-highlight">
+                    <span id="ir-prep-comment">New Tag</span>
+                </div>
+            </div>
+
+            <div class="ir-standards ir-reveal">
+                <div class="ir-standards-intro">
+                    <h2 id="ir-standards-title">Platform Features Aligned with OCP 2027 AIMS Standards</h2>
+                    <p class="ir-standards-copy" id="ir-standards-copy">PharmaScript IR helps Ontario pharmacies transition into the 2027 AIMS environment with reporting controls that support daily workflow and quality improvement.</p>
+                </div>
+                <div class="ir-standards-list">
+                    <ul class="ir-list" id="ir-standards-list">
+                        <li><strong>Unique Logins:</strong> For all registered staff (pharmacists and technicians), with consideration for occasional and relief staff.</li>
+                        <li><strong>Daily NIDR Reporting:</strong> Automatically transmits de-identified incident data to NIDR every day.</li>
+                        <li><strong>Complete Mandatory Data:</strong> Enforces all 13 mandatory NIDR data fields with built-in scrubbing to avoid sending names.</li>
+                        <li><strong>Quarterly CQI Module:</strong> Supports documentation of attendance, minutes, and action plans.</li>
+                        <li><strong>Medication Safety SSA:</strong> Includes a Medication Safety Self-Assessment tool for ongoing quality improvement.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="ir-cta ir-reveal">
+                <div>
+                    <h3 id="ir-cta-title">Get Started with PharmaScript IR</h3>
+                    <p id="ir-cta-text">Join users already succeeding with PharmaScript for Minor Ailment Prescribing and begin incident reporting with PharmaScript IR today.</p>
+                </div>
+                <div class="ir-actions">
+                    <a class="ir-btn ir-btn-primary" href="https://pharmascript.ca" target="_blank" rel="noopener">Access PharmaScript IR</a>
+                    <a class="ir-btn ir-btn-ghost" href="/contact-us">Contact PAMCA</a>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+    (function() {
+        var revealItems = document.querySelectorAll('.ir-reveal');
+        if (!('IntersectionObserver' in window) || !revealItems.length) {
+            revealItems.forEach(function(item) {
+                item.classList.add('is-visible');
+            });
+            return;
+        }
+
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.12 });
+
+        revealItems.forEach(function(item) {
+            observer.observe(item);
+        });
+    })();
+</script>
+
+<script src="/content-defaults.js"></script>
+<script>
+    (function() {
+        var legacyStandardsCopyText = (window.PAMCA_DEFAULTS && window.PAMCA_DEFAULTS.legacyStandardsCopyText) || '';
+        var defaultReport = (window.PAMCA_DEFAULTS && window.PAMCA_DEFAULTS.incidentReport) || {};
+
+        var CACHE_KEY = 'pamca_cache_incident';
+
+        async function fetchReport() {
+            try {
+                var res = await fetch('/api/content/incident_report', { credentials: 'same-origin' });
+                if (!res.ok) return null;
+                var json = await res.json();
+                var parsed = (json && json.success && json.data && typeof json.data === 'object') ? json.data : null;
+                if (!parsed) return null;
+                if (!parsed.standardsCopy || parsed.standardsCopy === legacyStandardsCopyText) {
+                    parsed.standardsCopy = '';
+                }
+                return Object.assign({}, defaultReport, parsed);
+            } catch (e) {
+                console.error('Failed to read incident report content', e);
+                return null;
+            }
+        }
+
+        function renderList(listElement, items) {
+            if (!listElement) return;
+            listElement.innerHTML = '';
+            (items || []).forEach(function(itemText) {
+                var item = document.createElement('li');
+                item.textContent = itemText;
+                listElement.appendChild(item);
+            });
+        }
+
+        function renderTags(tagElement, items) {
+            if (!tagElement) return;
+            tagElement.innerHTML = '';
+            (items || []).forEach(function(tagText) {
+                var tag = document.createElement('span');
+                tag.className = 'ir-pill';
+                tag.textContent = tagText;
+                tagElement.appendChild(tag);
+            });
+        }
+
+        function renderParagraphBlock(container, text) {
+            if (!container) return;
+            container.innerHTML = '';
+            (text || '').split(/\n\s*\n/).map(function(part) { return part.trim(); }).filter(Boolean).forEach(function(part) {
+                var paragraph = document.createElement('p');
+                paragraph.textContent = part;
+                container.appendChild(paragraph);
+            });
+        }
+
+        function renderReport(report) {
+            report = report || defaultReport;
+            var heroTitle = document.getElementById('ir-hero-title');
+            var heroSubheader = document.getElementById('ir-hero-subheader');
+            var heroTags = document.getElementById('ir-pill-row');
+            var prepTitle = document.getElementById('ir-prep-title');
+            var prepBody = document.getElementById('ir-prep-body');
+            var prepComment = document.getElementById('ir-prep-comment');
+            var standardsTitle = document.getElementById('ir-standards-title');
+            var standardsCopy = document.getElementById('ir-standards-copy');
+            var standardsList = document.getElementById('ir-standards-list');
+            var ctaTitle = document.getElementById('ir-cta-title');
+            var ctaText = document.getElementById('ir-cta-text');
+
+            if (heroTitle) heroTitle.textContent = report.heroTitle || defaultReport.heroTitle;
+            if (heroSubheader) heroSubheader.textContent = report.heroSubheader || defaultReport.heroSubheader;
+            renderTags(heroTags, report.heroTags || defaultReport.heroTags);
+            if (prepTitle) prepTitle.textContent = report.prepTitle || defaultReport.prepTitle;
+            renderParagraphBlock(prepBody, report.prepSubheader || defaultReport.prepSubheader);
+            if (prepComment) prepComment.textContent = report.prepComment || defaultReport.prepComment;
+            if (standardsTitle) standardsTitle.textContent = report.standardsTitle || defaultReport.standardsTitle;
+            if (standardsCopy) standardsCopy.textContent = report.standardsCopy || defaultReport.standardsCopy;
+            renderList(standardsList, report.standardsBullets || defaultReport.standardsBullets);
+            if (ctaTitle) ctaTitle.textContent = report.ctaTitle || defaultReport.ctaTitle;
+            if (ctaText) ctaText.textContent = report.ctaText || defaultReport.ctaText;
+        }
+
+        // Instant paint from the last-known content — avoids flash of defaults on repeat visits.
+        try {
+            var cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+            if (cached && typeof cached === 'object') renderReport(cached);
+        } catch (_) {}
+
+        async function loadReport() {
+            var report = await fetchReport();
+            if (report) {
+                try { localStorage.setItem(CACHE_KEY, JSON.stringify(report)); } catch (_) {}
+            }
+            renderReport(report || defaultReport);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadReport);
+        } else {
+            loadReport();
+        }
+        window.addEventListener('incidentReportUpdated', loadReport);
+        window.loadIncidentReport = loadReport;
+    })();
+</script>
+
+<div id="footer-placeholder"></div>
+
+<script src="/auth.js"></script>
+<script src="/shared-scripts.js"></script>
+</body>
+</html>
+
+

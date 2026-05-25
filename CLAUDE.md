@@ -26,20 +26,22 @@ Before the server will boot you need a `.env` (see existing `.env` for keys) and
 
 The same request handlers run in **two** environments, so handlers must stay platform-agnostic:
 
-1. **Vercel** — each file in `api/**/*.ts` exports a `default` async `handler(req, res)`.
-2. **Local dev** — `scripts/dev-server.ts` is a hand-rolled Node `http` server that re-implements Vercel's routing. It serves `public/` statically and maps `/api/...` paths to the same `api/*` modules.
+1. **Vercel** — a single catch-all Serverless Function [api/[...path].ts](api/[...path].ts) receives every `/api/*` request (Vercel exposes the segments as `req.query.path`), rebuilds the pathname, and hands off to the shared router.
+2. **Local dev** — `scripts/dev-server.ts` is a hand-rolled Node `http` server that serves `public/` statically and hands `/api/...` requests to the *same* shared router.
 
-Both rely on the `ApiRequest`/`ApiResponse` abstraction in [src/lib/http.ts](src/lib/http.ts) — a minimal subset of the Vercel signature (`status()`, `json()`, `send()`, `setHeader()`, `query`, `body`, `headers`, `cookies`). Never reach for Node `http` types or Vercel-specific request fields inside a handler/controller; only `dev-server.ts` knows about raw `http.IncomingMessage`.
+The shared router is [src/lib/routes.ts](src/lib/routes.ts): a single `routes` table (method + path regex → controller handler) and a `dispatch(req, res, pathname)` function that matches, injects any dynamic segment into `req.query`, and catches handler errors. **Collapsing every endpoint into one function keeps the deployment within the Hobby plan's 12-function limit** (there were 13 separate functions before).
 
-**When adding or renaming an API route you must update two places:** create the `api/**/*.ts` file *and* add an entry to the `routes` array in `scripts/dev-server.ts`. Note that array references modules with `.js` extensions (e.g. `"../api/ajax.js"`) even though the files are `.ts` — tsx resolves these. Dynamic segments (e.g. `api/products/[slug].ts`) are matched by regex in `dev-server.ts`, which injects the captured value into `req.query` (the `slug` capture is wired manually).
+Both runtimes rely on the `ApiRequest`/`ApiResponse` abstraction in [src/lib/http.ts](src/lib/http.ts) — a minimal subset of the Vercel signature (`status()`, `json()`, `send()`, `setHeader()`, `query`, `body`, `headers`, `cookies`). Never reach for Node `http` types or Vercel-specific request fields inside a handler/controller; only `dev-server.ts` knows about raw `http.IncomingMessage`.
+
+**To add or rename an API route, edit one place:** the `routes` array in [src/lib/routes.ts](src/lib/routes.ts). Use `param` for a dynamic segment (e.g. `/^\/api\/products\/([^/]+)$/` with `param: "slug"`) — `dispatch` injects the captured value into `req.query` under that name. No new files, no per-endpoint functions. (Note: `dev-server.ts` imports [scripts/load-env.ts](scripts/load-env.ts) *first* so `.env` is loaded before the router pulls in `src/lib/supabase.ts`, which throws if `SUPABASE_*` are unset.)
 
 ### MVC layering (`src/`)
 
 ```
-api/**           thin entry points: try/catch wrapper → delegate to a controller
+api/[...path].ts single catch-all function → src/lib/routes.ts dispatch
 src/controllers  parse/validate input, shape the response (cart, contact, product)
 src/services     all I/O: Supabase queries, Resend email, reCAPTCHA verify
-src/lib          http helpers, the Supabase client, mini-cart HTML renderer
+src/lib          http helpers, routes table/dispatch, Supabase client, mini-cart HTML
 src/models       shared TypeScript types
 ```
 

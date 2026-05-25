@@ -82,7 +82,18 @@
       "Bash(curl -s -o /dev/null -w \"salesforce.png?v=5: status=%{http_code} type=%{content_type} bytes=%{size_download}\\\\n\" \"http://localhost:3000/images/salesforce.png?v=5\")",
       "Bash(grep -iE \"sales|\\\\.jpe?g$\")",
       "Bash(curl -s -o /dev/null -w \"salesforce.jpeg: status=%{http_code} type=%{content_type} bytes=%{size_download}\\\\n\" \"http://localhost:3000/images/salesforce.jpeg\")",
-      "Bash(curl -s \"http://localhost:3000/\")"
+      "Bash(curl -s \"http://localhost:3000/\")",
+      "Bash(gh repo *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(timeout 15 npx vercel whoami)",
+      "Bash(echo \"WHOAMI EXIT: $?\")",
+      "Bash(timeout 60 npx vercel inspect dpl_Dr9FixsmYM5LYQpJiY5cgoDRqNDX --logs)",
+      "Bash(git commit -q -m ' *)",
+      "Bash(timeout 40 npx vercel ls)",
+      "Bash(timeout 60 npx vercel inspect https://pamca-hvo3bey3a-antoni-mikhaiels-projects.vercel.app --logs)",
+      "Bash(timeout 60 npx vercel inspect https://pamca-hvo3bey3a-antoni-mikhaiels-projects.vercel.app)"
     ],
     "additionalDirectories": [
       "c:\\c\\Users\\ok\\Desktop\\VS_CODE"

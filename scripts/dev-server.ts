@@ -1,95 +1,20 @@
+// Side-effect import: loads .env into process.env before the shared router (and
+// thus src/lib/supabase.ts) is evaluated. Must stay first.
+import "./load-env.js";
+
 import http from "node:http";
-import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { ApiRequest, ApiResponse } from "../src/lib/http";
+import { dispatch } from "../src/lib/routes";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const publicDir = path.join(rootDir, "public");
 const port = Number(process.env.PORT ?? "3000");
-
-type RouteHandler = (req: ApiRequest, res: ApiResponse) => Promise<void>;
-type RouteModule = { default: RouteHandler };
-
-type RouteDefinition = {
-  method: string;
-  pattern: RegExp;
-  modulePath: string;
-};
-
-const routes: Array<RouteDefinition> = [
-  { method: "POST", pattern: /^\/api\/ajax$/, modulePath: "../api/ajax.js" },
-  { method: "GET", pattern: /^\/api\/cart\/get$/, modulePath: "../api/cart/get.js" },
-  { method: "POST", pattern: /^\/api\/contact\/submit$/, modulePath: "../api/contact/submit.js" },
-  { method: "GET", pattern: /^\/api\/products$/, modulePath: "../api/products/index.js" },
-  { method: "GET", pattern: /^\/api\/products\/([^/]+)$/, modulePath: "../api/products/[slug].js" },
-  // Verification-free sign-up (creates a pre-confirmed account)
-  { method: "POST", pattern: /^\/api\/auth\/signup$/, modulePath: "../api/auth/signup.js" },
-  // Public content read (key captured as match[1] -> query.slug)
-  { method: "GET", pattern: /^\/api\/content\/([^/]+)$/, modulePath: "../api/content/[key].js" },
-  // Admin endpoints (gated server-side by requireAdmin)
-  { method: "GET", pattern: /^\/api\/admin\/session$/, modulePath: "../api/admin/session.js" },
-  { method: "POST", pattern: /^\/api\/admin\/content$/, modulePath: "../api/admin/content.js" },
-  { method: "PUT", pattern: /^\/api\/admin\/content$/, modulePath: "../api/admin/content.js" },
-  { method: "GET", pattern: /^\/api\/admin\/products$/, modulePath: "../api/admin/products.js" },
-  { method: "POST", pattern: /^\/api\/admin\/products$/, modulePath: "../api/admin/products.js" },
-  { method: "PUT", pattern: /^\/api\/admin\/products$/, modulePath: "../api/admin/products.js" },
-  { method: "DELETE", pattern: /^\/api\/admin\/products$/, modulePath: "../api/admin/products.js" },
-  { method: "POST", pattern: /^\/api\/admin\/upload$/, modulePath: "../api/admin/upload.js" },
-  // Square hosted checkout: create a payment link, and receive payment webhooks
-  { method: "POST", pattern: /^\/api\/checkout\/create$/, modulePath: "../api/checkout/create.js" },
-  { method: "POST", pattern: /^\/api\/checkout\/webhook$/, modulePath: "../api/checkout/webhook.js" },
-];
-
-function loadDotEnvFile(filePath: string): void {
-  let text = "";
-
-  try {
-    text = readFileSync(filePath, "utf8");
-  } catch {
-    return;
-  }
-
-  for (const line of text.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-
-    const equalsIndex = trimmed.indexOf("=");
-    if (equalsIndex < 0) continue;
-
-    const key = trimmed.slice(0, equalsIndex).trim();
-    if (!key || process.env[key] !== undefined) continue;
-
-    let value = trimmed.slice(equalsIndex + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
-
-    process.env[key] = value;
-  }
-}
-
-loadDotEnvFile(path.join(rootDir, ".env"));
-
-const routeHandlers = new Map<string, Promise<RouteHandler>>();
-
-async function getRouteHandler(modulePath: string): Promise<RouteHandler> {
-  const existing = routeHandlers.get(modulePath);
-  if (existing) return existing;
-
-  const promise = import(modulePath)
-    .then((mod: RouteModule) => mod.default)
-    .catch((error) => {
-      routeHandlers.delete(modulePath);
-      throw error;
-    });
-  routeHandlers.set(modulePath, promise);
-  return promise;
-}
 
 function sendApiError(res: http.ServerResponse, error: unknown): void {
   res.statusCode = 500;
@@ -201,28 +126,18 @@ async function serveStaticFile(res: http.ServerResponse, pathname: string): Prom
 async function handleApiRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<boolean> {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 
-  for (const route of routes) {
-    if (req.method !== route.method) continue;
-    const match = url.pathname.match(route.pattern);
-    if (!match) continue;
+  const body = req.method === "GET" || req.method === "HEAD" ? "" : await readRequestBody(req);
+  const apiReq = toApiRequest(req, body);
 
-    const body = req.method === "GET" || req.method === "HEAD" ? "" : await readRequestBody(req);
-    const apiReq = toApiRequest(req, body);
-
-    if (match[1]) {
-      apiReq.query = { ...apiReq.query, slug: decodeURIComponent(match[1]) };
-    }
-
-    try {
-      const handler = await getRouteHandler(route.modulePath);
-      await handler(apiReq, createResponse(res));
-    } catch (error) {
-      sendApiError(res, error);
-    }
+  try {
+    // The shared router (src/lib/routes.ts) matches method + path, injects any
+    // dynamic segment into req.query, and catches handler errors itself. It is
+    // the same dispatcher the Vercel catch-all function uses.
+    return await dispatch(apiReq, createResponse(res), url.pathname);
+  } catch (error) {
+    sendApiError(res, error);
     return true;
   }
-
-  return false;
 }
 
 const server = http.createServer(async (req, res) => {

@@ -1,5 +1,5 @@
-import { parseBody, ApiRequest, ApiResponse, getHeader } from "../lib/http";
-import { sendContactEmail, validateRecaptcha } from "../services/contactService";
+import { parseBody, ApiRequest, ApiResponse, getHeader } from "../lib/http.js";
+import { sendContactEmail, validateRecaptcha } from "../services/contactService.js";
 
 function redirect(res: ApiResponse, location: string): void {
   res.status(302);

@@ -1,5 +1,5 @@
-import { supabase } from "./supabase";
-import { ApiRequest, ApiResponse, getHeader } from "./http";
+import { supabase } from "./supabase.js";
+import { ApiRequest, ApiResponse, getHeader } from "./http.js";
 
 export type AdminUser = { id: string; email: string; role: string };
 

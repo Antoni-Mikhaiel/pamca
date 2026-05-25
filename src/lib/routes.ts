@@ -1,22 +1,22 @@
-import { ApiRequest, ApiResponse, parseBody } from "./http";
+import { ApiRequest, ApiResponse, parseBody } from "./http.js";
 import {
   handleAddToCart,
   handleGetCart,
   handleRemoveCartItem,
   handleUpdateCartItem,
   handleUpdateCartQty,
-} from "../controllers/cartController";
-import { handleGetProduct, handleListProducts } from "../controllers/productController";
-import { handleContactSubmit } from "../controllers/contactController";
-import { handleSignup } from "../controllers/authController";
-import { handleGetContent, handleSaveContent } from "../controllers/contentController";
-import { handleSession, handleUpload } from "../controllers/adminController";
+} from "../controllers/cartController.js";
+import { handleGetProduct, handleListProducts } from "../controllers/productController.js";
+import { handleContactSubmit } from "../controllers/contactController.js";
+import { handleSignup } from "../controllers/authController.js";
+import { handleGetContent, handleSaveContent } from "../controllers/contentController.js";
+import { handleSession, handleUpload } from "../controllers/adminController.js";
 import {
   handleAdminListProducts,
   handleDeleteProduct,
   handleSaveProduct,
-} from "../controllers/adminProductController";
-import { handleCreateCheckout, handleWebhook } from "../controllers/checkoutController";
+} from "../controllers/adminProductController.js";
+import { handleCreateCheckout, handleWebhook } from "../controllers/checkoutController.js";
 
 /**
  * Single source of truth for API routing, shared by the Vercel catch-all

@@ -1,6 +1,6 @@
-import { supabase } from "../lib/supabase";
-import { CartItem, ProductOption, ProductOptionGroup } from "../models/types";
-import { getProductBySlug, asOptionGroups, clampSalePercent } from "./productService";
+import { supabase } from "../lib/supabase.js";
+import { CartItem, ProductOption, ProductOptionGroup } from "../models/types.js";
+import { getProductBySlug, asOptionGroups, clampSalePercent } from "./productService.js";
 
 export interface SelectedOption {
   label: string;

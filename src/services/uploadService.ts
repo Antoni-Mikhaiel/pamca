@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../lib/supabase.js";
 
 const BUCKET = "product-images";
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB

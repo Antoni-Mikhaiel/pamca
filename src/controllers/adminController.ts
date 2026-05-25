@@ -1,6 +1,6 @@
-import { ApiRequest, ApiResponse } from "../lib/http";
-import { getAdminUser, requireAdmin, readJsonBody } from "../lib/adminAuth";
-import { uploadImage } from "../services/uploadService";
+import { ApiRequest, ApiResponse } from "../lib/http.js";
+import { getAdminUser, requireAdmin, readJsonBody } from "../lib/adminAuth.js";
+import { uploadImage } from "../services/uploadService.js";
 
 /** Reports whether the bearer token belongs to an admin — used by the admin UI to gate access. */
 export async function handleSession(req: ApiRequest, res: ApiResponse): Promise<void> {

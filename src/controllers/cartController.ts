@@ -1,6 +1,6 @@
-import { ensureCartToken, parseBody, ApiRequest, ApiResponse, toCurrency } from "../lib/http";
-import { buildMiniCartHtml, computeCartTotals } from "../lib/miniCartHtml";
-import { addToCart, getCartItems, removeCartItem, updateCartQuantity, SelectedOption } from "../services/cartService";
+import { ensureCartToken, parseBody, ApiRequest, ApiResponse, toCurrency } from "../lib/http.js";
+import { buildMiniCartHtml, computeCartTotals } from "../lib/miniCartHtml.js";
+import { addToCart, getCartItems, removeCartItem, updateCartQuantity, SelectedOption } from "../services/cartService.js";
 
 export async function handleAddToCart(req: ApiRequest, res: ApiResponse): Promise<void> {
   const body = await parseBody(req);

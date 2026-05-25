@@ -1,6 +1,6 @@
-import { ApiRequest, ApiResponse } from "../lib/http";
-import { readJsonBody } from "../lib/adminAuth";
-import { createConfirmedUser, isValidEmail, validatePassword } from "../services/authService";
+import { ApiRequest, ApiResponse } from "../lib/http.js";
+import { readJsonBody } from "../lib/adminAuth.js";
+import { createConfirmedUser, isValidEmail, validatePassword } from "../services/authService.js";
 
 /** Verification-free sign-up: creates a pre-confirmed account and returns success. */
 export async function handleSignup(req: ApiRequest, res: ApiResponse): Promise<void> {

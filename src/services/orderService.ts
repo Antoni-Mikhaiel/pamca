@@ -1,5 +1,5 @@
-import { supabase } from "../lib/supabase";
-import { CartItem } from "../models/types";
+import { supabase } from "../lib/supabase.js";
+import { CartItem } from "../models/types.js";
 
 export interface CreatedOrder {
   id: string;

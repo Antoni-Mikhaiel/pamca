@@ -1,4 +1,4 @@
-import { ContactSubmission } from "../models/types";
+import { ContactSubmission } from "../models/types.js";
 import { Resend } from "resend";
 
 const resendApiKey = process.env.RESEND_API_KEY ?? "";

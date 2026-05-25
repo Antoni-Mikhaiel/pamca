@@ -1,4 +1,4 @@
-import { supabase } from "../lib/supabase";
+import { supabase } from "../lib/supabase.js";
 
 /** Single source of truth for password rules (mirrored on the client). */
 export const PASSWORD_RULES = [

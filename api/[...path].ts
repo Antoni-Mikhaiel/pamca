@@ -1,5 +1,5 @@
-import { ApiRequest, ApiResponse } from "../src/lib/http";
-import { dispatch } from "../src/lib/routes";
+import { ApiRequest, ApiResponse } from "../src/lib/http.js";
+import { dispatch } from "../src/lib/routes.js";
 
 /**
  * The entire API as a single Vercel Serverless Function. Vercel routes every

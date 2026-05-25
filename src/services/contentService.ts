@@ -1,4 +1,4 @@
-import { supabase } from "../lib/supabase";
+import { supabase } from "../lib/supabase.js";
 
 /** Allowed singleton content keys edited by the admin. */
 export const CONTENT_KEYS = ["pillars", "incident_report"] as const;

@@ -1,6 +1,6 @@
-import { ApiRequest, ApiResponse } from "../lib/http";
-import { requireAdmin, readJsonBody } from "../lib/adminAuth";
-import { getContent, setContent, isContentKey } from "../services/contentService";
+import { ApiRequest, ApiResponse } from "../lib/http.js";
+import { requireAdmin, readJsonBody } from "../lib/adminAuth.js";
+import { getContent, setContent, isContentKey } from "../services/contentService.js";
 
 /** Public read of a singleton content document (pillars, incident_report). */
 export async function handleGetContent(req: ApiRequest, res: ApiResponse): Promise<void> {

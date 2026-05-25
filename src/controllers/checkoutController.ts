@@ -1,13 +1,13 @@
-import { ApiRequest, ApiResponse, parseCookies, getHeader } from "../lib/http";
-import { getCartItems, clearCart } from "../services/cartService";
-import { createPendingOrder, attachSquareDetails, markOrderPaidBySquareOrderId } from "../services/orderService";
+import { ApiRequest, ApiResponse, parseCookies, getHeader } from "../lib/http.js";
+import { getCartItems, clearCart } from "../services/cartService.js";
+import { createPendingOrder, attachSquareDetails, markOrderPaidBySquareOrderId } from "../services/orderService.js";
 import {
   createPaymentLink,
   isSquareConfigured,
   getSquareCurrency,
   verifyWebhookSignature,
   SquareLineItem,
-} from "../services/squareService";
+} from "../services/squareService.js";
 
 const SITE_URL = (process.env.SITE_URL ?? "").replace(/\/$/, "");
 

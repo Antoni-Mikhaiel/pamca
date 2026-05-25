@@ -1,5 +1,5 @@
-import { CartItem } from "../models/types";
-import { toCurrency } from "./http";
+import { CartItem } from "../models/types.js";
+import { toCurrency } from "./http.js";
 
 // Renders the inner markup of the cart drawer (#cart-items). Class names match
 // the cart styles in public/shared-styles.css, and the data-* hooks match the

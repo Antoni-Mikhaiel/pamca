@@ -1,5 +1,5 @@
-import { supabase } from "../lib/supabase";
-import { AdminProductInput, Product, ProductOptionGroup, ProductVariation } from "../models/types";
+import { supabase } from "../lib/supabase.js";
+import { AdminProductInput, Product, ProductOptionGroup, ProductVariation } from "../models/types.js";
 
 const PRODUCT_COLUMNS =
   "id, slug, name, description, image_url, price_regular, price_sale, is_on_sale, redirect_path, " +

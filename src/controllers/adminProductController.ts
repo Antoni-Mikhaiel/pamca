@@ -1,7 +1,7 @@
-import { ApiRequest, ApiResponse } from "../lib/http";
-import { requireAdmin, readJsonBody } from "../lib/adminAuth";
-import { listProductsForAdmin, upsertProduct, deleteProduct, clampSalePercent } from "../services/productService";
-import { AdminProductInput, ProductOptionGroup } from "../models/types";
+import { ApiRequest, ApiResponse } from "../lib/http.js";
+import { requireAdmin, readJsonBody } from "../lib/adminAuth.js";
+import { listProductsForAdmin, upsertProduct, deleteProduct, clampSalePercent } from "../services/productService.js";
+import { AdminProductInput, ProductOptionGroup } from "../models/types.js";
 
 function slugify(s: string): string {
   return String(s || "")

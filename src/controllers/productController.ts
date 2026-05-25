@@ -1,5 +1,5 @@
-import { ApiRequest, ApiResponse } from "../lib/http";
-import { getProductBySlug, listProducts } from "../services/productService";
+import { ApiRequest, ApiResponse } from "../lib/http.js";
+import { getProductBySlug, listProducts } from "../services/productService.js";
 
 export async function handleListProducts(_req: ApiRequest, res: ApiResponse): Promise<void> {
   const products = await listProducts();

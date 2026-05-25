@@ -11,9 +11,13 @@ import { dispatch } from "../src/lib/routes";
  * 12-function-per-deployment limit.
  */
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
+  // Vercel delivers the path either as an array of segments (native catch-all)
+  // or, via the vercel.json rewrite, as a single "a/b/c" string. Join without
+  // re-encoding so the embedded "/" separators survive for the route match;
+  // dispatch() decodeURIComponent's the captured dynamic segment itself.
   const raw = req.query?.path;
-  const segments = Array.isArray(raw) ? raw : raw ? [raw] : [];
-  const pathname = "/api/" + segments.map((s) => encodeURIComponent(s)).join("/");
+  const joined = Array.isArray(raw) ? raw.join("/") : typeof raw === "string" ? raw : "";
+  const pathname = "/api/" + joined;
 
   const handled = await dispatch(req, res, pathname);
   if (!handled) {

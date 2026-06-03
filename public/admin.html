@@ -1389,6 +1389,31 @@
       .pm-opt-row { grid-template-columns: 1fr 1fr; }
       .pm-dialog-body { padding: 18px; }
     }
+
+    /* Orders panel */
+    .ao-list { display: flex; flex-direction: column; gap: 14px; }
+    .ao-empty { color: var(--ink-soft); padding: 24px; text-align: center; border: 1px dashed var(--line-strong); border-radius: var(--radius-sm); }
+    .ao-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 18px 20px; box-shadow: var(--shadow-sm); }
+    .ao-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .ao-pid { font-family: var(--font-mono); font-weight: 600; color: var(--signal-deep); font-size: 1.05rem; }
+    .ao-badges { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .ao-badge { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 10px; border-radius: 999px; background: var(--paper-2); color: var(--ink-soft); }
+    .ao-badge.is-paid { background: #d4edda; color: #155724; }
+    .ao-badge.is-pending { background: #fff3cd; color: #856404; }
+    .ao-badge.is-refunded, .ao-badge.is-failed, .ao-badge.is-canceled { background: #f8d7da; color: #721c24; }
+    .ao-badge.is-locked { background: #e7ddff; color: #4a318f; }
+    .ao-cred { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px 18px; margin: 12px 0; font-size: 0.9rem; }
+    .ao-cred div span { color: var(--ink-faint); display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.4px; }
+    .ao-cred div b { color: var(--ink); font-weight: 600; }
+    .ao-items { list-style: none; margin: 8px 0 0; padding: 10px 0 0; border-top: 1px solid var(--line); }
+    .ao-items li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: 0.9rem; color: var(--ink); }
+    .ao-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+    .ao-total { font-weight: 700; color: var(--ink); }
+    .ao-refunded { color: var(--ember); font-size: 0.82rem; font-weight: 600; }
+    .ao-lock-btn { border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 8px 14px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+    .ao-lock-btn:hover { border-color: var(--signal); color: var(--signal-deep); }
+    .ao-lock-btn[disabled] { opacity: 0.5; cursor: default; }
+    .ao-lock-note { color: var(--ink-faint); font-size: 0.8rem; }
   </style>
 </head>
 <body>
@@ -1419,8 +1444,8 @@
       <div class="rail-divider"></div>
 
       <nav class="admin-tabs" aria-label="Admin panels">
-        <button class="admin-tab is-active" type="button" data-panel-target="panel-overview">
-          <span class="tab-index">01</span><span class="tab-label">Overview</span>
+        <button class="admin-tab is-active" type="button" data-panel-target="panel-orders">
+          <span class="tab-index">01</span><span class="tab-label">Orders</span>
         </button>
         <button class="admin-tab" type="button" data-panel-target="panel-pam">
           <span class="tab-index">02</span><span class="tab-label">Minor Ailments</span>
@@ -1447,34 +1472,21 @@
       </div>
 
       <div class="admin-content">
-        <section class="admin-panel is-active" id="panel-overview">
+        <section class="admin-panel is-active" id="panel-orders">
           <div class="admin-hero">
-            <span class="panel-kicker">Console</span>
-            <h2>Dashboard Overview</h2>
+            <span class="panel-kicker">Panel 01</span>
+            <h2>Orders</h2>
+            <p>Every order placed through the store, with the customer's details and items. Within an order's first 24 hours you can lock it against customer edits.</p>
           </div>
 
-          <div class="card">
-            <h3>Open Panels</h3>
-            <div class="panel-launchers">
-              <a class="launcher" href="#" data-panel-target="panel-pam">
-                <span>
-                  <strong>Minor Ailments Prescribing</strong>
-                  <span>Edit the 3 pillars and keep the live frontend in sync.</span>
-                </span>
-              </a>
-              <a class="launcher" href="#" data-panel-target="panel-incident">
-                <span>
-                  <strong>Incident Reporting</strong>
-                  <span>Edit the AIMS-ready hero, features, and bullet list.</span>
-                </span>
-              </a>
-              <a class="launcher" href="#" data-panel-target="panel-products">
-                <span>
-                  <strong>Pharmacy Products</strong>
-                  <span>Add, edit, and remove products — images, pricing, options, stock.</span>
-                </span>
-              </a>
-            </div>
+          <div class="pm-toolbar">
+            <input type="search" class="pm-search" id="admin-order-search" placeholder="Search by name, email, phone, or Purchase ID…" aria-label="Search orders">
+            <span class="pm-count" id="admin-order-count">0 orders</span>
+            <button class="button" type="button" id="admin-order-refresh">Refresh</button>
+          </div>
+
+          <div id="admin-orders-list" class="ao-list">
+            <!-- order cards rendered by admin.js -->
           </div>
         </section>
 

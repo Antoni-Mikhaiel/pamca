@@ -127,16 +127,98 @@
       <!-- Purchase ID entry (opened from the link above) -->
       <div id="auth-purchase-view" class="auth-purchase-view" style="display:none;">
         <button type="button" class="auth-back" id="auth-purchase-back">← Back</button>
-        <h2 class="auth-purchase-title">Enter your Purchase ID</h2>
-        <p class="auth-purchase-sub">Enter the Purchase ID from your order to get started — no account needed.</p>
+        <h2 class="auth-purchase-title">Find your order</h2>
+        <p class="auth-purchase-sub">Enter the 6-digit Purchase ID from your order and the phone number you used — no account needed.</p>
         <form id="purchase-id-form" class="auth-form active">
           <div class="form-group">
             <label for="purchase-id-input">Purchase ID</label>
-            <input type="text" id="purchase-id-input" name="purchaseId" placeholder="e.g. PAMCA-1234-5678" autocomplete="off" required />
+            <input type="text" id="purchase-id-input" name="purchaseId" inputmode="numeric" maxlength="6" placeholder="e.g. 123456" autocomplete="off" required />
           </div>
-          <button type="submit" class="auth-submit-btn">Continue</button>
+          <div class="form-group">
+            <label for="purchase-phone-input">Phone number</label>
+            <div class="phone-field">
+              <span class="phone-prefix" aria-hidden="true">+1</span>
+              <input type="tel" id="purchase-phone-input" name="phone" inputmode="numeric" maxlength="14" placeholder="613 555 1234" autocomplete="off" required />
+            </div>
+          </div>
+          <button type="submit" class="auth-submit-btn">Find order</button>
           <div class="auth-message" id="purchase-id-message"></div>
         </form>
+        <div id="purchase-id-result" class="order-result" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Checkout details modal — collects delivery info before redirecting to Square -->
+  <div class="auth-modal" id="checkout-modal">
+    <div class="auth-overlay" data-close-checkout="1"></div>
+    <div class="auth-card checkout-card">
+      <button class="auth-close" id="checkout-close" data-close-checkout="1" aria-label="Close">×</button>
+      <h2 class="auth-purchase-title">Delivery details</h2>
+      <p class="auth-purchase-sub">We'll use these to deliver your order. You'll pay securely with Square on the next step.</p>
+      <form id="checkout-form" class="auth-form active" novalidate>
+        <div class="checkout-row">
+          <div class="form-group">
+            <label for="checkout-first">First name</label>
+            <input type="text" id="checkout-first" name="firstName" autocomplete="given-name" required />
+          </div>
+          <div class="form-group">
+            <label for="checkout-last">Last name</label>
+            <input type="text" id="checkout-last" name="lastName" autocomplete="family-name" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="checkout-email">Email</label>
+          <input type="email" id="checkout-email" name="email" autocomplete="email" required />
+        </div>
+        <div class="form-group">
+          <label for="checkout-address">Address</label>
+          <input type="text" id="checkout-address" name="address" autocomplete="street-address" required />
+        </div>
+        <div class="form-group">
+          <label for="checkout-phone">Phone</label>
+          <div class="phone-field">
+            <span class="phone-prefix" aria-hidden="true">+1</span>
+            <input type="tel" id="checkout-phone" name="phone" inputmode="numeric" maxlength="14" placeholder="613 555 1234" autocomplete="tel-national" required />
+          </div>
+          <small class="checkout-hint">Canadian numbers only.</small>
+        </div>
+        <label class="save-toggle" id="checkout-save-row" style="display:none;">
+          <input type="checkbox" id="checkout-save" />
+          <span>Save these details for future purchases</span>
+        </label>
+        <button type="submit" class="auth-submit-btn" id="checkout-submit">Continue to payment</button>
+        <div class="auth-message" id="checkout-message"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Order edit / refund modal (profile page + guest Purchase-ID lookup) -->
+  <div class="auth-modal" id="order-modal">
+    <div class="auth-overlay" data-close-order="1"></div>
+    <div class="auth-card order-modal-card">
+      <button class="auth-close" data-close-order="1" aria-label="Close">×</button>
+      <h2 class="auth-purchase-title">Edit order <span id="order-modal-pid"></span></h2>
+      <p class="auth-purchase-sub">Reduce or remove items, or add more. You'll see the difference — and pay or be refunded — before anything is final.</p>
+
+      <div id="order-modal-items" class="om-items"></div>
+
+      <div class="om-add">
+        <label for="order-add-product">Add a product</label>
+        <select id="order-add-product"></select>
+        <div id="order-add-options" class="om-add-options"></div>
+        <div class="om-add-row">
+          <input type="number" id="order-add-qty" min="1" value="1" aria-label="Quantity to add" />
+          <button type="button" class="om-add-btn" id="order-add-btn">Add to changes</button>
+        </div>
+      </div>
+
+      <div id="order-modal-summary" class="om-summary"></div>
+      <div class="auth-message" id="order-modal-message"></div>
+
+      <div class="om-actions">
+        <button type="button" class="auth-submit-btn" id="order-confirm-btn">Confirm changes</button>
+        <button type="button" class="om-refund-btn" id="order-refund-btn">Refund entire order</button>
       </div>
     </div>
   </div>

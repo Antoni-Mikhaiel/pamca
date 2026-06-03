@@ -11,25 +11,62 @@ returns the shopper to the site and a webhook marks the order paid.
 shopper                     site (this app)                         Square
   | add to cart  ───────────►  POST /api/ajax (pamca_add_to_cart)
   |                            └─ cart_items row (price computed server-side)
-  | Proceed to Checkout ─────► POST /api/checkout/create
+  | Proceed to Checkout ─────►  delivery-details pop-up (First/Last/Email/
+  |                            Address/Phone; +1 Canada only). Pre-filled from
+  |                            the profile when signed in; optional "save".
+  | submit details  ────────► POST /api/checkout/create  {customer, saveProfile?}
   |                            ├─ snapshot cart → orders + order_items (pending)
-  |                            └─ createPaymentLink() ──────────────► payment link
+  |                            ├─ stamp delivery details + 6-digit purchase_id
+  |                            ├─ link order to user (if signed in) / save profile
+  |                            └─ createPaymentLink(buyer prefill) ──► payment link
   |  ◄──────────────────────────────  redirect to Square hosted page ◄┘
   | pays on Square's page ───────────────────────────────────────────►
-  |  ◄── redirect to {SITE_URL}/?order=success ──────────────────────┘
+  |  ◄── redirect to {SITE_URL}/?order=success&pid=NNNNNN ───────────┘
   |                            POST /api/checkout/webhook  ◄── payment.updated
   |                            ├─ verify signature
   |                            ├─ order → 'paid'
+  |                            ├─ decrement product stock (once, idempotent)
   |                            └─ clear cart
 ```
+
+The shopper need not be signed in. A signed-in shopper has the pop-up pre-filled
+from their profile and may tick "save these details" to update their defaults; the
+order is also linked to their account so it shows on the profile page.
 
 ## Endpoints
 
 | Method | Path | Purpose |
 |---|---|---|
 | POST | `/api/ajax` (`action=pamca_add_to_cart`) | Add a product + selected options to the cart |
-| POST | `/api/checkout/create` | Create a Square payment link for the current cart; returns `{ data: { url } }` |
-| POST | `/api/checkout/webhook` | Receive Square payment events; marks the order paid and clears the cart |
+| POST | `/api/checkout/create` | Create a Square payment link for the current cart. Body: `{ firstName, lastName, email, address, phone, saveProfile? }`; optional `Authorization: Bearer` links the order to the user. Returns `{ data: { url, purchaseId } }` |
+| POST | `/api/checkout/webhook` | Receive Square payment events; marks the order paid, decrements stock once, clears the cart |
+| GET | `/api/profile` | Signed-in shopper's saved details + order history (`Authorization: Bearer` required) |
+| PUT | `/api/profile` | Update the contact/delivery fields (never the login email) |
+| POST | `/api/orders/lookup` | Guest order lookup. Body: `{ purchaseId, phone }` — both must match |
+| POST | `/api/orders/edit/preview` | Net price change + diff for a proposed edit. Auth: owner (`Bearer` + `orderId`) or guest (`purchaseId`+`phone`) |
+| POST | `/api/orders/edit/commit` | Applies the edit. Returns `{ url }` (top-up to pay) or `{ applied, refundedCents }` |
+| POST | `/api/orders/refund` | Full refund within 48h. Same owner/guest auth |
+| GET | `/api/admin/orders` | All orders + items (admin) |
+| POST | `/api/admin/orders/flag` | Set/clear an order's `uneditable` lock (admin; only within 24h) |
+
+### Editing & refunds
+
+- **Edit window:** 24h from `created_at`; also blocked once an admin sets `uneditable`
+  (admin can only set that within the same 24h). **Refund window:** 48h, independent
+  of `uneditable`. Both windows are enforced server-side and reflected in the
+  `editable`/`refundable` flags on each order.
+- An edit reduces/removes existing lines (refunded at the originally-paid price) and/or
+  adds new lines (charged at the **current** catalog price). The **net** is what the
+  shopper pays or is refunded:
+  - **owes more →** the change is staged in `order_edits`, a Square payment link for the
+    difference is returned, and the new items + stock are applied only when that top-up
+    payment completes (webhook). Its redirect is `{SITE_URL}/?order=edit-success&pid=…`.
+  - **owed money →** the difference is refunded to the card via the Square Refunds API and
+    the change applies immediately.
+- `orders.payments` is the charge ledger (`[{square_payment_id, amount_cents, refunded_cents}]`);
+  refunds walk it and never exceed what was charged. `stock_applied` / the `order_edits`
+  `pending→applied` claim keep stock and edits idempotent against webhook retries.
+- Who can act: the signed-in owner, or a guest who passes the matching Purchase ID + phone.
 
 Add-to-cart body (form-urlencoded): `slug`, `quantity`, `options` (JSON array of
 `{ label, value }`). The server resolves the price from the product's
@@ -77,3 +114,11 @@ not available yet" — nothing breaks while you finish wiring Square.
 Supabase before going live. Money is stored in integer cents; `orders.status` moves
 `pending → paid` (or `failed`/`canceled`). Each order keeps a snapshot of its items
 so it stays accurate even if a product is later edited or removed.
+
+The schema additions for this feature are all `add column if not exists` / `create
+index if not exists`, so re-running `docs/supabase-schema.sql` on an existing project
+is safe. New columns: `orders.purchase_id` (unique 6-digit ref), `orders.user_id`,
+`orders.customer_*` (delivery details), `orders.stock_applied` (idempotent stock
+guard); and `user_profiles.first_name/last_name/contact_email/address/phone`.
+Stock is decremented when the webhook confirms payment — per-option stock when the
+product uses option-level stock, otherwise the base `products.stock`.

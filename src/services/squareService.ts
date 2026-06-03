@@ -40,11 +40,21 @@ export interface PaymentLinkResult {
  * it back and it is searchable in the dashboard); `redirectUrl` is where Square
  * returns the shopper after a successful payment.
  */
+export interface SquareBuyer {
+  email?: string;
+  /** E.164, e.g. +16135551234. */
+  phone?: string;
+  firstName?: string;
+  lastName?: string;
+  addressLine1?: string;
+}
+
 export async function createPaymentLink(params: {
   lineItems: SquareLineItem[];
   redirectUrl?: string;
   referenceId?: string;
   note?: string;
+  buyer?: SquareBuyer;
 }): Promise<PaymentLinkResult> {
   if (!isSquareConfigured()) throw new Error("Square is not configured");
 
@@ -59,10 +69,31 @@ export async function createPaymentLink(params: {
     })),
   };
 
+  // Pre-fill the buyer's contact/shipping details on Square's hosted page so the
+  // shopper doesn't retype what they entered in our checkout pop-up.
+  const buyer = params.buyer;
+  const prePopulatedData = buyer
+    ? {
+        ...(buyer.email ? { buyer_email: buyer.email } : {}),
+        ...(buyer.phone ? { buyer_phone_number: buyer.phone } : {}),
+        ...(buyer.addressLine1 || buyer.firstName || buyer.lastName
+          ? {
+              buyer_address: {
+                ...(buyer.addressLine1 ? { address_line_1: buyer.addressLine1.slice(0, 500) } : {}),
+                ...(buyer.firstName ? { first_name: buyer.firstName.slice(0, 300) } : {}),
+                ...(buyer.lastName ? { last_name: buyer.lastName.slice(0, 300) } : {}),
+                country: "CA",
+              },
+            }
+          : {}),
+      }
+    : null;
+
   const body = {
     idempotency_key: randomUUID(),
     order,
     ...(params.redirectUrl ? { checkout_options: { redirect_url: params.redirectUrl } } : {}),
+    ...(prePopulatedData && Object.keys(prePopulatedData).length ? { pre_populated_data: prePopulatedData } : {}),
     ...(params.note ? { payment_note: params.note } : {}),
   };
 
@@ -93,6 +124,57 @@ export async function createPaymentLink(params: {
     paymentLinkId: String(link.id ?? ""),
     orderId: link.order_id ? String(link.order_id) : null,
   };
+}
+
+export interface RefundResult {
+  refundId: string;
+  status: string;
+}
+
+/**
+ * Refunds part or all of a captured Square payment. `amountCents` must not exceed
+ * the payment's remaining refundable amount (Square rejects over-refunds). Used for
+ * both edit-driven partial refunds and full order refunds.
+ */
+export async function refundPayment(params: {
+  paymentId: string;
+  amountCents: number;
+  reason?: string;
+}): Promise<RefundResult> {
+  if (!isSquareConfigured()) throw new Error("Square is not configured");
+  if (!params.paymentId) throw new Error("Missing payment id to refund");
+  if (!Number.isFinite(params.amountCents) || params.amountCents <= 0) {
+    throw new Error("Refund amount must be positive");
+  }
+
+  const body = {
+    idempotency_key: randomUUID(),
+    payment_id: params.paymentId,
+    amount_money: { amount: Math.round(params.amountCents), currency },
+    ...(params.reason ? { reason: params.reason.slice(0, 192) } : {}),
+  };
+
+  const response = await fetch(`${baseUrl}/v2/refunds`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Square-Version": apiVersion,
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const json = (await response.json().catch(() => ({}))) as {
+    refund?: { id?: string; status?: string };
+    errors?: Array<{ detail?: string }>;
+  };
+
+  if (!response.ok) {
+    throw new Error(json.errors?.[0]?.detail || `Square refund failed (${response.status})`);
+  }
+
+  const refund = json.refund ?? {};
+  return { refundId: String(refund.id ?? ""), status: String(refund.status ?? "PENDING") };
 }
 
 /**

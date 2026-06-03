@@ -43,23 +43,28 @@ function resolvePricing(
   return { regular, salePercent, stock };
 }
 
-/**
- * Adds a product (with its selected options) to the anonymous cart, recomputing
- * the unit price server-side so the client can never dictate what it pays. Price
- * resolution mirrors the product page: a selected option's price (when set)
- * overrides the base price — later priced options win — and an active sale is
- * then applied. Adding an identical line (same product + variation label) merges
- * into the existing row instead of creating a duplicate.
- */
-export async function addToCart(params: {
-  cartToken: string;
-  slug: string;
-  selectedOptions: SelectedOption[];
-  quantity: number;
-}): Promise<AddToCartResult> {
-  const { cartToken, slug, selectedOptions, quantity } = params;
-  if (!Number.isFinite(quantity) || quantity < 1) return { ok: false, reason: "invalid_quantity" };
+export interface ResolvedLine {
+  productId: number;
+  productName: string;
+  variationLabel: string | null;
+  /** Effective unit price (sale applied), in dollars. */
+  unitPrice: number;
+  stock: number;
+  imageUrl: string | null;
+}
 
+/**
+ * Resolves a product + option selection to its authoritative unit price, display
+ * name, variation label, available stock, and image — recomputed server-side so
+ * the client can never dictate what it pays. Price resolution mirrors the product
+ * page: a selected option's price (when set) overrides the base price (later priced
+ * options win) and an active sale is then applied. Shared by add-to-cart and the
+ * order-edit flow (pricing newly added items at the current catalog price).
+ */
+export async function resolveProductLine(
+  slug: string,
+  selectedOptions: SelectedOption[],
+): Promise<{ ok: true; line: ResolvedLine } | { ok: false; reason: "not_found" | "sold_out" }> {
   const product = await getProductBySlug(slug);
   if (!product) return { ok: false, reason: "not_found" };
 
@@ -84,14 +89,48 @@ export async function addToCart(params: {
       : Number(resolved.regular.toFixed(2));
 
   const variationLabel = selectedOptions.map((o) => o.value).filter(Boolean).join(" / ") || null;
-  const maxQty = Math.max(1, resolved.stock);
+
+  return {
+    ok: true,
+    line: {
+      productId: product.id,
+      productName: product.name,
+      variationLabel,
+      unitPrice,
+      stock: resolved.stock,
+      imageUrl: product.image_url,
+    },
+  };
+}
+
+/**
+ * Adds a product (with its selected options) to the anonymous cart. Adding an
+ * identical line (same product + variation label) merges into the existing row
+ * instead of creating a duplicate. Pricing/stock come from {@link resolveProductLine}.
+ */
+export async function addToCart(params: {
+  cartToken: string;
+  slug: string;
+  selectedOptions: SelectedOption[];
+  quantity: number;
+}): Promise<AddToCartResult> {
+  const { cartToken, slug, selectedOptions, quantity } = params;
+  if (!Number.isFinite(quantity) || quantity < 1) return { ok: false, reason: "invalid_quantity" };
+
+  const resolved = await resolveProductLine(slug, selectedOptions);
+  if (!resolved.ok) return resolved;
+  const { line } = resolved;
+  const maxQty = Math.max(1, line.stock);
 
   let lookup = supabase
     .from("cart_items")
     .select("id, quantity")
     .eq("cart_token", cartToken)
-    .eq("product_id", product.id);
-  lookup = variationLabel === null ? lookup.is("variation_label", null) : lookup.eq("variation_label", variationLabel);
+    .eq("product_id", line.productId);
+  lookup =
+    line.variationLabel === null
+      ? lookup.is("variation_label", null)
+      : lookup.eq("variation_label", line.variationLabel);
 
   const { data: existingRows, error: lookupError } = await lookup;
   if (lookupError) throw lookupError;
@@ -102,7 +141,7 @@ export async function addToCart(params: {
     const newQty = Math.min(existing.quantity + quantity, maxQty);
     const { error } = await supabase
       .from("cart_items")
-      .update({ quantity: newQty, unit_price: unitPrice, image_url: product.image_url })
+      .update({ quantity: newQty, unit_price: line.unitPrice, image_url: line.imageUrl })
       .eq("id", existing.id)
       .eq("cart_token", cartToken);
     if (error) throw error;
@@ -111,13 +150,13 @@ export async function addToCart(params: {
 
   const { error } = await supabase.from("cart_items").insert({
     cart_token: cartToken,
-    product_id: product.id,
+    product_id: line.productId,
     variation_id: null,
     quantity: Math.min(quantity, maxQty),
-    product_name: product.name,
-    variation_label: variationLabel,
-    unit_price: unitPrice,
-    image_url: product.image_url,
+    product_name: line.productName,
+    variation_label: line.variationLabel,
+    unit_price: line.unitPrice,
+    image_url: line.imageUrl,
   });
   if (error) throw error;
   return { ok: true };

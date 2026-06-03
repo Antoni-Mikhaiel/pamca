@@ -12,7 +12,9 @@
     content: (key) => `/api/content/${key}`,
     saveContent: '/api/admin/content',
     products: '/api/admin/products',
-    upload: '/api/admin/upload'
+    upload: '/api/admin/upload',
+    orders: '/api/admin/orders',
+    flagOrder: '/api/admin/orders/flag'
   };
 
   function whenAuthReady(){
@@ -1261,6 +1263,122 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Orders panel — read-only list of every order with a 24h "lock editing" toggle.
+  // ---------------------------------------------------------------------------
+  let ordersCache = [];
+  let orderSearch = '';
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  async function loadOrders(){
+    try{
+      const data = await apiGet(API.orders);
+      ordersCache = Array.isArray(data && data.orders) ? data.orders : [];
+    }catch(e){
+      console.error('loadOrders', e);
+      ordersCache = [];
+    }
+    renderOrders();
+  }
+
+  function orderMatches(o, term){
+    if(!term) return true;
+    const hay = [o.purchase_id, o.customer_first_name, o.customer_last_name, o.customer_email, o.customer_phone]
+      .map(v => String(v || '').toLowerCase()).join(' ');
+    return hay.includes(term);
+  }
+
+  function renderOrders(){
+    const host = document.getElementById('admin-orders-list');
+    const countEl = document.getElementById('admin-order-count');
+    if(!host) return;
+    if(countEl) countEl.textContent = `${ordersCache.length} order${ordersCache.length === 1 ? '' : 's'}`;
+
+    const term = orderSearch.trim().toLowerCase();
+    const orders = ordersCache.filter(o => orderMatches(o, term));
+    if(!orders.length){
+      host.innerHTML = `<div class="ao-empty">${ordersCache.length ? 'No orders match your search.' : 'No orders yet.'}</div>`;
+      return;
+    }
+    host.innerHTML = orders.map(renderOrderCard).join('');
+  }
+
+  function renderOrderCard(o){
+    const money = (c) => fmtMoney((Number(c) || 0) / 100);
+    const status = String(o.status || 'pending').toLowerCase();
+    const within24h = (Date.now() - new Date(o.created_at).getTime()) < DAY_MS;
+    const created = o.created_at ? new Date(o.created_at).toLocaleString() : '';
+    const name = `${o.customer_first_name || ''} ${o.customer_last_name || ''}`.trim() || '—';
+    const items = (o.items || []).map(it => {
+      const variant = it.variation_label ? ` <span style="color:var(--ink-faint)">(${escAttr(it.variation_label)})</span>` : '';
+      return `<li><span>${Number(it.quantity) || 0} × ${escAttr(it.product_name)}${variant}</span><span>${money(it.line_total_cents)}</span></li>`;
+    }).join('');
+
+    let lockHtml;
+    if(status === 'refunded'){
+      lockHtml = `<span class="ao-lock-note">Refunded — no longer editable</span>`;
+    }else if(within24h){
+      lockHtml = o.uneditable
+        ? `<button type="button" class="ao-lock-btn" data-act="unlock" data-id="${escAttr(o.id)}">Unlock editing</button>`
+        : `<button type="button" class="ao-lock-btn" data-act="lock" data-id="${escAttr(o.id)}">Lock editing</button>`;
+    }else{
+      lockHtml = `<span class="ao-lock-note">Edit window closed${o.uneditable ? ' · was locked' : ''}</span>`;
+    }
+
+    const badges = [`<span class="ao-badge is-${status}">${escAttr(status)}</span>`];
+    if(o.uneditable) badges.push(`<span class="ao-badge is-locked">Locked</span>`);
+
+    const refundedNote = o.amount_refunded_cents > 0
+      ? `<span class="ao-refunded">${money(o.amount_refunded_cents)} refunded</span>` : '';
+
+    return `<article class="ao-card">
+      <div class="ao-top">
+        <span class="ao-pid">#${escAttr(o.purchase_id || '—')}</span>
+        <span class="ao-badges">${badges.join('')}</span>
+      </div>
+      <div class="ao-cred">
+        <div><span>Name</span><b>${escAttr(name)}</b></div>
+        <div><span>Email</span><b>${escAttr(o.customer_email || '—')}</b></div>
+        <div><span>Phone</span><b>${escAttr(o.customer_phone || '—')}</b></div>
+        <div><span>Placed</span><b>${escAttr(created)}</b></div>
+      </div>
+      <ul class="ao-items">${items}</ul>
+      <div class="ao-foot">
+        <span class="ao-total">Total ${money(o.total_cents)} ${refundedNote}</span>
+        ${lockHtml}
+      </div>
+    </article>`;
+  }
+
+  async function flagOrder(orderId, uneditable){
+    try{
+      const data = await apiSend(API.flagOrder, 'POST', { orderId, uneditable });
+      const updated = data && data.order;
+      if(updated){
+        const i = ordersCache.findIndex(o => o.id === orderId);
+        if(i >= 0) ordersCache[i] = updated;
+        renderOrders();
+      }
+    }catch(e){
+      window.alert('Could not update the order: ' + e.message);
+    }
+  }
+
+  function wireOrderControls(){
+    const host = document.getElementById('admin-orders-list');
+    if(!host) return;
+    host.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if(!btn) return;
+      if(btn.dataset.act === 'lock') flagOrder(btn.dataset.id, true);
+      else if(btn.dataset.act === 'unlock') flagOrder(btn.dataset.id, false);
+    });
+    const refresh = document.getElementById('admin-order-refresh');
+    if(refresh) refresh.addEventListener('click', () => loadOrders());
+    const search = document.getElementById('admin-order-search');
+    if(search) search.addEventListener('input', () => { orderSearch = search.value; renderOrders(); });
+  }
+
+  // ---------------------------------------------------------------------------
   // Auth gate + bootstrap
   // ---------------------------------------------------------------------------
   let appInitialized = false;
@@ -1307,6 +1425,9 @@
     wireControls();
     wireProductControls();
     await loadProducts();
+
+    wireOrderControls();
+    await loadOrders();
   }
 
   async function handleLogin(event){

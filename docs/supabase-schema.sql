@@ -61,6 +61,16 @@ create table if not exists user_profiles (
 
 create index if not exists user_profiles_role_idx on user_profiles(role);
 
+-- Delivery/contact details editable from the profile page and used to pre-fill
+-- the checkout pop-up. `email` above stays the login email; `contact_email` is
+-- the (optionally different) address used for orders/receipts. Phone is stored as
+-- the 10-digit national number (the +1 country code is implied — Canada only).
+alter table user_profiles add column if not exists first_name text;
+alter table user_profiles add column if not exists last_name text;
+alter table user_profiles add column if not exists contact_email text;
+alter table user_profiles add column if not exists address text;
+alter table user_profiles add column if not exists phone text;
+
 create table if not exists cart_items (
   id uuid primary key default gen_random_uuid(),
   cart_token uuid not null,
@@ -146,8 +156,56 @@ create table if not exists orders (
   updated_at timestamptz not null default now()
 );
 
+-- Human-friendly 6-digit reference a shopper can use to look up an order without
+-- an account (guest lookup also requires the matching phone number). Optional
+-- link to the logged-in buyer, plus the delivery details captured at checkout.
+alter table orders add column if not exists purchase_id text;
+alter table orders add column if not exists user_id uuid references auth.users(id) on delete set null;
+alter table orders add column if not exists customer_first_name text;
+alter table orders add column if not exists customer_last_name text;
+alter table orders add column if not exists customer_phone text;     -- '+1' + 10 digits
+alter table orders add column if not exists customer_address text;
+alter table orders add column if not exists stock_applied boolean not null default false;
+
+-- Order editing (24h window) & refunds (48h window).
+-- `uneditable` is an admin early-lock (settable only within the first 24h); it
+-- blocks edits but never refunds. `payments` records every successful charge for
+-- the order — the original plus any applied top-ups — as
+-- [{ square_payment_id, amount_cents, refunded_cents }], so refunds can be issued
+-- against the right payment(s) and never exceed what was charged.
+alter table orders add column if not exists uneditable boolean not null default false;
+alter table orders add column if not exists refunded_at timestamptz;
+alter table orders add column if not exists amount_refunded_cents integer not null default 0;
+alter table orders add column if not exists payments jsonb not null default '[]'::jsonb;
+
+-- A staged edit that requires an extra payment. The new item set + stock changes
+-- are applied only when its top-up payment completes (Square webhook). Edits that
+-- net to zero or a refund are applied immediately and never create a row here.
+create table if not exists order_edits (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references orders(id) on delete cascade,
+  status text not null default 'pending', -- pending | applied | canceled
+  delta_cents integer not null,           -- amount to charge (always > 0 here)
+  new_items jsonb not null,               -- full desired item snapshot (order_items shape)
+  square_order_id text,
+  square_payment_id text,
+  checkout_url text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists order_edits_order_id_idx on order_edits(order_id);
+create index if not exists order_edits_square_order_id_idx on order_edits(square_order_id);
+
+drop trigger if exists order_edits_touch_updated_at on order_edits;
+create trigger order_edits_touch_updated_at
+before update on order_edits
+for each row execute function touch_updated_at();
+
 create index if not exists orders_cart_token_idx on orders(cart_token);
 create index if not exists orders_square_order_id_idx on orders(square_order_id);
+create unique index if not exists orders_purchase_id_idx on orders(purchase_id);
+create index if not exists orders_user_id_idx on orders(user_id);
 
 create table if not exists order_items (
   id uuid primary key default gen_random_uuid(),

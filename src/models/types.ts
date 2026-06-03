@@ -81,6 +81,55 @@ export interface CartItem {
   image_url: string | null;
 }
 
+/** Delivery/contact details captured at checkout and editable on the profile page. */
+export interface CustomerDetails {
+  firstName: string;
+  lastName: string;
+  email: string;
+  /** '+1' followed by exactly 10 digits (Canada only). */
+  phone: string;
+  address: string;
+}
+
+export interface UserProfile extends CustomerDetails {
+  id: string;
+  /** Supabase auth login email (read-only here; `email` above is the contact email). */
+  loginEmail: string;
+}
+
+export interface OrderItemRecord {
+  /** order_items row id — present on persisted items, used to target edits. */
+  id?: string;
+  product_id?: number | null;
+  product_name: string;
+  variation_label: string | null;
+  unit_price_cents: number;
+  quantity: number;
+  line_total_cents: number;
+}
+
+export interface OrderRecord {
+  id: string;
+  purchase_id: string | null;
+  status: string;
+  currency: string;
+  total_cents: number;
+  customer_first_name: string | null;
+  customer_last_name: string | null;
+  customer_email: string | null;
+  customer_phone: string | null;
+  customer_address: string | null;
+  created_at: string;
+  /** Admin early-lock; blocks edits (never refunds). */
+  uneditable: boolean;
+  amount_refunded_cents: number;
+  /** Computed: customer may still edit (paid, <24h, not locked, not refunded). */
+  editable: boolean;
+  /** Computed: customer may still refund (paid, <48h, not refunded). */
+  refundable: boolean;
+  items: OrderItemRecord[];
+}
+
 export interface ContactSubmission {
   firstName: string;
   lastName: string;

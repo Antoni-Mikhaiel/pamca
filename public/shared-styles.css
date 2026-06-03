@@ -1159,3 +1159,264 @@ section:nth-of-type(4) { animation-delay: 0.21s; }
 @media (prefers-reduced-motion: reduce) {
     section { animation: none; }
 }
+
+/* ============================================================
+   Checkout details modal, phone input, saved-details toggle,
+   and order cards (profile page + guest Purchase ID lookup).
+   ============================================================ */
+.checkout-card { max-width: 460px; }
+
+.checkout-row {
+    display: flex;
+    gap: 14px;
+}
+.checkout-row .form-group {
+    flex: 1;
+    min-width: 0;
+}
+
+.checkout-hint {
+    display: block;
+    margin-top: 6px;
+    color: #999;
+    font-size: 0.8rem;
+}
+
+/* +1-prefixed phone input */
+.phone-field {
+    display: flex;
+    align-items: stretch;
+}
+.phone-prefix {
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    border: 1px solid #ddd;
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    background: #f3f3f3;
+    color: #333;
+    font-weight: 600;
+}
+.phone-field input {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+/* "Save these details" toggle (shown only to signed-in shoppers) */
+.save-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 4px 0 14px;
+    color: #333;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.save-toggle input {
+    width: auto;
+    margin: 0;
+    accent-color: #008080;
+}
+
+/* Order cards */
+.order-result { margin-top: 18px; }
+
+.order-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+    background: #fff;
+}
+.order-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+.order-pid {
+    font-weight: 700;
+    color: #008080;
+    font-size: 1.05rem;
+    letter-spacing: 0.5px;
+}
+.order-status {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #eee;
+    color: #555;
+}
+.order-status-paid { background: #d4edda; color: #155724; }
+.order-status-pending { background: #fff3cd; color: #856404; }
+.order-status-failed,
+.order-status-canceled { background: #f8d7da; color: #721c24; }
+
+.order-meta {
+    color: #777;
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+}
+.order-lines {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid #f0f0f0;
+}
+.order-lines li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.92rem;
+    color: #333;
+}
+.order-line-name { flex: 1; min-width: 0; }
+.order-line-variant { color: #999; font-size: 0.82rem; }
+
+@media (max-width: 480px) {
+    .checkout-row { flex-wrap: wrap; gap: 0; }
+}
+
+.order-refunded {
+    color: #b02a37;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin: 2px 0 6px;
+}
+
+.order-actions-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+}
+.order-edit-btn,
+.order-refund-btn {
+    border: 1px solid #008080;
+    background: #fff;
+    color: #008080;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 600;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.order-edit-btn:hover { background: #008080; color: #fff; }
+.order-refund-btn { border-color: #c0392b; color: #c0392b; }
+.order-refund-btn:hover { background: #c0392b; color: #fff; }
+
+/* Order edit / refund modal */
+.order-modal-card { max-width: 520px; max-height: 88vh; overflow-y: auto; }
+
+.om-items { margin: 6px 0 18px; }
+.om-section-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #999;
+    font-weight: 700;
+    margin: 14px 0 6px;
+}
+.om-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+.om-row-name { font-size: 0.92rem; color: #333; }
+.om-row-unit { display: block; color: #999; font-size: 0.78rem; }
+.om-row-add .om-row-name { color: #0a615b; }
+
+.om-stepper { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.om-step {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #ddd;
+    background: #f7f7f7;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    color: #333;
+}
+.om-step:hover { border-color: #008080; color: #008080; }
+.om-qty { min-width: 22px; text-align: center; font-weight: 600; }
+.om-remove-add {
+    border: none;
+    background: none;
+    color: #c0392b;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.om-add {
+    background: #f7fafa;
+    border: 1px solid #e3eded;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 16px;
+}
+.om-add > label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #333;
+    margin-bottom: 8px;
+}
+.om-add select,
+.om-add input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    box-sizing: border-box;
+}
+.om-add-options { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+.om-opt span { display: block; font-size: 0.78rem; color: #777; margin-bottom: 4px; }
+.om-add-row { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
+.om-add-row input { width: 80px; }
+.om-add-btn {
+    flex: 1;
+    background: #008080;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.om-add-btn:hover { background: #006666; }
+
+.om-summary {
+    background: #f4f4f4;
+    border-radius: 8px;
+    padding: 12px;
+    font-weight: 600;
+    color: #333;
+    font-size: 0.92rem;
+    text-align: center;
+}
+.om-summary.is-error { background: #f8d7da; color: #721c24; }
+
+.om-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.om-refund-btn {
+    border: 1px solid #c0392b;
+    background: #fff;
+    color: #c0392b;
+    border-radius: 8px;
+    padding: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.om-refund-btn:hover { background: #c0392b; color: #fff; }

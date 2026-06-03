@@ -28,6 +28,22 @@ export async function getAdminUser(req: ApiRequest): Promise<AdminUser | null> {
 }
 
 /**
+ * Verifies the `Authorization: Bearer <jwt>` against Supabase Auth and returns the
+ * authenticated user (any role). Returns null when the token is missing/invalid.
+ * Use for endpoints that any signed-in user may call (profile, their own orders).
+ */
+export async function getAuthUser(req: ApiRequest): Promise<{ id: string; email: string } | null> {
+  const header = getHeader(req, "authorization");
+  if (!header || !header.startsWith("Bearer ")) return null;
+  const token = header.slice("Bearer ".length).trim();
+  if (!token) return null;
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data?.user) return null;
+  return { id: data.user.id, email: data.user.email ?? "" };
+}
+
+/**
  * Guard for write endpoints. Sends 401 and returns null if the caller is not an admin;
  * callers should `return` immediately when the result is null.
  */

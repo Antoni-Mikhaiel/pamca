@@ -1,6 +1,15 @@
 import { ApiRequest, ApiResponse, parseCookies, getHeader } from "../lib/http.js";
+import { readJsonBody, getAuthUser } from "../lib/adminAuth.js";
+import { validateCustomerDetails } from "../lib/customer.js";
 import { getCartItems, clearCart } from "../services/cartService.js";
-import { createPendingOrder, attachSquareDetails, markOrderPaidBySquareOrderId } from "../services/orderService.js";
+import {
+  createPendingOrder,
+  attachSquareDetails,
+  markOrderPaidBySquareOrderId,
+  applyStockForOrder,
+} from "../services/orderService.js";
+import { applyEditBySquareOrderId } from "../services/orderEditService.js";
+import { updateProfile } from "../services/profileService.js";
 import {
   createPaymentLink,
   isSquareConfigured,
@@ -12,9 +21,11 @@ import {
 const SITE_URL = (process.env.SITE_URL ?? "").replace(/\/$/, "");
 
 /**
- * Snapshots the cart into a pending order, creates a Square Payment Link, and
- * returns its URL for the client to redirect to. There is no on-site checkout
- * page — Square hosts the payment form.
+ * Snapshots the cart into a pending order (with the shopper's delivery details and
+ * a 6-digit purchase id), creates a Square Payment Link, and returns its URL for
+ * the client to redirect to. There is no on-site payment form — Square hosts it.
+ * The shopper need not be logged in; when they are, the order is linked to them and
+ * (if they opted in) their saved profile is updated.
  */
 export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): Promise<void> {
   const cartToken = parseCookies(req).cart_token;
@@ -22,6 +33,14 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
     res.status(400).json({ success: false, message: "Your cart is empty." });
     return;
   }
+
+  const body = readJsonBody<Record<string, unknown>>(req);
+  const validation = validateCustomerDetails(body);
+  if (!validation.ok) {
+    res.status(400).json({ success: false, message: validation.error });
+    return;
+  }
+  const customer = validation.value;
 
   const items = await getCartItems(cartToken);
   if (items.length === 0) {
@@ -37,8 +56,25 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
     return;
   }
 
+  // Optional: a signed-in shopper links the order to their account and may save
+  // these details as their new defaults.
+  const authUser = await getAuthUser(req);
+  if (authUser && body.saveProfile === true) {
+    try {
+      await updateProfile(authUser.id, authUser.email, customer);
+    } catch {
+      // Saving the profile is best-effort; never block the purchase on it.
+    }
+  }
+
   const currency = getSquareCurrency();
-  const order = await createPendingOrder({ cartToken, items, currency });
+  const order = await createPendingOrder({
+    cartToken,
+    items,
+    currency,
+    customer,
+    userId: authUser?.id ?? null,
+  });
 
   const lineItems: SquareLineItem[] = items.map((item) => ({
     name: item.product_name,
@@ -47,7 +83,7 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
     note: item.variation_label,
   }));
 
-  const redirectUrl = SITE_URL ? `${SITE_URL}/?order=success` : undefined;
+  const redirectUrl = SITE_URL ? `${SITE_URL}/?order=success&pid=${order.purchaseId}` : undefined;
 
   try {
     const link = await createPaymentLink({
@@ -55,6 +91,13 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
       redirectUrl,
       referenceId: order.id,
       note: "PAMCA online order",
+      buyer: {
+        email: customer.email,
+        phone: customer.phone,
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        addressLine1: customer.address,
+      },
     });
 
     await attachSquareDetails(order.id, {
@@ -63,7 +106,7 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
       checkoutUrl: link.url,
     });
 
-    res.status(200).json({ success: true, data: { url: link.url } });
+    res.status(200).json({ success: true, data: { url: link.url, purchaseId: order.purchaseId } });
   } catch (error) {
     res.status(502).json({
       success: false,
@@ -74,8 +117,9 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
 
 /**
  * Receives Square webhook events. On a completed payment we mark the matching
- * order 'paid' and clear its cart. Always replies 200 once the signature checks
- * out so Square stops retrying. Signature is verified over the raw request body.
+ * order 'paid', decrement product stock (once), and clear its cart. Always replies
+ * 200 once the signature checks out so Square stops retrying. Signature is verified
+ * over the raw request body.
  */
 export async function handleWebhook(req: ApiRequest, res: ApiResponse): Promise<void> {
   const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body ?? {});
@@ -101,12 +145,28 @@ export async function handleWebhook(req: ApiRequest, res: ApiResponse): Promise<
   if (type === "payment.created" || type === "payment.updated") {
     const payment = event?.data?.object?.payment;
     if (payment?.order_id && payment.status === "COMPLETED") {
-      const cartToken = await markOrderPaidBySquareOrderId(String(payment.order_id), String(payment.id ?? ""));
-      if (cartToken) {
+      const result = await markOrderPaidBySquareOrderId(String(payment.order_id), String(payment.id ?? ""));
+      if (result) {
         try {
-          await clearCart(cartToken);
+          await applyStockForOrder(result.orderId);
         } catch {
-          // Cart clearing is best-effort; the payment is already recorded.
+          // Stock application is guarded against double-apply; a failure here
+          // shouldn't make us 500 and trigger endless Square retries.
+        }
+        if (result.cartToken) {
+          try {
+            await clearCart(result.cartToken);
+          } catch {
+            // Cart clearing is best-effort; the payment is already recorded.
+          }
+        }
+      } else {
+        // Not an original purchase — it may be the top-up payment for a staged
+        // order edit. Applying is idempotent (the edit row is claimed once).
+        try {
+          await applyEditBySquareOrderId(String(payment.order_id), String(payment.id ?? ""));
+        } catch {
+          // Best-effort; don't 500 and trigger endless Square retries.
         }
       }
     }

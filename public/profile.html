@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/shared-styles.css">
+  <title>My Profile — PAMCA</title>
+  <style>
+    .profile-wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 120px 20px 80px;
+    }
+    .profile-wrap h1 {
+      font-size: 1.8rem;
+      color: #008080;
+      margin: 0 0 24px;
+    }
+    .profile-card {
+      background: #fff;
+      border: 1px solid #e6e6e6;
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 28px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+    }
+    .profile-card h2 {
+      font-size: 1.2rem;
+      color: #333;
+      margin: 0 0 18px;
+    }
+    .profile-gate,
+    .profile-content { display: none; }
+    .profile-gate p { color: #555; margin: 0 0 18px; }
+    .profile-orders-empty { color: #888; }
+    .login-email-note { color: #888; font-size: 0.85rem; margin: -10px 0 18px; }
+  </style>
+</head>
+<body>
+<div id="header-placeholder"></div>
+
+<main class="profile-wrap">
+  <h1>My Profile</h1>
+
+  <div class="profile-gate" id="profile-gate">
+    <div class="profile-card">
+      <h2>Please sign in</h2>
+      <p>Sign in to manage your details and view your orders.</p>
+      <button type="button" class="auth-submit-btn" id="profile-signin-btn" style="max-width:200px;">Sign in</button>
+    </div>
+  </div>
+
+  <div class="profile-content" id="profile-content">
+    <div class="profile-card">
+      <h2>Your details</h2>
+      <p class="login-email-note" id="login-email-note"></p>
+      <form id="profile-form" novalidate>
+        <div class="checkout-row">
+          <div class="form-group">
+            <label for="profile-first">First name</label>
+            <input type="text" id="profile-first" name="firstName" autocomplete="given-name" required />
+          </div>
+          <div class="form-group">
+            <label for="profile-last">Last name</label>
+            <input type="text" id="profile-last" name="lastName" autocomplete="family-name" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="profile-email">Contact email</label>
+          <input type="email" id="profile-email" name="email" autocomplete="email" required />
+        </div>
+        <div class="form-group">
+          <label for="profile-address">Address</label>
+          <input type="text" id="profile-address" name="address" autocomplete="street-address" required />
+        </div>
+        <div class="form-group">
+          <label for="profile-phone">Phone</label>
+          <div class="phone-field">
+            <span class="phone-prefix" aria-hidden="true">+1</span>
+            <input type="tel" id="profile-phone" name="phone" inputmode="numeric" maxlength="14" placeholder="613 555 1234" autocomplete="tel-national" required />
+          </div>
+          <small class="checkout-hint">Canadian numbers only. Used to auto-fill your checkout details.</small>
+        </div>
+        <button type="submit" class="auth-submit-btn" id="profile-save" style="max-width:220px;">Save changes</button>
+        <div class="auth-message" id="profile-message"></div>
+      </form>
+    </div>
+
+    <div class="profile-card">
+      <h2>Your orders</h2>
+      <div id="profile-orders">
+        <p class="profile-orders-empty">Loading your orders…</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="footer-placeholder"></div>
+
+<script src="/auth.js"></script>
+<script src="/shared-scripts.js"></script>
+<script src="/profile.js"></script>
+</body>
+</html>

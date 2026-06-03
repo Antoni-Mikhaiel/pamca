@@ -138,45 +138,500 @@
 		notice.textContent = text;
 	}
 
-	// Asks the server to create a Square hosted checkout and redirects there.
-	async function startCheckout(trigger) {
-		const original = trigger.textContent;
-		trigger.setAttribute("aria-busy", "true");
-		trigger.style.pointerEvents = "none";
-		trigger.textContent = "Redirecting…";
+	// Returns an { Authorization } header for the current session, or null when
+	// the shopper isn't signed in.
+	function getAuthHeader() {
 		try {
-			// Make sure any debounced quantity changes have reached the server
-			// before we snapshot the cart for checkout.
-			await flushPendingQty();
+			const s = window.getSession && window.getSession();
+			return s && s.access_token ? { Authorization: "Bearer " + s.access_token } : null;
+		} catch (_) {
+			return null;
+		}
+	}
+
+	function escapeHtml(value) {
+		return String(value == null ? "" : value)
+			.replaceAll("&", "&amp;")
+			.replaceAll("<", "&lt;")
+			.replaceAll(">", "&gt;")
+			.replaceAll('"', "&quot;")
+			.replaceAll("'", "&#039;");
+	}
+
+	function fieldValue(id) {
+		const el = document.getElementById(id);
+		return el ? el.value.trim() : "";
+	}
+	function setFieldValue(id, value) {
+		const el = document.getElementById(id);
+		if (el) el.value = value == null ? "" : value;
+	}
+
+	function setCheckoutMessage(text, kind) {
+		const box = document.getElementById("checkout-message");
+		if (!box) return;
+		box.textContent = text || "";
+		box.className = "auth-message" + (text ? " " + (kind || "error") : "");
+	}
+
+	function closeCheckoutModal() {
+		const modal = document.getElementById("checkout-modal");
+		if (modal) modal.classList.remove("active");
+	}
+
+	// Pre-fills the checkout form from the signed-in shopper's saved profile and
+	// reveals the "save details" toggle. For guests it just clears the toggle.
+	async function prefillCheckoutFromProfile() {
+		const saveRow = document.getElementById("checkout-save-row");
+		const saveBox = document.getElementById("checkout-save");
+		if (saveBox) saveBox.checked = false;
+		const auth = getAuthHeader();
+		if (!auth) {
+			if (saveRow) saveRow.style.display = "none";
+			return;
+		}
+		if (saveRow) saveRow.style.display = "flex";
+		try {
+			const res = await fetch("/api/profile", { headers: auth });
+			if (!res.ok) return;
+			const json = await res.json();
+			const p = json && json.data && json.data.profile;
+			if (!p) return;
+			setFieldValue("checkout-first", p.firstName);
+			setFieldValue("checkout-last", p.lastName);
+			setFieldValue("checkout-email", p.email);
+			setFieldValue("checkout-address", p.address);
+			setFieldValue("checkout-phone", (p.phone || "").replace(/^\+1/, ""));
+		} catch (_) {}
+	}
+
+	// Opens the delivery-details pop-up. The actual Square redirect happens when the
+	// shopper submits the form (see submitCheckout).
+	async function openCheckoutModal() {
+		const modal = document.getElementById("checkout-modal");
+		if (!modal) return;
+		const cartModal = document.getElementById("cart-modal");
+		if (cartModal) cartModal.classList.remove("active");
+		// Make sure debounced quantity changes have reached the server before we
+		// snapshot the cart for checkout.
+		await flushPendingQty();
+		setCheckoutMessage("");
+		await prefillCheckoutFromProfile();
+		modal.classList.add("active");
+		const first = document.getElementById("checkout-first");
+		if (first) first.focus();
+	}
+
+	// Validates the delivery details, asks the server to create a Square hosted
+	// checkout for the current cart, and redirects there.
+	async function submitCheckout(e) {
+		e.preventDefault();
+		const submit = document.getElementById("checkout-submit");
+		const payload = {
+			firstName: fieldValue("checkout-first"),
+			lastName: fieldValue("checkout-last"),
+			email: fieldValue("checkout-email"),
+			address: fieldValue("checkout-address"),
+			phone: fieldValue("checkout-phone"),
+		};
+		if (!payload.firstName || !payload.lastName || !payload.email || !payload.address) {
+			setCheckoutMessage("Please fill in every field.");
+			return;
+		}
+		if (payload.phone.replace(/\D/g, "").length !== 10) {
+			setCheckoutMessage("Enter a valid 10-digit Canadian phone number.");
+			return;
+		}
+
+		const auth = getAuthHeader();
+		const saveBox = document.getElementById("checkout-save");
+		if (auth && saveBox && saveBox.checked) payload.saveProfile = true;
+
+		const original = submit ? submit.textContent : "";
+		if (submit) { submit.disabled = true; submit.textContent = "Redirecting…"; }
+		setCheckoutMessage("");
+		try {
 			const res = await fetch("/api/checkout/create", {
 				method: "POST",
 				credentials: "same-origin",
-				headers: API_HEADERS,
+				headers: Object.assign({ "Content-Type": "application/json" }, auth || {}),
+				body: JSON.stringify(payload),
 			});
 			const json = await res.json().catch(() => ({}));
 			if (res.ok && json?.success && json.data?.url) {
 				window.location.href = json.data.url;
 				return;
 			}
-			showCartNotice((json && json.message) || "Checkout is unavailable right now. Please try again.");
+			setCheckoutMessage((json && json.message) || "Checkout is unavailable right now. Please try again.");
 		} catch (_) {
-			showCartNotice("Checkout is unavailable right now. Please try again.");
+			setCheckoutMessage("Checkout is unavailable right now. Please try again.");
 		} finally {
-			trigger.removeAttribute("aria-busy");
-			trigger.style.pointerEvents = "";
-			trigger.textContent = original;
+			if (submit) { submit.disabled = false; submit.textContent = original; }
 		}
 	}
 
-	// One-time banner shown when Square returns the shopper after payment.
+	function wireCheckoutModal() {
+		const form = document.getElementById("checkout-form");
+		if (form) form.addEventListener("submit", submitCheckout);
+		document.querySelectorAll("[data-close-checkout='1']").forEach((el) => {
+			el.addEventListener("click", closeCheckoutModal);
+		});
+	}
+
+	// ---- Order edit / refund -------------------------------------------------
+	// Drives the #order-modal for both signed-in owners (acts with the order id +
+	// auth token) and guests (acts with Purchase ID + phone). The net price change
+	// is computed authoritatively by the server's preview endpoint.
+	let orderModalState = null; // { order, ctx, existing[], additions[], previewTimer }
+	let productsCatalog = null;
+
+	async function loadProductsCatalog() {
+		if (productsCatalog) return productsCatalog;
+		try {
+			const res = await fetch("/api/products", { credentials: "same-origin" });
+			const json = await res.json().catch(() => ({}));
+			productsCatalog = Array.isArray(json && json.data) ? json.data : [];
+		} catch (_) {
+			productsCatalog = [];
+		}
+		return productsCatalog;
+	}
+
+	function omMoney(cents) { return formatMoney((Number(cents) || 0) / 100); }
+
+	function omSetMessage(text, kind) {
+		const box = document.getElementById("order-modal-message");
+		if (!box) return;
+		box.textContent = text || "";
+		box.className = "auth-message" + (text ? " " + (kind || "error") : "");
+	}
+
+	function closeOrderModal() {
+		const modal = document.getElementById("order-modal");
+		if (modal) modal.classList.remove("active");
+		orderModalState = null;
+	}
+
+	// Credentials the order endpoints expect: owner sends orderId + auth header;
+	// guest sends purchaseId + phone.
+	function orderRequestCreds() {
+		const ctx = orderModalState.ctx;
+		if (ctx.purchaseId) return { creds: { purchaseId: ctx.purchaseId, phone: ctx.phone }, headers: {} };
+		return { creds: { orderId: ctx.orderId }, headers: getAuthHeader() || {} };
+	}
+
+	function buildEditPayload() {
+		const st = orderModalState;
+		const existing = st.existing
+			.filter((e) => e.qty !== e.originalQty)
+			.map((e) => ({ orderItemId: e.id, quantity: e.qty }));
+		const additions = st.additions.map((a) => ({ slug: a.slug, options: a.options, quantity: a.qty }));
+		return { existing, additions };
+	}
+
+	function omPopulateProductPicker() {
+		const sel = document.getElementById("order-add-product");
+		if (!sel) return;
+		sel.innerHTML = (productsCatalog || [])
+			.map((p) => `<option value="${escapeHtml(p.slug)}">${escapeHtml(p.name)}</option>`)
+			.join("");
+		omRenderOptionSelects();
+	}
+
+	function omRenderOptionSelects() {
+		const host = document.getElementById("order-add-options");
+		const sel = document.getElementById("order-add-product");
+		if (!host || !sel) return;
+		const product = (productsCatalog || []).find((p) => p.slug === sel.value);
+		const groups = (product && Array.isArray(product.option_groups)) ? product.option_groups : [];
+		host.innerHTML = groups
+			.filter((g) => g.options && g.options.length)
+			.map((g) => {
+				const opts = g.options.map((o) => `<option value="${escapeHtml(o.value)}">${escapeHtml(o.value)}</option>`).join("");
+				return `<label class="om-opt"><span>${escapeHtml(g.label || "Option")}</span><select data-group-label="${escapeHtml(g.label || "Option")}">${opts}</select></label>`;
+			})
+			.join("");
+	}
+
+	function omAddProduct() {
+		const sel = document.getElementById("order-add-product");
+		const qtyEl = document.getElementById("order-add-qty");
+		if (!sel || !orderModalState) return;
+		const product = (productsCatalog || []).find((p) => p.slug === sel.value);
+		if (!product) return;
+		const qty = Math.max(1, parseInt(qtyEl && qtyEl.value, 10) || 1);
+		const options = Array.from(document.querySelectorAll("#order-add-options select")).map((s) => ({
+			label: s.getAttribute("data-group-label"),
+			value: s.value,
+		}));
+		const variant = options.map((o) => o.value).filter(Boolean).join(" / ");
+		orderModalState.additions.push({ slug: product.slug, name: product.name, options, variant, qty });
+		if (qtyEl) qtyEl.value = "1";
+		omRenderItems();
+		omQueuePreview();
+	}
+
+	function omRenderItems() {
+		const host = document.getElementById("order-modal-items");
+		if (!host || !orderModalState) return;
+		const st = orderModalState;
+
+		const existingRows = st.existing.map((e, i) => {
+			const variant = e.variant ? `<span class="order-line-variant"> — ${escapeHtml(e.variant)}</span>` : "";
+			return `<div class="om-row" data-kind="existing" data-i="${i}">
+				<div class="om-row-name">${escapeHtml(e.name)}${variant}<span class="om-row-unit">${omMoney(e.unitCents)} each</span></div>
+				<div class="om-stepper">
+					<button type="button" class="om-step" data-step="-1" aria-label="Decrease">−</button>
+					<span class="om-qty">${e.qty}</span>
+					<button type="button" class="om-step" data-step="1" aria-label="Increase">+</button>
+				</div>
+			</div>`;
+		}).join("");
+
+		const addRows = st.additions.map((a, i) => {
+			const variant = a.variant ? `<span class="order-line-variant"> — ${escapeHtml(a.variant)}</span>` : "";
+			return `<div class="om-row om-row-add" data-kind="add" data-i="${i}">
+				<div class="om-row-name">+ ${escapeHtml(a.name)}${variant}<span class="om-row-unit">adding ${a.qty} · current price</span></div>
+				<button type="button" class="om-remove-add">Remove</button>
+			</div>`;
+		}).join("");
+
+		host.innerHTML = `<div class="om-section-label">Current items</div>${existingRows}` + (addRows ? `<div class="om-section-label">Adding</div>${addRows}` : "");
+	}
+
+	function omQueuePreview() {
+		const st = orderModalState;
+		if (!st) return;
+		if (st.previewTimer) clearTimeout(st.previewTimer);
+		st.previewTimer = setTimeout(omPreview, 250);
+	}
+
+	async function omPreview() {
+		if (!orderModalState) return;
+		const payload = buildEditPayload();
+		const summary = document.getElementById("order-modal-summary");
+		if (payload.existing.length === 0 && payload.additions.length === 0) {
+			if (summary) summary.textContent = "No changes yet.";
+			return;
+		}
+		const { creds, headers } = orderRequestCreds();
+		try {
+			const res = await fetch("/api/orders/edit/preview", {
+				method: "POST",
+				credentials: "same-origin",
+				headers: Object.assign({ "Content-Type": "application/json" }, headers),
+				body: JSON.stringify(Object.assign({}, creds, payload)),
+			});
+			const json = await res.json().catch(() => ({}));
+			if (!res.ok || !json.success || !json.data) {
+				if (summary) { summary.textContent = (json && json.message) || "Could not price these changes."; summary.className = "om-summary is-error"; }
+				return;
+			}
+			const d = json.data;
+			let text;
+			if (d.deltaCents > 0) text = `New total ${omMoney(d.newTotalCents)} · you'll pay ${omMoney(d.deltaCents)} more at checkout.`;
+			else if (d.deltaCents < 0) text = `New total ${omMoney(d.newTotalCents)} · you'll be refunded ${omMoney(-d.deltaCents)}.`;
+			else text = `New total ${omMoney(d.newTotalCents)} · no change to pay.`;
+			if (summary) { summary.textContent = text; summary.className = "om-summary"; }
+		} catch (_) {
+			if (summary) { summary.textContent = "Could not price these changes."; summary.className = "om-summary is-error"; }
+		}
+	}
+
+	async function omConfirm() {
+		if (!orderModalState) return;
+		const payload = buildEditPayload();
+		if (payload.existing.length === 0 && payload.additions.length === 0) {
+			omSetMessage("Make a change first.");
+			return;
+		}
+		const { creds, headers } = orderRequestCreds();
+		const onChanged = orderModalState.ctx.onChanged;
+		const btn = document.getElementById("order-confirm-btn");
+		const original = btn ? btn.textContent : "";
+		if (btn) { btn.disabled = true; btn.textContent = "Working…"; }
+		omSetMessage("");
+		try {
+			const res = await fetch("/api/orders/edit/commit", {
+				method: "POST",
+				credentials: "same-origin",
+				headers: Object.assign({ "Content-Type": "application/json" }, headers),
+				body: JSON.stringify(Object.assign({}, creds, payload)),
+			});
+			const json = await res.json().catch(() => ({}));
+			if (res.ok && json.success && json.data) {
+				if (json.data.url) { window.location.href = json.data.url; return; }
+				const refunded = Number(json.data.refundedCents) || 0;
+				omSetMessage(refunded > 0 ? `Done — ${omMoney(refunded)} refunded to your card.` : "Your order has been updated.", "success");
+				setTimeout(() => { closeOrderModal(); if (typeof onChanged === "function") onChanged(); }, 1100);
+				return;
+			}
+			omSetMessage((json && json.message) || "Could not apply changes.");
+		} catch (_) {
+			omSetMessage("Could not apply changes. Please try again.");
+		} finally {
+			if (btn) { btn.disabled = false; btn.textContent = original; }
+		}
+	}
+
+	async function omRefund() {
+		if (!orderModalState) return;
+		if (!window.confirm("Refund this entire order back to your card? This cannot be undone.")) return;
+		const { creds, headers } = orderRequestCreds();
+		const onChanged = orderModalState.ctx.onChanged;
+		const btn = document.getElementById("order-refund-btn");
+		const original = btn ? btn.textContent : "";
+		if (btn) { btn.disabled = true; btn.textContent = "Refunding…"; }
+		omSetMessage("");
+		try {
+			const res = await fetch("/api/orders/refund", {
+				method: "POST",
+				credentials: "same-origin",
+				headers: Object.assign({ "Content-Type": "application/json" }, headers),
+				body: JSON.stringify(creds),
+			});
+			const json = await res.json().catch(() => ({}));
+			if (res.ok && json.success && json.data) {
+				omSetMessage(`Refunded ${omMoney(json.data.refundedCents)} to your card.`, "success");
+				setTimeout(() => { closeOrderModal(); if (typeof onChanged === "function") onChanged(); }, 1300);
+				return;
+			}
+			omSetMessage((json && json.message) || "Could not refund this order.");
+		} catch (_) {
+			omSetMessage("Could not refund this order. Please try again.");
+		} finally {
+			if (btn) { btn.disabled = false; btn.textContent = original; }
+		}
+	}
+
+	// Opens the edit/refund modal. ctx is either { orderId, onChanged } (owner) or
+	// { purchaseId, phone, onChanged } (guest).
+	async function openOrderActions(order, ctx) {
+		const modal = document.getElementById("order-modal");
+		if (!modal || !order) return;
+		orderModalState = {
+			order,
+			ctx: ctx || {},
+			existing: (order.items || [])
+				.filter((it) => it.id)
+				.map((it) => ({
+					id: it.id,
+					name: it.product_name,
+					variant: it.variation_label || "",
+					unitCents: it.unit_price_cents,
+					originalQty: it.quantity,
+					qty: it.quantity,
+				})),
+			additions: [],
+			previewTimer: null,
+		};
+		await loadProductsCatalog();
+		omPopulateProductPicker();
+		const pidEl = document.getElementById("order-modal-pid");
+		if (pidEl) pidEl.textContent = order.purchase_id ? "#" + order.purchase_id : "";
+		const refundBtn = document.getElementById("order-refund-btn");
+		if (refundBtn) refundBtn.style.display = order.refundable ? "" : "none";
+		omSetMessage("");
+		const summary = document.getElementById("order-modal-summary");
+		if (summary) { summary.textContent = "No changes yet."; summary.className = "om-summary"; }
+		omRenderItems();
+		modal.classList.add("active");
+	}
+
+	function wireOrderModal() {
+		document.querySelectorAll("[data-close-order='1']").forEach((el) => el.addEventListener("click", closeOrderModal));
+		const picker = document.getElementById("order-add-product");
+		if (picker) picker.addEventListener("change", omRenderOptionSelects);
+		const addBtn = document.getElementById("order-add-btn");
+		if (addBtn) addBtn.addEventListener("click", omAddProduct);
+		const confirmBtn = document.getElementById("order-confirm-btn");
+		if (confirmBtn) confirmBtn.addEventListener("click", omConfirm);
+		const refundBtn = document.getElementById("order-refund-btn");
+		if (refundBtn) refundBtn.addEventListener("click", omRefund);
+
+		const items = document.getElementById("order-modal-items");
+		if (items) items.addEventListener("click", (e) => {
+			if (!orderModalState) return;
+			const step = e.target.closest(".om-step");
+			if (step) {
+				const row = step.closest(".om-row[data-kind='existing']");
+				const idx = Number(row && row.getAttribute("data-i"));
+				const entry = orderModalState.existing[idx];
+				if (!entry) return;
+				const delta = Number(step.getAttribute("data-step")) || 0;
+				entry.qty = Math.max(0, Math.min(entry.originalQty, entry.qty + delta));
+				omRenderItems();
+				omQueuePreview();
+				return;
+			}
+			const removeAdd = e.target.closest(".om-remove-add");
+			if (removeAdd) {
+				const row = removeAdd.closest(".om-row[data-kind='add']");
+				const idx = Number(row && row.getAttribute("data-i"));
+				if (idx >= 0) orderModalState.additions.splice(idx, 1);
+				omRenderItems();
+				omQueuePreview();
+			}
+		});
+	}
+
+	// Renders an order summary card (shared by the profile page and guest lookup).
+	// Edit/Refund buttons appear only when the server says the order still qualifies.
+	function renderOrderCard(order) {
+		if (!order) return "";
+		const money = (cents) => formatMoney((Number(cents) || 0) / 100);
+		const status = String(order.status || "pending").toLowerCase();
+		const created = order.created_at ? new Date(order.created_at).toLocaleDateString() : "";
+		const lines = (order.items || [])
+			.map((it) => {
+				const variant = it.variation_label
+					? `<span class="order-line-variant"> — ${escapeHtml(it.variation_label)}</span>`
+					: "";
+				return `<li><span class="order-line-name">${Number(it.quantity) || 0} × ${escapeHtml(it.product_name)}${variant}</span><span>${money(it.line_total_cents)}</span></li>`;
+			})
+			.join("");
+		const refunded = Number(order.amount_refunded_cents) > 0
+			? `<div class="order-refunded">${money(order.amount_refunded_cents)} refunded</div>`
+			: "";
+		const actions = [];
+		if (order.editable) actions.push(`<button type="button" class="order-edit-btn" data-order-id="${escapeHtml(order.id)}">Edit order</button>`);
+		if (order.refundable) actions.push(`<button type="button" class="order-refund-btn" data-order-id="${escapeHtml(order.id)}">Refund</button>`);
+		const actionsHtml = actions.length ? `<div class="order-actions-row">${actions.join("")}</div>` : "";
+		return `
+			<div class="order-card" data-order-id="${escapeHtml(order.id)}">
+				<div class="order-card-head">
+					<span class="order-pid">#${escapeHtml(order.purchase_id || "")}</span>
+					<span class="order-status order-status-${escapeHtml(status)}">${escapeHtml(status)}</span>
+				</div>
+				<div class="order-meta">${escapeHtml(created)} · Total ${money(order.total_cents)}</div>
+				${refunded}
+				<ul class="order-lines">${lines}</ul>
+				${actionsHtml}
+			</div>`;
+	}
+
+	// One-time banner shown when Square returns the shopper after payment. When a
+	// Purchase ID is present we surface it so guests can save it to track the order.
 	function maybeShowOrderStatus() {
-		const status = new URLSearchParams(window.location.search).get("order");
-		if (status !== "success") return;
+		const params = new URLSearchParams(window.location.search);
+		const order = params.get("order");
+		if (order !== "success" && order !== "edit-success") return;
+		const pid = (params.get("pid") || "").trim();
+		let text;
+		if (order === "edit-success") {
+			text = pid
+				? `Thank you! Your additional payment was received and order ${pid} has been updated.`
+				: "Thank you! Your additional payment was received and your order has been updated.";
+		} else {
+			text = pid
+				? `Thank you! Your payment was received. Your Purchase ID is ${pid} — keep it to track your order.`
+				: "Thank you! Your payment was received and your order is confirmed.";
+		}
 		const bar = document.createElement("div");
-		bar.textContent = "Thank you! Your payment was received and your order is confirmed.";
+		bar.textContent = text;
 		bar.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;background:#d4edda;color:#155724;padding:14px;text-align:center;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.15);";
 		document.body.appendChild(bar);
-		setTimeout(() => bar.remove(), 6000);
+		setTimeout(() => bar.remove(), pid ? 12000 : 6000);
 	}
 
 	// --- Quantity updates: optimistic UI + debounced, serialized server sync ---
@@ -297,7 +752,7 @@
 			const checkout = e.target.closest("#checkout-btn, .checkout-btn");
 			if (checkout) {
 				e.preventDefault();
-				startCheckout(checkout);
+				openCheckoutModal();
 				return;
 			}
 
@@ -533,11 +988,16 @@
 			});
 		}
 
-		// Open modal (or, for admins, go straight to the admin console)
+		// Open modal (or, when signed in, go straight to the admin console / profile)
 		navLoginBtn?.addEventListener("click", (event) => {
 			if (navLoginBtn.dataset.mode === "admin") {
 				event.preventDefault();
 				window.location.href = "/admin.html";
+				return;
+			}
+			if (navLoginBtn.dataset.mode === "profile") {
+				event.preventDefault();
+				window.location.href = "/profile.html";
 				return;
 			}
 			authModal.classList.add("active");
@@ -572,21 +1032,71 @@
 			showPurchaseView(true);
 			document.getElementById("purchase-id-input")?.focus();
 		});
-		document.getElementById("auth-purchase-back")?.addEventListener("click", () => showPurchaseView(false));
+		document.getElementById("auth-purchase-back")?.addEventListener("click", () => {
+			showPurchaseView(false);
+			const result = document.getElementById("purchase-id-result");
+			if (result) { result.style.display = "none"; result.innerHTML = ""; }
+		});
+		// Looks up an order by Purchase ID + phone, renders it, and remembers the
+		// credentials so the edit/refund actions (and post-action refresh) can reuse them.
+		let lastLookup = null;
+		async function runPurchaseLookup(purchaseId, phone) {
+			const message = document.getElementById("purchase-id-message");
+			const result = document.getElementById("purchase-id-result");
+			const setMsg = (text, kind) => {
+				if (message) { message.textContent = text || ""; message.className = "auth-message" + (text ? " " + (kind || "error") : ""); }
+			};
+			setMsg("Looking up your order…", "success");
+			try {
+				const res = await fetch("/api/orders/lookup", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ purchaseId, phone }),
+				});
+				const json = await res.json().catch(() => ({}));
+				if (res.ok && json?.success && json.data?.order) {
+					setMsg("");
+					lastLookup = { purchaseId, phone };
+					if (result) {
+						result.innerHTML = renderOrderCard(json.data.order);
+						result.dataset.order = JSON.stringify(json.data.order);
+						result.style.display = "block";
+					}
+					return;
+				}
+				setMsg((json && json.message) || "No order matches that Purchase ID and phone number.");
+			} catch (_) {
+				setMsg("Something went wrong. Please try again.");
+			}
+		}
+
 		document.getElementById("purchase-id-form")?.addEventListener("submit", (e) => {
 			e.preventDefault();
-			const input = document.getElementById("purchase-id-input");
-			const message = document.getElementById("purchase-id-message");
-			const value = (input?.value || "").trim();
-			if (!value) {
-				if (message) { message.textContent = "Please enter your Purchase ID."; message.className = "auth-message error"; }
+			const purchaseId = (document.getElementById("purchase-id-input")?.value || "").trim();
+			const phone = (document.getElementById("purchase-phone-input")?.value || "").trim();
+			const result = document.getElementById("purchase-id-result");
+			if (result) { result.style.display = "none"; result.innerHTML = ""; }
+			if (!/^\d{6}$/.test(purchaseId) || phone.replace(/\D/g, "").length !== 10) {
+				const message = document.getElementById("purchase-id-message");
+				if (message) { message.textContent = "Enter your 6-digit Purchase ID and the phone number on the order."; message.className = "auth-message error"; }
 				return;
 			}
-			if (message) {
-				message.textContent = "Thanks! We've received your Purchase ID and will be in touch with your access details shortly.";
-				message.className = "auth-message success";
-			}
-			if (input) input.value = "";
+			runPurchaseLookup(purchaseId, phone);
+		});
+
+		// Edit / refund actions on a guest-looked-up order act with the Purchase ID + phone.
+		document.getElementById("purchase-id-result")?.addEventListener("click", (e) => {
+			const btn = e.target.closest(".order-edit-btn, .order-refund-btn");
+			if (!btn || !lastLookup || typeof window.pamcaOpenOrderActions !== "function") return;
+			const result = document.getElementById("purchase-id-result");
+			let order = null;
+			try { order = JSON.parse(result.dataset.order || "null"); } catch (_) {}
+			if (!order) return;
+			window.pamcaOpenOrderActions(order, {
+				purchaseId: lastLookup.purchaseId,
+				phone: lastLookup.phone,
+				onChanged: () => runPurchaseLookup(lastLookup.purchaseId, lastLookup.phone),
+			});
 		});
 
 		const togglePasswordVisibility = (toggle) => {
@@ -774,6 +1284,8 @@
 		if (footerYear) footerYear.textContent = String(new Date().getFullYear());
 		initNavbar();
 		wireCartInteractions();
+		wireCheckoutModal();
+		wireOrderModal();
 		maybeShowOrderStatus();
 		await refreshCart();
 		wireContactForm();
@@ -783,6 +1295,10 @@
 		window.pamcaAddToCart = addToCart;
 		window.pamcaOpenCart = openCart;
 		window.pamcaRefreshCart = refreshCart;
+		// Shared helpers reused by the profile page (profile.js).
+		window.pamcaRenderOrderCard = renderOrderCard;
+		window.pamcaGetAuthHeader = getAuthHeader;
+		window.pamcaOpenOrderActions = openOrderActions;
 
 		await Promise.allSettled([productsReady, detailsReady]);
 	}

@@ -1,0 +1,45 @@
+import { ApiRequest, ApiResponse } from "../lib/http.js";
+import { requireAdmin, readJsonBody } from "../lib/adminAuth.js";
+import {
+  listAllOrders,
+  getFullOrder,
+  setOrderUneditable,
+  orderAgeMs,
+  EDIT_WINDOW_MS,
+} from "../services/orderService.js";
+
+/** GET /api/admin/orders — every order with its items (admin only). */
+export async function handleAdminListOrders(req: ApiRequest, res: ApiResponse): Promise<void> {
+  if (!(await requireAdmin(req, res))) return;
+  const orders = await listAllOrders();
+  res.status(200).json({ success: true, data: { orders } });
+}
+
+/**
+ * POST /api/admin/orders/flag — set/clear an order's "uneditable" early-lock. Only
+ * permitted within the first 24h of the order (after that, editing is locked anyway).
+ */
+export async function handleAdminFlagOrder(req: ApiRequest, res: ApiResponse): Promise<void> {
+  if (!(await requireAdmin(req, res))) return;
+
+  const body = readJsonBody<{ orderId?: unknown; uneditable?: unknown }>(req);
+  const orderId = String(body.orderId ?? "");
+  const uneditable = body.uneditable === true || body.uneditable === "true";
+  if (!orderId) {
+    res.status(400).json({ success: false, message: "Missing order id." });
+    return;
+  }
+
+  const order = await getFullOrder(orderId);
+  if (!order) {
+    res.status(404).json({ success: false, message: "Order not found." });
+    return;
+  }
+  if (orderAgeMs(order.created_at) >= EDIT_WINDOW_MS) {
+    res.status(400).json({ success: false, message: "The 24-hour window to lock this order has passed." });
+    return;
+  }
+
+  const updated = await setOrderUneditable(orderId, uneditable);
+  res.status(200).json({ success: true, data: { order: updated } });
+}

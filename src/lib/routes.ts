@@ -19,7 +19,7 @@ import {
 import { handleCreateCheckout, handleWebhook } from "../controllers/checkoutController.js";
 import { handleGetProfile, handleUpdateProfile, handleLookupOrder } from "../controllers/profileController.js";
 import { handleAdminListOrders, handleAdminFlagOrder } from "../controllers/adminOrderController.js";
-import { handleEditPreview, handleEditCommit, handleRefundOrder } from "../controllers/orderEditController.js";
+import { handleGetOrder, handleEditPreview, handleEditCommit, handleRefundOrder } from "../controllers/orderEditController.js";
 
 /**
  * Single source of truth for API routing, shared by the Vercel catch-all
@@ -101,6 +101,7 @@ const routes: Route[] = [
   { method: "GET", pattern: /^\/api\/profile$/, handler: handleGetProfile },
   { method: "PUT", pattern: /^\/api\/profile$/, handler: handleUpdateProfile },
   { method: "POST", pattern: /^\/api\/orders\/lookup$/, handler: handleLookupOrder },
+  { method: "POST", pattern: /^\/api\/orders\/get$/, handler: handleGetOrder },
   { method: "POST", pattern: /^\/api\/orders\/edit\/preview$/, handler: handleEditPreview },
   { method: "POST", pattern: /^\/api\/orders\/edit\/commit$/, handler: handleEditCommit },
   { method: "POST", pattern: /^\/api\/orders\/refund$/, handler: handleRefundOrder },

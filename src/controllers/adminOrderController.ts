@@ -8,10 +8,14 @@ import {
   EDIT_WINDOW_MS,
 } from "../services/orderService.js";
 
-/** GET /api/admin/orders — every order with its items (admin only). */
+/**
+ * GET /api/admin/orders — orders with their items (admin only). Pending orders
+ * (checkout started but payment never completed) are omitted; only real,
+ * paid/refunded/failed/canceled orders are shown.
+ */
 export async function handleAdminListOrders(req: ApiRequest, res: ApiResponse): Promise<void> {
   if (!(await requireAdmin(req, res))) return;
-  const orders = await listAllOrders();
+  const orders = (await listAllOrders()).filter((o) => o.status !== "pending");
   res.status(200).json({ success: true, data: { orders } });
 }
 

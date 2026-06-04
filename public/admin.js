@@ -1325,7 +1325,7 @@
     }
 
     const badges = [`<span class="ao-badge is-${status}">${escAttr(status)}</span>`];
-    if(o.uneditable) badges.push(`<span class="ao-badge is-locked">Locked</span>`);
+    if(o.uneditable && status !== 'refunded') badges.push(`<span class="ao-badge is-locked">Locked</span>`);
 
     const refundedNote = o.amount_refunded_cents > 0
       ? `<span class="ao-refunded">${money(o.amount_refunded_cents)} refunded</span>` : '';

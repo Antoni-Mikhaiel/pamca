@@ -144,7 +144,6 @@
           <button type="submit" class="auth-submit-btn">Find order</button>
           <div class="auth-message" id="purchase-id-message"></div>
         </form>
-        <div id="purchase-id-result" class="order-result" style="display:none;"></div>
       </div>
     </div>
   </div>
@@ -193,32 +192,17 @@
     </div>
   </div>
 
-  <!-- Order edit / refund modal (profile page + guest Purchase-ID lookup) -->
-  <div class="auth-modal" id="order-modal">
-    <div class="auth-overlay" data-close-order="1"></div>
-    <div class="auth-card order-modal-card">
-      <button class="auth-close" data-close-order="1" aria-label="Close">×</button>
-      <h2 class="auth-purchase-title">Edit order <span id="order-modal-pid"></span></h2>
-      <p class="auth-purchase-sub">Reduce or remove items, or add more. You'll see the difference — and pay or be refunded — before anything is final.</p>
-
-      <div id="order-modal-items" class="om-items"></div>
-
-      <div class="om-add">
-        <label for="order-add-product">Add a product</label>
-        <select id="order-add-product"></select>
-        <div id="order-add-options" class="om-add-options"></div>
-        <div class="om-add-row">
-          <input type="number" id="order-add-qty" min="1" value="1" aria-label="Quantity to add" />
-          <button type="button" class="om-add-btn" id="order-add-btn">Add to changes</button>
-        </div>
-      </div>
-
-      <div id="order-modal-summary" class="om-summary"></div>
-      <div class="auth-message" id="order-modal-message"></div>
-
-      <div class="om-actions">
-        <button type="button" class="auth-submit-btn" id="order-confirm-btn">Confirm changes</button>
-        <button type="button" class="om-refund-btn" id="order-refund-btn">Refund entire order</button>
+  <!-- Refund confirmation card (shared by the profile order list and the order page) -->
+  <div class="auth-modal" id="refund-modal">
+    <div class="auth-overlay" data-close-refund="1"></div>
+    <div class="auth-card refund-card">
+      <button class="auth-close" data-close-refund="1" aria-label="Close">×</button>
+      <h2 class="auth-purchase-title">Refund this order?</h2>
+      <p class="auth-purchase-sub" id="refund-modal-sub">This refunds the full amount back to your card and cancels the order. This can't be undone.</p>
+      <div class="auth-message" id="refund-modal-message"></div>
+      <div class="refund-modal-actions">
+        <button type="button" class="auth-submit-btn refund-confirm" id="refund-confirm-btn">Yes, refund my order</button>
+        <button type="button" class="refund-cancel" data-close-refund="1">Keep my order</button>
       </div>
     </div>
   </div>

@@ -1,12 +1,17 @@
 (() => {
 	const ajaxUrl = "/api/ajax";
 	const API_HEADERS = { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" };
-	// Remembers the nav button state across page loads in this tab so it doesn't
-	// flicker "Profile" → "Admin" while the async auth check runs.
+	// Remembers the nav button state across page loads (and tabs) so it doesn't
+	// flicker "Profile" → "Admin" while the async auth check runs. Uses localStorage
+	// so a freshly opened tab reflects the logged-in state immediately.
 	const AUTH_CACHE_KEY = "pamca_auth";
 
 	function getCachedAuthState() {
-		try { return JSON.parse(sessionStorage.getItem(AUTH_CACHE_KEY) || "null"); } catch (_) { return null; }
+		try {
+			return JSON.parse(
+				localStorage.getItem(AUTH_CACHE_KEY) || sessionStorage.getItem(AUTH_CACHE_KEY) || "null",
+			);
+		} catch (_) { return null; }
 	}
 
 	function applyNavAuthState(state) {
@@ -278,301 +283,92 @@
 		});
 	}
 
-	// ---- Order edit / refund -------------------------------------------------
-	// Drives the #order-modal for both signed-in owners (acts with the order id +
-	// auth token) and guests (acts with Purchase ID + phone). The net price change
-	// is computed authoritatively by the server's preview endpoint.
-	let orderModalState = null; // { order, ctx, existing[], additions[], previewTimer }
-	let productsCatalog = null;
-
-	async function loadProductsCatalog() {
-		if (productsCatalog) return productsCatalog;
-		try {
-			const res = await fetch("/api/products", { credentials: "same-origin" });
-			const json = await res.json().catch(() => ({}));
-			productsCatalog = Array.isArray(json && json.data) ? json.data : [];
-		} catch (_) {
-			productsCatalog = [];
-		}
-		return productsCatalog;
+	// ---- Live phone formatting -----------------------------------------------
+	// Formats a phone field as (XXX) XXX-XXXX while typing. Purely cosmetic — the
+	// server strips non-digits, so the stored value is unaffected. Exposed so pages
+	// with their own phone inputs (profile) can opt in.
+	function formatPhoneValue(raw) {
+		const d = String(raw || "").replace(/\D/g, "").slice(0, 10);
+		if (d.length === 0) return "";
+		if (d.length < 4) return "(" + d;
+		if (d.length < 7) return "(" + d.slice(0, 3) + ") " + d.slice(3);
+		return "(" + d.slice(0, 3) + ") " + d.slice(3, 6) + "-" + d.slice(6);
 	}
 
-	function omMoney(cents) { return formatMoney((Number(cents) || 0) / 100); }
-
-	function omSetMessage(text, kind) {
-		const box = document.getElementById("order-modal-message");
-		if (!box) return;
-		box.textContent = text || "";
-		box.className = "auth-message" + (text ? " " + (kind || "error") : "");
+	function attachPhoneFormatter(input) {
+		if (!input || input._phoneFormatted) return;
+		input._phoneFormatted = true;
+		const apply = () => { input.value = formatPhoneValue(input.value); };
+		apply(); // format any prefilled value
+		input.addEventListener("input", apply);
 	}
 
-	function closeOrderModal() {
-		const modal = document.getElementById("order-modal");
+	// ---- Refund confirmation card --------------------------------------------
+	// Shared by the profile order list and the order detail page. `opts`:
+	//   { creds, headers, purchaseId?, onDone? }
+	// creds/headers address the order (owner: {orderId}+Bearer; guest: {purchaseId,phone}).
+	let refundCtx = null;
+
+	function closeRefundModal() {
+		const modal = document.getElementById("refund-modal");
 		if (modal) modal.classList.remove("active");
-		orderModalState = null;
+		refundCtx = null;
 	}
 
-	// Credentials the order endpoints expect: owner sends orderId + auth header;
-	// guest sends purchaseId + phone.
-	function orderRequestCreds() {
-		const ctx = orderModalState.ctx;
-		if (ctx.purchaseId) return { creds: { purchaseId: ctx.purchaseId, phone: ctx.phone }, headers: {} };
-		return { creds: { orderId: ctx.orderId }, headers: getAuthHeader() || {} };
-	}
-
-	function buildEditPayload() {
-		const st = orderModalState;
-		const existing = st.existing
-			.filter((e) => e.qty !== e.originalQty)
-			.map((e) => ({ orderItemId: e.id, quantity: e.qty }));
-		const additions = st.additions.map((a) => ({ slug: a.slug, options: a.options, quantity: a.qty }));
-		return { existing, additions };
-	}
-
-	function omPopulateProductPicker() {
-		const sel = document.getElementById("order-add-product");
-		if (!sel) return;
-		sel.innerHTML = (productsCatalog || [])
-			.map((p) => `<option value="${escapeHtml(p.slug)}">${escapeHtml(p.name)}</option>`)
-			.join("");
-		omRenderOptionSelects();
-	}
-
-	function omRenderOptionSelects() {
-		const host = document.getElementById("order-add-options");
-		const sel = document.getElementById("order-add-product");
-		if (!host || !sel) return;
-		const product = (productsCatalog || []).find((p) => p.slug === sel.value);
-		const groups = (product && Array.isArray(product.option_groups)) ? product.option_groups : [];
-		host.innerHTML = groups
-			.filter((g) => g.options && g.options.length)
-			.map((g) => {
-				const opts = g.options.map((o) => `<option value="${escapeHtml(o.value)}">${escapeHtml(o.value)}</option>`).join("");
-				return `<label class="om-opt"><span>${escapeHtml(g.label || "Option")}</span><select data-group-label="${escapeHtml(g.label || "Option")}">${opts}</select></label>`;
-			})
-			.join("");
-	}
-
-	function omAddProduct() {
-		const sel = document.getElementById("order-add-product");
-		const qtyEl = document.getElementById("order-add-qty");
-		if (!sel || !orderModalState) return;
-		const product = (productsCatalog || []).find((p) => p.slug === sel.value);
-		if (!product) return;
-		const qty = Math.max(1, parseInt(qtyEl && qtyEl.value, 10) || 1);
-		const options = Array.from(document.querySelectorAll("#order-add-options select")).map((s) => ({
-			label: s.getAttribute("data-group-label"),
-			value: s.value,
-		}));
-		const variant = options.map((o) => o.value).filter(Boolean).join(" / ");
-		orderModalState.additions.push({ slug: product.slug, name: product.name, options, variant, qty });
-		if (qtyEl) qtyEl.value = "1";
-		omRenderItems();
-		omQueuePreview();
-	}
-
-	function omRenderItems() {
-		const host = document.getElementById("order-modal-items");
-		if (!host || !orderModalState) return;
-		const st = orderModalState;
-
-		const existingRows = st.existing.map((e, i) => {
-			const variant = e.variant ? `<span class="order-line-variant"> — ${escapeHtml(e.variant)}</span>` : "";
-			return `<div class="om-row" data-kind="existing" data-i="${i}">
-				<div class="om-row-name">${escapeHtml(e.name)}${variant}<span class="om-row-unit">${omMoney(e.unitCents)} each</span></div>
-				<div class="om-stepper">
-					<button type="button" class="om-step" data-step="-1" aria-label="Decrease">−</button>
-					<span class="om-qty">${e.qty}</span>
-					<button type="button" class="om-step" data-step="1" aria-label="Increase">+</button>
-				</div>
-			</div>`;
-		}).join("");
-
-		const addRows = st.additions.map((a, i) => {
-			const variant = a.variant ? `<span class="order-line-variant"> — ${escapeHtml(a.variant)}</span>` : "";
-			return `<div class="om-row om-row-add" data-kind="add" data-i="${i}">
-				<div class="om-row-name">+ ${escapeHtml(a.name)}${variant}<span class="om-row-unit">adding ${a.qty} · current price</span></div>
-				<button type="button" class="om-remove-add">Remove</button>
-			</div>`;
-		}).join("");
-
-		host.innerHTML = `<div class="om-section-label">Current items</div>${existingRows}` + (addRows ? `<div class="om-section-label">Adding</div>${addRows}` : "");
-	}
-
-	function omQueuePreview() {
-		const st = orderModalState;
-		if (!st) return;
-		if (st.previewTimer) clearTimeout(st.previewTimer);
-		st.previewTimer = setTimeout(omPreview, 250);
-	}
-
-	async function omPreview() {
-		if (!orderModalState) return;
-		const payload = buildEditPayload();
-		const summary = document.getElementById("order-modal-summary");
-		if (payload.existing.length === 0 && payload.additions.length === 0) {
-			if (summary) summary.textContent = "No changes yet.";
-			return;
+	function openRefundConfirm(opts) {
+		const modal = document.getElementById("refund-modal");
+		if (!modal || !opts) return;
+		refundCtx = opts;
+		const sub = document.getElementById("refund-modal-sub");
+		if (sub) {
+			sub.textContent = opts.purchaseId
+				? `This refunds order #${opts.purchaseId} in full back to your card and cancels it. This can't be undone.`
+				: "This refunds the full amount back to your card and cancels the order. This can't be undone.";
 		}
-		const { creds, headers } = orderRequestCreds();
-		try {
-			const res = await fetch("/api/orders/edit/preview", {
-				method: "POST",
-				credentials: "same-origin",
-				headers: Object.assign({ "Content-Type": "application/json" }, headers),
-				body: JSON.stringify(Object.assign({}, creds, payload)),
-			});
-			const json = await res.json().catch(() => ({}));
-			if (!res.ok || !json.success || !json.data) {
-				if (summary) { summary.textContent = (json && json.message) || "Could not price these changes."; summary.className = "om-summary is-error"; }
-				return;
-			}
-			const d = json.data;
-			let text;
-			if (d.deltaCents > 0) text = `New total ${omMoney(d.newTotalCents)} · you'll pay ${omMoney(d.deltaCents)} more at checkout.`;
-			else if (d.deltaCents < 0) text = `New total ${omMoney(d.newTotalCents)} · you'll be refunded ${omMoney(-d.deltaCents)}.`;
-			else text = `New total ${omMoney(d.newTotalCents)} · no change to pay.`;
-			if (summary) { summary.textContent = text; summary.className = "om-summary"; }
-		} catch (_) {
-			if (summary) { summary.textContent = "Could not price these changes."; summary.className = "om-summary is-error"; }
-		}
+		const msg = document.getElementById("refund-modal-message");
+		if (msg) { msg.textContent = ""; msg.className = "auth-message"; }
+		const btn = document.getElementById("refund-confirm-btn");
+		if (btn) { btn.disabled = false; btn.textContent = "Yes, refund my order"; }
+		modal.classList.add("active");
 	}
 
-	async function omConfirm() {
-		if (!orderModalState) return;
-		const payload = buildEditPayload();
-		if (payload.existing.length === 0 && payload.additions.length === 0) {
-			omSetMessage("Make a change first.");
-			return;
-		}
-		const { creds, headers } = orderRequestCreds();
-		const onChanged = orderModalState.ctx.onChanged;
-		const btn = document.getElementById("order-confirm-btn");
-		const original = btn ? btn.textContent : "";
-		if (btn) { btn.disabled = true; btn.textContent = "Working…"; }
-		omSetMessage("");
-		try {
-			const res = await fetch("/api/orders/edit/commit", {
-				method: "POST",
-				credentials: "same-origin",
-				headers: Object.assign({ "Content-Type": "application/json" }, headers),
-				body: JSON.stringify(Object.assign({}, creds, payload)),
-			});
-			const json = await res.json().catch(() => ({}));
-			if (res.ok && json.success && json.data) {
-				if (json.data.url) { window.location.href = json.data.url; return; }
-				const refunded = Number(json.data.refundedCents) || 0;
-				omSetMessage(refunded > 0 ? `Done — ${omMoney(refunded)} refunded to your card.` : "Your order has been updated.", "success");
-				setTimeout(() => { closeOrderModal(); if (typeof onChanged === "function") onChanged(); }, 1100);
-				return;
-			}
-			omSetMessage((json && json.message) || "Could not apply changes.");
-		} catch (_) {
-			omSetMessage("Could not apply changes. Please try again.");
-		} finally {
-			if (btn) { btn.disabled = false; btn.textContent = original; }
-		}
-	}
-
-	async function omRefund() {
-		if (!orderModalState) return;
-		if (!window.confirm("Refund this entire order back to your card? This cannot be undone.")) return;
-		const { creds, headers } = orderRequestCreds();
-		const onChanged = orderModalState.ctx.onChanged;
-		const btn = document.getElementById("order-refund-btn");
-		const original = btn ? btn.textContent : "";
+	async function performRefund() {
+		if (!refundCtx) return;
+		const btn = document.getElementById("refund-confirm-btn");
+		const msg = document.getElementById("refund-modal-message");
+		const setMsg = (t, kind) => { if (msg) { msg.textContent = t || ""; msg.className = "auth-message" + (t ? " " + (kind || "error") : ""); } };
 		if (btn) { btn.disabled = true; btn.textContent = "Refunding…"; }
-		omSetMessage("");
+		setMsg("");
 		try {
 			const res = await fetch("/api/orders/refund", {
 				method: "POST",
 				credentials: "same-origin",
-				headers: Object.assign({ "Content-Type": "application/json" }, headers),
-				body: JSON.stringify(creds),
+				headers: Object.assign({ "Content-Type": "application/json" }, refundCtx.headers || {}),
+				body: JSON.stringify(refundCtx.creds || {}),
 			});
 			const json = await res.json().catch(() => ({}));
 			if (res.ok && json.success && json.data) {
-				omSetMessage(`Refunded ${omMoney(json.data.refundedCents)} to your card.`, "success");
-				setTimeout(() => { closeOrderModal(); if (typeof onChanged === "function") onChanged(); }, 1300);
+				const cents = Number(json.data.refundedCents) || 0;
+				setMsg(`Refunded ${formatMoney(cents / 100)} to your card.`, "success");
+				const onDone = refundCtx.onDone;
+				setTimeout(() => { closeRefundModal(); if (typeof onDone === "function") onDone(); }, 1300);
 				return;
 			}
-			omSetMessage((json && json.message) || "Could not refund this order.");
+			setMsg((json && json.message) || "Could not refund this order.");
+			if (btn) { btn.disabled = false; btn.textContent = "Yes, refund my order"; }
 		} catch (_) {
-			omSetMessage("Could not refund this order. Please try again.");
-		} finally {
-			if (btn) { btn.disabled = false; btn.textContent = original; }
+			setMsg("Could not refund this order. Please try again.");
+			if (btn) { btn.disabled = false; btn.textContent = "Yes, refund my order"; }
 		}
 	}
 
-	// Opens the edit/refund modal. ctx is either { orderId, onChanged } (owner) or
-	// { purchaseId, phone, onChanged } (guest).
-	async function openOrderActions(order, ctx) {
-		const modal = document.getElementById("order-modal");
-		if (!modal || !order) return;
-		orderModalState = {
-			order,
-			ctx: ctx || {},
-			existing: (order.items || [])
-				.filter((it) => it.id)
-				.map((it) => ({
-					id: it.id,
-					name: it.product_name,
-					variant: it.variation_label || "",
-					unitCents: it.unit_price_cents,
-					originalQty: it.quantity,
-					qty: it.quantity,
-				})),
-			additions: [],
-			previewTimer: null,
-		};
-		await loadProductsCatalog();
-		omPopulateProductPicker();
-		const pidEl = document.getElementById("order-modal-pid");
-		if (pidEl) pidEl.textContent = order.purchase_id ? "#" + order.purchase_id : "";
-		const refundBtn = document.getElementById("order-refund-btn");
-		if (refundBtn) refundBtn.style.display = order.refundable ? "" : "none";
-		omSetMessage("");
-		const summary = document.getElementById("order-modal-summary");
-		if (summary) { summary.textContent = "No changes yet."; summary.className = "om-summary"; }
-		omRenderItems();
-		modal.classList.add("active");
-	}
-
-	function wireOrderModal() {
-		document.querySelectorAll("[data-close-order='1']").forEach((el) => el.addEventListener("click", closeOrderModal));
-		const picker = document.getElementById("order-add-product");
-		if (picker) picker.addEventListener("change", omRenderOptionSelects);
-		const addBtn = document.getElementById("order-add-btn");
-		if (addBtn) addBtn.addEventListener("click", omAddProduct);
-		const confirmBtn = document.getElementById("order-confirm-btn");
-		if (confirmBtn) confirmBtn.addEventListener("click", omConfirm);
-		const refundBtn = document.getElementById("order-refund-btn");
-		if (refundBtn) refundBtn.addEventListener("click", omRefund);
-
-		const items = document.getElementById("order-modal-items");
-		if (items) items.addEventListener("click", (e) => {
-			if (!orderModalState) return;
-			const step = e.target.closest(".om-step");
-			if (step) {
-				const row = step.closest(".om-row[data-kind='existing']");
-				const idx = Number(row && row.getAttribute("data-i"));
-				const entry = orderModalState.existing[idx];
-				if (!entry) return;
-				const delta = Number(step.getAttribute("data-step")) || 0;
-				entry.qty = Math.max(0, Math.min(entry.originalQty, entry.qty + delta));
-				omRenderItems();
-				omQueuePreview();
-				return;
-			}
-			const removeAdd = e.target.closest(".om-remove-add");
-			if (removeAdd) {
-				const row = removeAdd.closest(".om-row[data-kind='add']");
-				const idx = Number(row && row.getAttribute("data-i"));
-				if (idx >= 0) orderModalState.additions.splice(idx, 1);
-				omRenderItems();
-				omQueuePreview();
-			}
-		});
+	function wireRefundModal() {
+		document.querySelectorAll("[data-close-refund='1']").forEach((el) => el.addEventListener("click", closeRefundModal));
+		const btn = document.getElementById("refund-confirm-btn");
+		if (btn) btn.addEventListener("click", performRefund);
+		// Format the +1 phone fields that live in the injected header (checkout +
+		// guest lookup). Page-local fields opt in via window.pamcaFormatPhone.
+		["checkout-phone", "purchase-phone-input"].forEach((id) => attachPhoneFormatter(document.getElementById(id)));
 	}
 
 	// Renders an order summary card (shared by the profile page and guest lookup).
@@ -1037,12 +833,10 @@
 			const result = document.getElementById("purchase-id-result");
 			if (result) { result.style.display = "none"; result.innerHTML = ""; }
 		});
-		// Looks up an order by Purchase ID + phone, renders it, and remembers the
-		// credentials so the edit/refund actions (and post-action refresh) can reuse them.
-		let lastLookup = null;
+		// Verifies the Purchase ID + phone, then hands off to the dedicated order page
+		// (the creds are stashed in sessionStorage so they never travel in the URL).
 		async function runPurchaseLookup(purchaseId, phone) {
 			const message = document.getElementById("purchase-id-message");
-			const result = document.getElementById("purchase-id-result");
 			const setMsg = (text, kind) => {
 				if (message) { message.textContent = text || ""; message.className = "auth-message" + (text ? " " + (kind || "error") : ""); }
 			};
@@ -1056,12 +850,8 @@
 				const json = await res.json().catch(() => ({}));
 				if (res.ok && json?.success && json.data?.order) {
 					setMsg("");
-					lastLookup = { purchaseId, phone };
-					if (result) {
-						result.innerHTML = renderOrderCard(json.data.order);
-						result.dataset.order = JSON.stringify(json.data.order);
-						result.style.display = "block";
-					}
+					try { sessionStorage.setItem("pamca_order_lookup", JSON.stringify({ purchaseId, phone })); } catch (_) {}
+					window.location.href = "/order.html";
 					return;
 				}
 				setMsg((json && json.message) || "No order matches that Purchase ID and phone number.");
@@ -1074,29 +864,12 @@
 			e.preventDefault();
 			const purchaseId = (document.getElementById("purchase-id-input")?.value || "").trim();
 			const phone = (document.getElementById("purchase-phone-input")?.value || "").trim();
-			const result = document.getElementById("purchase-id-result");
-			if (result) { result.style.display = "none"; result.innerHTML = ""; }
 			if (!/^\d{6}$/.test(purchaseId) || phone.replace(/\D/g, "").length !== 10) {
 				const message = document.getElementById("purchase-id-message");
 				if (message) { message.textContent = "Enter your 6-digit Purchase ID and the phone number on the order."; message.className = "auth-message error"; }
 				return;
 			}
 			runPurchaseLookup(purchaseId, phone);
-		});
-
-		// Edit / refund actions on a guest-looked-up order act with the Purchase ID + phone.
-		document.getElementById("purchase-id-result")?.addEventListener("click", (e) => {
-			const btn = e.target.closest(".order-edit-btn, .order-refund-btn");
-			if (!btn || !lastLookup || typeof window.pamcaOpenOrderActions !== "function") return;
-			const result = document.getElementById("purchase-id-result");
-			let order = null;
-			try { order = JSON.parse(result.dataset.order || "null"); } catch (_) {}
-			if (!order) return;
-			window.pamcaOpenOrderActions(order, {
-				purchaseId: lastLookup.purchaseId,
-				phone: lastLookup.phone,
-				onChanged: () => runPurchaseLookup(lastLookup.purchaseId, lastLookup.phone),
-			});
 		});
 
 		const togglePasswordVisibility = (toggle) => {
@@ -1133,7 +906,7 @@
 					message.className = "auth-message error";
 				} else {
 					const goAdmin = await isAdminUser();
-					try { sessionStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({ loggedIn: true, isAdmin: goAdmin })); } catch (_) {}
+					try { localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({ loggedIn: true, isAdmin: goAdmin })); } catch (_) {}
 					message.textContent = goAdmin ? "Welcome back, admin — redirecting…" : "Login successful!";
 					message.className = "auth-message success";
 					setTimeout(() => {
@@ -1255,9 +1028,10 @@
 			const admin = await isAdminUser();
 			const state = { loggedIn: true, isAdmin: admin };
 			applyNavAuthState(state);
-			try { sessionStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(state)); } catch (_) {}
+			try { localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(state)); } catch (_) {}
 		} else if (navLoginBtn) {
 			applyNavAuthState(null);
+			try { localStorage.removeItem(AUTH_CACHE_KEY); } catch (_) {}
 			try { sessionStorage.removeItem(AUTH_CACHE_KEY); } catch (_) {}
 		}
 	}
@@ -1285,7 +1059,7 @@
 		initNavbar();
 		wireCartInteractions();
 		wireCheckoutModal();
-		wireOrderModal();
+		wireRefundModal();
 		maybeShowOrderStatus();
 		await refreshCart();
 		wireContactForm();
@@ -1295,10 +1069,11 @@
 		window.pamcaAddToCart = addToCart;
 		window.pamcaOpenCart = openCart;
 		window.pamcaRefreshCart = refreshCart;
-		// Shared helpers reused by the profile page (profile.js).
+		// Shared helpers reused by the profile and order pages.
 		window.pamcaRenderOrderCard = renderOrderCard;
 		window.pamcaGetAuthHeader = getAuthHeader;
-		window.pamcaOpenOrderActions = openOrderActions;
+		window.pamcaConfirmRefund = openRefundConfirm;
+		window.pamcaFormatPhone = attachPhoneFormatter;
 
 		await Promise.allSettled([productsReady, detailsReady]);
 	}

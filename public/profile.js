@@ -1,24 +1,25 @@
-// Profile page: lets a signed-in shopper edit their saved delivery details and
-// review their orders. Auth uses the same sessionStorage-backed client as the rest
-// of the site (auth.js); order rendering reuses the helper exposed by shared-scripts.js.
+// Profile page: edit saved delivery details and review orders, split across a
+// "Personal Details" and an "Orders" tab. Auth uses the shared localStorage-backed
+// client (auth.js); order rendering reuses helpers from shared-scripts.js.
 (() => {
+  const AUTH_CACHE_KEY = "pamca_auth";
+
   function authHeader() {
     try {
       const s = window.getSession && window.getSession();
       return s && s.access_token ? { Authorization: "Bearer " + s.access_token } : null;
-    } catch (_) {
-      return null;
-    }
+    } catch (_) { return null; }
   }
 
-  function setVal(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.value = value == null ? "" : value;
+  function cachedLoggedIn() {
+    try {
+      const s = JSON.parse(localStorage.getItem(AUTH_CACHE_KEY) || "null");
+      return !!(s && s.loggedIn);
+    } catch (_) { return false; }
   }
-  function getVal(id) {
-    const el = document.getElementById(id);
-    return el ? el.value.trim() : "";
-  }
+
+  function setVal(id, value) { const el = document.getElementById(id); if (el) el.value = value == null ? "" : value; }
+  function getVal(id) { const el = document.getElementById(id); return el ? el.value.trim() : ""; }
 
   function setMessage(text, kind) {
     const box = document.getElementById("profile-message");
@@ -27,26 +28,41 @@
     box.className = "auth-message" + (text ? " " + (kind || "error") : "");
   }
 
+  function showSkeleton() {
+    const sk = document.getElementById("profile-skeleton");
+    if (sk) sk.style.display = "block";
+    const gate = document.getElementById("profile-gate");
+    const content = document.getElementById("profile-content");
+    if (gate) gate.style.display = "none";
+    if (content) content.style.display = "none";
+  }
+
   function showGate() {
+    const sk = document.getElementById("profile-skeleton");
+    if (sk) sk.style.display = "none";
     const gate = document.getElementById("profile-gate");
     const content = document.getElementById("profile-content");
     if (gate) gate.style.display = "block";
     if (content) content.style.display = "none";
-    document.getElementById("profile-signin-btn")?.addEventListener("click", () => {
-      const modal = document.getElementById("auth-modal");
-      if (modal) modal.classList.add("active");
-    });
+    const btn = document.getElementById("profile-signin-btn");
+    if (btn && !btn._wired) {
+      btn._wired = true;
+      btn.addEventListener("click", () => {
+        const modal = document.getElementById("auth-modal");
+        if (modal) modal.classList.add("active");
+      });
+    }
   }
 
   function showContent() {
+    const sk = document.getElementById("profile-skeleton");
+    if (sk) sk.style.display = "none";
     const gate = document.getElementById("profile-gate");
     const content = document.getElementById("profile-content");
     if (gate) gate.style.display = "none";
     if (content) content.style.display = "block";
   }
 
-  // The order-card renderer is published by shared-scripts.js at the end of its
-  // async bootstrap; wait briefly for it before rendering the orders list.
   function whenRendererReady() {
     return new Promise((resolve) => {
       if (typeof window.pamcaRenderOrderCard === "function") return resolve(window.pamcaRenderOrderCard);
@@ -66,6 +82,7 @@
     setVal("profile-email", p.email);
     setVal("profile-address", p.address);
     setVal("profile-phone", (p.phone || "").replace(/^\+1/, ""));
+    if (typeof window.pamcaFormatPhone === "function") window.pamcaFormatPhone(document.getElementById("profile-phone"));
     const note = document.getElementById("login-email-note");
     if (note && p.loginEmail) note.textContent = "Signed in as " + p.loginEmail;
   }
@@ -86,17 +103,37 @@
       : '<p class="profile-orders-empty">Unable to display orders right now.</p>';
   }
 
-  // Edit/Refund buttons on the orders list act as the signed-in owner (orderId + token).
+  // Edit → open the dedicated order page; Refund → shared confirmation card.
   function wireOrderActions() {
     const host = document.getElementById("profile-orders");
     if (!host) return;
     host.addEventListener("click", (e) => {
-      const btn = e.target.closest(".order-edit-btn, .order-refund-btn");
-      if (!btn || typeof window.pamcaOpenOrderActions !== "function") return;
-      const id = btn.getAttribute("data-order-id");
-      const order = currentOrders.find((o) => o.id === id);
-      if (!order) return;
-      window.pamcaOpenOrderActions(order, { orderId: id, onChanged: () => loadProfile() });
+      const editBtn = e.target.closest(".order-edit-btn");
+      if (editBtn) {
+        window.location.href = "/order.html?id=" + encodeURIComponent(editBtn.getAttribute("data-order-id"));
+        return;
+      }
+      const refundBtn = e.target.closest(".order-refund-btn");
+      if (refundBtn && typeof window.pamcaConfirmRefund === "function") {
+        const id = refundBtn.getAttribute("data-order-id");
+        const order = currentOrders.find((o) => o.id === id);
+        window.pamcaConfirmRefund({
+          creds: { orderId: id },
+          headers: authHeader() || {},
+          purchaseId: order && order.purchase_id,
+          onDone: () => loadProfile(),
+        });
+      }
+    });
+  }
+
+  function wireTabs() {
+    document.querySelectorAll(".profile-tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const target = tab.getAttribute("data-panel");
+        document.querySelectorAll(".profile-tab").forEach((t) => t.classList.toggle("is-active", t === tab));
+        document.querySelectorAll(".profile-panel").forEach((p) => p.classList.toggle("is-active", p.id === target));
+      });
     });
   }
 
@@ -109,10 +146,7 @@
       const res = await fetch("/api/profile", { headers: auth });
       if (res.status === 401) { showGate(); return; }
       json = await res.json().catch(() => null);
-    } catch (_) {
-      showGate();
-      return;
-    }
+    } catch (_) { showGate(); return; }
     if (!json || !json.success || !json.data) { showGate(); return; }
 
     showContent();
@@ -166,15 +200,21 @@
   }
 
   async function init() {
-    // Wait for auth.js to publish the session helpers.
+    // Show a loading state immediately so the page is never a bare heading. When no
+    // session was ever cached, fall straight to the gate to avoid a needless spinner.
+    if (cachedLoggedIn()) showSkeleton();
+    else showGate();
+
     if (!window.getSession) {
       await new Promise((resolve) => {
         if (window.authReady) resolve();
         else window.addEventListener("authReady", resolve, { once: true });
       });
     }
-    document.getElementById("profile-form")?.addEventListener("submit", saveProfile);
+    wireTabs();
     wireOrderActions();
+    document.getElementById("profile-form")?.addEventListener("submit", saveProfile);
+    if (typeof window.pamcaFormatPhone === "function") window.pamcaFormatPhone(document.getElementById("profile-phone"));
     await loadProfile();
   }
 

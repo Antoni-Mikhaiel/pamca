@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/shared-styles.css">
+  <title>Your Order — PAMCA</title>
+  <style>
+    /* Match the global reset/body setup every content page uses so the injected
+       navbar and footer render identically here. */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; }
+
+    .order-page { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+    .order-back { display: inline-block; color: #008080; font-weight: 600; text-decoration: none; margin-bottom: 18px; }
+    .order-back:hover { color: #006666; }
+
+    .order-loading, .order-error { padding: 40px; text-align: center; color: #777; }
+    .order-error { color: #721c24; }
+
+    .order-headrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+    .order-title { font-size: 1.6rem; color: #1f2d3d; }
+    .order-sub { color: #888; font-size: 0.9rem; margin-bottom: 22px; }
+
+    .op-card { background: #fff; border: 1px solid #e6e6e6; border-radius: 16px; padding: 24px; margin-bottom: 22px; box-shadow: 0 8px 24px rgba(0,0,0,0.04); }
+    .op-card h2 { font-size: 1.15rem; color: #333; margin-bottom: 16px; }
+
+    /* Receipt */
+    .receipt-line { display: flex; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+    .receipt-line:last-of-type { border-bottom: none; }
+    .receipt-name { color: #333; }
+    .receipt-qty { color: #999; font-size: 0.85rem; display: block; }
+    .receipt-variant { color: #999; font-size: 0.85rem; }
+    .receipt-amount { font-weight: 600; white-space: nowrap; }
+    .receipt-totals { margin-top: 14px; padding-top: 14px; border-top: 2px solid #eee; }
+    .receipt-total-row { display: flex; justify-content: space-between; padding: 4px 0; }
+    .receipt-total-row.grand { font-size: 1.15rem; font-weight: 700; color: #1f2d3d; }
+    .receipt-total-row.refund { color: #b02a37; font-weight: 600; }
+
+    .status-pill { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 12px; border-radius: 999px; background: #eee; color: #555; }
+    .status-pill.paid { background: #d4edda; color: #155724; }
+    .status-pill.pending { background: #fff3cd; color: #856404; }
+    .status-pill.refunded, .status-pill.failed, .status-pill.canceled { background: #f8d7da; color: #721c24; }
+
+    /* Add-products editor */
+    .add-grid label { display: block; font-weight: 600; font-size: 0.85rem; color: #333; margin: 12px 0 6px; }
+    .add-grid select, .add-grid input { width: 100%; padding: 11px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; }
+    .add-options { display: flex; flex-direction: column; gap: 8px; }
+    .add-qtyrow { display: flex; gap: 10px; align-items: flex-end; margin-top: 12px; }
+    .add-qtyrow .qty-wrap { width: 130px; flex-shrink: 0; }
+    .add-stockhint { color: #888; font-size: 0.78rem; margin-top: 4px; }
+    .add-btn { flex: 1; background: #008080; color: #fff; border: none; border-radius: 8px; padding: 12px; font-weight: 700; cursor: pointer; }
+    .add-btn:hover { background: #006666; }
+    .add-btn[disabled] { opacity: 0.5; cursor: default; }
+
+    .pending-adds { list-style: none; margin: 16px 0 0; padding: 0; }
+    .pending-adds li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; color: #0a615b; font-size: 0.92rem; }
+    .pending-adds .pa-remove { border: none; background: none; color: #c0392b; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+
+    .edit-summary { margin-top: 18px; background: #f4f7f7; border-radius: 10px; padding: 14px; text-align: center; font-weight: 600; color: #333; }
+    .edit-summary.is-error { background: #f8d7da; color: #721c24; }
+    .edit-confirm-btn { width: 100%; margin-top: 14px; background: linear-gradient(135deg, #008080, #20b2aa); color: #fff; border: none; border-radius: 8px; padding: 13px; font-weight: 700; font-size: 1rem; cursor: pointer; }
+    .edit-confirm-btn[disabled] { opacity: 0.6; cursor: default; }
+
+    .locked-note { background: #fff8e6; border: 1px solid #f3e2b3; color: #7a5c00; border-radius: 10px; padding: 14px 16px; font-size: 0.92rem; }
+
+    .refund-row { margin-top: 4px; }
+    .order-refund-btn { width: 100%; border: 1px solid #c0392b; background: #fff; color: #c0392b; border-radius: 8px; padding: 12px; font-weight: 700; cursor: pointer; }
+    .order-refund-btn:hover { background: #c0392b; color: #fff; }
+
+    .order-msg { margin-top: 14px; padding: 11px; border-radius: 8px; font-size: 0.92rem; display: none; text-align: center; }
+    .order-msg.error { display: block; background: #f8d7da; color: #721c24; }
+    .order-msg.success { display: block; background: #d4edda; color: #155724; }
+  </style>
+</head>
+<body>
+<div id="header-placeholder"></div>
+
+<main class="order-page">
+  <a href="#" class="order-back" id="order-back">← Back</a>
+
+  <div class="order-loading" id="order-loading">Loading your order…</div>
+  <div class="order-error" id="order-error" style="display:none;"></div>
+
+  <div id="order-body" style="display:none;">
+    <div class="order-headrow">
+      <h1 class="order-title">Order <span id="order-pid"></span></h1>
+      <span class="status-pill" id="order-status"></span>
+    </div>
+    <div class="order-sub" id="order-date"></div>
+
+    <!-- Receipt -->
+    <section class="op-card">
+      <h2>Receipt</h2>
+      <div id="receipt-lines"></div>
+      <div class="receipt-totals" id="receipt-totals"></div>
+    </section>
+
+    <!-- Add items (only when editable) -->
+    <section class="op-card" id="edit-card" style="display:none;">
+      <h2>Add to this order</h2>
+      <div class="add-grid">
+        <label for="add-product">Product</label>
+        <select id="add-product"></select>
+        <div class="add-options" id="add-options"></div>
+        <div class="add-qtyrow">
+          <div class="qty-wrap">
+            <label for="add-qty">Quantity</label>
+            <input type="number" id="add-qty" min="1" value="1" />
+            <div class="add-stockhint" id="add-stockhint"></div>
+          </div>
+          <button type="button" class="add-btn" id="add-btn">Add to changes</button>
+        </div>
+      </div>
+      <ul class="pending-adds" id="pending-adds"></ul>
+      <div class="edit-summary" id="edit-summary" style="display:none;"></div>
+      <button type="button" class="edit-confirm-btn" id="edit-confirm" style="display:none;">Confirm &amp; pay the difference</button>
+    </section>
+
+    <!-- Locked notice (editing closed but refund still available) -->
+    <section class="op-card" id="locked-card" style="display:none;">
+      <div class="locked-note" id="locked-note"></div>
+    </section>
+
+    <!-- Refund -->
+    <section class="op-card refund-row" id="refund-card" style="display:none;">
+      <h2>Need to cancel?</h2>
+      <button type="button" class="order-refund-btn" id="order-refund">Refund entire order</button>
+    </section>
+
+    <div class="order-msg" id="order-msg"></div>
+  </div>
+</main>
+
+<div id="footer-placeholder"></div>
+
+<script src="/auth.js"></script>
+<script src="/shared-scripts.js"></script>
+<script src="/order.js"></script>
+</body>
+</html>

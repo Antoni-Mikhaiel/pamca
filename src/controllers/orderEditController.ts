@@ -25,6 +25,22 @@ async function resolveAccessibleOrder(req: ApiRequest, body: Record<string, unkn
   return null;
 }
 
+/**
+ * POST /api/orders/get — returns a single order in display shape for the order
+ * detail page. Authorized as the signed-in owner (Bearer + orderId) or a guest
+ * (purchaseId + phone), the same rule used for edits/refunds.
+ */
+export async function handleGetOrder(req: ApiRequest, res: ApiResponse): Promise<void> {
+  const body = readJsonBody<Record<string, unknown>>(req);
+  const order = await resolveAccessibleOrder(req, body);
+  if (!order) {
+    res.status(403).json({ success: false, message: "You don't have access to this order." });
+    return;
+  }
+  const record = await getOrderRecordById(order.id);
+  res.status(200).json({ success: true, data: { order: record } });
+}
+
 /** POST /api/orders/edit/preview — money breakdown + diff for a proposed edit. */
 export async function handleEditPreview(req: ApiRequest, res: ApiResponse): Promise<void> {
   const body = readJsonBody<Record<string, unknown>>(req);

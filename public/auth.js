@@ -4,17 +4,28 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 // Wait a bit then add functions to window to ensure they're available
 setTimeout(() => {
-  // Store session in sessionStorage
+  // Store the session in localStorage so it survives a full-page redirect (e.g.
+  // returning from Square checkout) and is shared across tabs. Migrate any session
+  // left in the old sessionStorage location on first load.
   window.setSession = function(session) {
     if (session) {
-      sessionStorage.setItem('supabase_session', JSON.stringify(session));
+      localStorage.setItem('supabase_session', JSON.stringify(session));
     } else {
-      sessionStorage.removeItem('supabase_session');
+      localStorage.removeItem('supabase_session');
     }
+    try { sessionStorage.removeItem('supabase_session'); } catch (_) {}
   };
 
   window.getSession = function() {
-    const session = sessionStorage.getItem('supabase_session');
+    let session = localStorage.getItem('supabase_session');
+    if (!session) {
+      // One-time migration from the previous per-tab storage.
+      session = sessionStorage.getItem('supabase_session');
+      if (session) {
+        localStorage.setItem('supabase_session', session);
+        try { sessionStorage.removeItem('supabase_session'); } catch (_) {}
+      }
+    }
     return session ? JSON.parse(session) : null;
   };
 

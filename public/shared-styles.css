@@ -1254,8 +1254,11 @@ section:nth-of-type(4) { animation-delay: 0.21s; }
 }
 .order-status-paid { background: #d4edda; color: #155724; }
 .order-status-pending { background: #fff3cd; color: #856404; }
+.order-status-refunded,
 .order-status-failed,
 .order-status-canceled { background: #f8d7da; color: #721c24; }
+.order-status-completed { background: #d6f0ec; color: #0a615b; }
+.order-card-pills { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 
 .order-meta {
     color: #777;

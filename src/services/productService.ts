@@ -1,9 +1,10 @@
 import { supabase } from "../lib/supabase.js";
 import { AdminProductInput, Product, ProductOptionGroup, ProductVariation } from "../models/types.js";
+import { asVariants, buildCombinationKeys, totalVariantStock } from "../lib/variants.js";
 
 const PRODUCT_COLUMNS =
   "id, slug, name, description, image_url, price_regular, price_sale, is_on_sale, redirect_path, " +
-  "status, images, sale_percent, sale_start, sale_end, stock, key_features, option_groups";
+  "status, images, sale_percent, sale_start, sale_end, stock, key_features, option_groups, variants";
 
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v) => typeof v === "string") : [];
@@ -99,6 +100,7 @@ function mapRow(row: Record<string, unknown>): Product {
     stock: Number(row.stock ?? 0),
     key_features: asStringArray(row.key_features),
     option_groups: asOptionGroups(row.option_groups),
+    variants: asVariants(row.variants),
   };
 }
 
@@ -156,6 +158,7 @@ function toAdminShape(p: Product): AdminProductInput & { id: number } {
     description: p.description,
     keyFeatures: p.key_features,
     optionGroups: p.option_groups,
+    variants: p.variants,
   };
 }
 
@@ -173,20 +176,26 @@ function buildRow(input: AdminProductInput) {
   const images = asStringArray(input.images);
   const slug = input.slug || "";
   const groups = asOptionGroups(input.optionGroups);
+  const baseStock = Math.max(0, Math.round(Number(input.stock) || 0));
 
-  // The stored top-level columns describe the product's default representation
+  // The stored top-level price/sale describe the product's default representation
   // (Mode 1: the base fields; Mode 2: the first option of the price-affecting
   // dropdown), keeping the store listing and cart reads correct in both modes.
   const resolved = resolveDefaultPricing(
-    {
-      price: Number(input.price) || 0,
-      salePercent: clampSalePercent(input.salePercent),
-      stock: Math.max(0, Math.round(Number(input.stock) || 0)),
-    },
+    { price: Number(input.price) || 0, salePercent: clampSalePercent(input.salePercent), stock: baseStock },
     groups,
   );
   const price = resolved.price;
   const pct = clampSalePercent(resolved.salePercent);
+
+  // Inventory: when the product has dropdowns, stock is tracked per combination.
+  // Keep only entries for combinations that still exist, and store the sum in the
+  // top-level `stock` column so the public listing/"in stock" badge stays correct.
+  const validKeys = new Set(buildCombinationKeys(groups));
+  const variants = validKeys.size
+    ? asVariants(input.variants).filter((v) => validKeys.has(v.key))
+    : [];
+  const stock = validKeys.size ? totalVariantStock(variants) : baseStock;
 
   return {
     name: input.name,
@@ -201,7 +210,8 @@ function buildRow(input: AdminProductInput) {
     sale_end: input.saleEnd || null,
     price_sale: pct > 0 ? Number((price * (1 - pct / 100)).toFixed(2)) : null,
     is_on_sale: pct > 0,
-    stock: resolved.stock,
+    stock,
+    variants,
     key_features: asStringArray(input.keyFeatures),
     option_groups: groups,
     redirect_path: `/${slug}`,

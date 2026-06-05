@@ -4,8 +4,17 @@ export interface ProductOption {
   price: number | null;
   /** Per-option sale discount (0–100, two decimals); null = inherit the product-level sale. */
   salePercent: number | null;
-  /** Per-option stock; null = inherit the product-level stock. Only used when the group affects pricing. */
+  /**
+   * @deprecated Legacy per-option stock. Stock is now tracked per *combination* in
+   * `Product.variants`; kept only so pre-migration rows still resolve a stock value.
+   */
   stock: number | null;
+}
+
+/** Stock for one option combination, keyed by the option values joined " / " in dropdown order. */
+export interface ProductVariantStock {
+  key: string;
+  stock: number;
 }
 
 export interface ProductOptionGroup {
@@ -40,6 +49,8 @@ export interface Product {
   /** Bullet list shown on the product page under "Specifications". */
   key_features: string[];
   option_groups: ProductOptionGroup[];
+  /** Per-combination inventory (empty when the product has no dropdowns → use `stock`). */
+  variants: ProductVariantStock[];
 }
 
 /** Shape the admin client sends/receives for a product. */
@@ -57,6 +68,8 @@ export interface AdminProductInput {
   description: string;
   keyFeatures: string[];
   optionGroups: ProductOptionGroup[];
+  /** Per-combination inventory (see Product.variants). */
+  variants: ProductVariantStock[];
 }
 
 export interface ProductVariation {
@@ -122,6 +135,8 @@ export interface OrderRecord {
   created_at: string;
   /** Admin early-lock; blocks edits (never refunds). */
   uneditable: boolean;
+  /** Admin fulfillment marker (ISO timestamp) surfaced to the customer; null = not completed. */
+  completed_at: string | null;
   amount_refunded_cents: number;
   /** Computed: customer may still edit (paid, <24h, not locked, not refunded). */
   editable: boolean;

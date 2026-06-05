@@ -1192,11 +1192,11 @@
     }
     .pm-toggle input { width: 16px; height: 16px; accent-color: var(--signal); cursor: pointer; }
 
-    /* 5-column option grid: label · price · sale% · stock · remove */
+    /* 5-column option grid: label · price · sale% · after-sale · remove */
     .pm-opt-list-head,
     .pm-opt-row {
       display: grid;
-      grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 0.7fr) minmax(0, 0.7fr) auto;
+      grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.85fr) minmax(0, 0.65fr) minmax(0, 0.95fr) auto;
       gap: 9px; align-items: center;
     }
     .pm-opt-list-head {
@@ -1216,12 +1216,27 @@
       color: var(--ink-faint); font-size: 0.9rem;
     }
     .pm-opt-row .pm-opt-price-wrap input { padding-left: 22px; }
+    /* Computed "price after sale" readout for the pricing dropdown's options. */
+    .pm-opt-saleout { font-family: var(--font-mono); font-size: 0.78rem; color: var(--signal-deep); white-space: nowrap; }
+    .pm-opt-saleout .was { color: var(--ink-faint); text-decoration: line-through; margin-right: 5px; }
+    .pm-opt-saleout.is-none { color: var(--ink-faint); }
 
     /* Stock-only group: only one dropdown sets price/sale, so non-pricing
-       dropdowns hide the price & sale cells and keep label · stock · remove. */
+       dropdowns hide the price/sale/after-sale cells and keep label · remove. */
     .pm-optgroup.is-stock-only .pm-opt-pricing { display: none; }
     .pm-optgroup.is-stock-only .pm-opt-list-head,
-    .pm-optgroup.is-stock-only .pm-opt-row { grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.7fr) auto; }
+    .pm-optgroup.is-stock-only .pm-opt-row { grid-template-columns: minmax(0, 1.4fr) auto; }
+
+    /* Inventory matrix: one stock box per option combination */
+    .pm-matrix { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+    .pm-matrix-row {
+      display: grid; grid-template-columns: 1fr minmax(0, 120px);
+      gap: 12px; align-items: center;
+      padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+      background: var(--surface);
+    }
+    .pm-matrix-row .pm-matrix-label { font-weight: 600; color: var(--ink); font-size: 0.9rem; }
+    .pm-matrix-row input { width: 100%; }
 
     /* Mode 2: base Pricing & sale section is muted when a dropdown drives pricing */
     #pm-pricing-section.is-disabled { opacity: 0.55; }
@@ -1402,6 +1417,7 @@
     .ao-badge.is-pending { background: #fff3cd; color: #856404; }
     .ao-badge.is-refunded, .ao-badge.is-failed, .ao-badge.is-canceled { background: #f8d7da; color: #721c24; }
     .ao-badge.is-locked { background: #e7ddff; color: #4a318f; }
+    .ao-badge.is-completed { background: #d6f0ec; color: var(--signal-deep); }
     .ao-cred { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px 18px; margin: 12px 0; font-size: 0.9rem; }
     .ao-cred div span { color: var(--ink-faint); display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.4px; }
     .ao-cred div b { color: var(--ink); font-weight: 600; }
@@ -1410,10 +1426,14 @@
     .ao-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
     .ao-total { font-weight: 700; color: var(--ink); }
     .ao-refunded { color: var(--ember); font-size: 0.82rem; font-weight: 600; }
+    .ao-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .ao-lock-btn { border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 8px 14px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
     .ao-lock-btn:hover { border-color: var(--signal); color: var(--signal-deep); }
     .ao-lock-btn[disabled] { opacity: 0.5; cursor: default; }
     .ao-lock-note { color: var(--ink-faint); font-size: 0.8rem; }
+    .ao-complete-btn { border: none; background: var(--signal); color: #fff; border-radius: 8px; padding: 8px 14px; font-weight: 700; cursor: pointer; font-size: 0.85rem; }
+    .ao-complete-btn:hover { background: var(--signal-deep); }
+    .ao-complete-btn.is-done { background: var(--surface); color: var(--signal-deep); border: 1px solid var(--signal); }
   </style>
 </head>
 <body>
@@ -1589,8 +1609,8 @@
               <!-- Pricing & sale -->
               <div class="pm-section" id="pm-pricing-section">
                 <h4>Pricing &amp; sale</h4>
-                <p class="pm-pricing-mode-note" id="pm-pricing-mode-note" style="display:none;">A dropdown below sets pricing per option, so these base fields are ignored. The first option of that dropdown is the product's default price, sale, and stock.</p>
-                <div class="pm-row-3">
+                <p class="pm-pricing-mode-note" id="pm-pricing-mode-note" style="display:none;">A dropdown below sets pricing per option, so these base fields are ignored. The first option of that dropdown is the product's default price &amp; sale.</p>
+                <div class="pm-row">
                   <div class="pm-field">
                     <label for="pm-price">Base price (CAD)</label>
                     <input type="number" id="pm-price" min="0" step="0.01" placeholder="0.00">
@@ -1598,10 +1618,6 @@
                   <div class="pm-field">
                     <label for="pm-sale-percent">Sale discount (%)</label>
                     <input type="number" id="pm-sale-percent" min="0" max="100" step="1" placeholder="0">
-                  </div>
-                  <div class="pm-field">
-                    <label for="pm-stock">Stock amount</label>
-                    <input type="number" id="pm-stock" min="0" step="1" placeholder="0">
                   </div>
                 </div>
                 <div class="pm-row">
@@ -1622,6 +1638,20 @@
                 <h4>Option dropdowns</h4>
                 <div id="pm-option-groups"></div>
                 <button type="button" class="pm-add" id="pm-add-optgroup">+ Add dropdown</button>
+              </div>
+
+              <!-- Inventory: one stock count per real option combination (or a single
+                   base count when there are no dropdowns). -->
+              <div class="pm-section" id="pm-inventory-section">
+                <h4>Inventory</h4>
+                <div class="pm-field" id="pm-base-stock-field">
+                  <label for="pm-stock">Stock amount</label>
+                  <input type="number" id="pm-stock" min="0" step="1" placeholder="0">
+                </div>
+                <div id="pm-stock-matrix" style="display:none;">
+                  <p class="pm-section-note">Set the stock for each option combination. The store sells a combination only while its own count is above zero.</p>
+                  <div class="pm-matrix" id="pm-matrix-rows"></div>
+                </div>
               </div>
 
               <!-- Description -->

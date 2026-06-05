@@ -80,16 +80,24 @@
     totals.innerHTML = rows;
   }
 
-  // ---- Stock resolution (mirrors the server: min selected-option stock, else base) ----
+  // ---- Stock resolution (mirrors the server: per-combination stock from variants) ----
   function availableStock(product, selectedValues) {
+    const base = Math.max(0, Math.round(Number(product.stock) || 0));
     const groups = (product.option_groups || []).filter((g) => g.options && g.options.length);
+    if (groups.length === 0) return base;
+
+    const variants = Array.isArray(product.variants) ? product.variants : [];
+    if (variants.length) {
+      const match = variants.find((v) => v.key === selectedValues.join(" / "));
+      return match ? Math.max(0, Math.round(Number(match.stock) || 0)) : 0;
+    }
+    // Legacy fallback (product saved before per-combination stock): min option stock.
     const candidates = [];
     groups.forEach((g) => {
       const opt = g.options.find((o) => selectedValues.includes(o.value)) || g.options[0];
       if (opt && opt.stock != null) candidates.push(Math.max(0, Math.round(Number(opt.stock))));
     });
-    if (candidates.length) return Math.min.apply(null, candidates);
-    return Math.max(0, Math.round(Number(product.stock) || 0));
+    return candidates.length ? Math.min.apply(null, candidates) : base;
   }
 
   function selectedAddValues() {
@@ -273,7 +281,10 @@
       if (editCard) editCard.style.display = "none";
       if (order.refundable) {
         if (lockedCard) lockedCard.style.display = "";
-        if (lockedNote) lockedNote.textContent = "This order is now being prepared, so its items can no longer be changed. If you need to cancel, you can still request a full refund within 48 hours of placing it.";
+        if (lockedNote) {
+          lockedNote.textContent =
+            "This order has been packaged, so it can no longer be changed. You can still request a full refund within 48 hours of placing it.";
+        }
       } else if (lockedCard) {
         lockedCard.style.display = "none";
       }
@@ -289,6 +300,8 @@
     pill.className = "status-pill " + status;
     const placed = order.created_at ? new Date(order.created_at).toLocaleString() : "";
     document.getElementById("order-date").textContent = placed ? "Placed " + placed : "";
+    const completed = document.getElementById("order-completed");
+    if (completed) completed.style.display = order.completed_at ? "" : "none";
     renderReceipt();
     applyState();
   }

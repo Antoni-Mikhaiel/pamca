@@ -14,7 +14,8 @@
     products: '/api/admin/products',
     upload: '/api/admin/upload',
     orders: '/api/admin/orders',
-    flagOrder: '/api/admin/orders/flag'
+    flagOrder: '/api/admin/orders/flag',
+    completeOrder: '/api/admin/orders/complete'
   };
 
   function whenAuthReady(){
@@ -626,6 +627,11 @@
         : options.some(o => o.price !== null);
       return { label: g && g.label ? String(g.label) : '', affectsPricing: affectsPricing, options: options };
     }) : [];
+    d.variants = Array.isArray(p.variants)
+      ? p.variants
+          .filter(v => v && typeof v.key === 'string' && v.key)
+          .map(v => ({ key: v.key, stock: Math.max(0, Math.round(+v.stock || 0)) }))
+      : [];
     return d;
   }
 
@@ -903,26 +909,60 @@
     list.appendChild(row);
   }
 
-  // A row carries an option's label, a per-option stock (always available), and —
-  // only on the single pricing dropdown — a price override and sale %. The
-  // price/sale cells are hidden (via the group's `is-stock-only` class) for every
-  // dropdown that isn't the pricing one.
-  function addOptionRow(listEl, opt = { value: '', price: null, salePercent: null, stock: null }){
+  // A row carries an option's label and — only on the single pricing dropdown — a
+  // price override, a sale %, and a live "after sale" readout. Those price cells are
+  // hidden (via the group's `is-stock-only` class) for non-pricing dropdowns.
+  // Stock is no longer per-option; it's set per combination in the Inventory matrix.
+  function addOptionRow(listEl, opt = { value: '', price: null, salePercent: null }){
     const row = document.createElement('div');
     row.className = 'pm-opt-row';
     row.innerHTML = `
       <input type="text" class="pm-opt-value" placeholder="Option label (e.g. 48 pieces)">
       <span class="pm-opt-price-wrap pm-opt-pricing"><input type="number" class="pm-opt-price" min="0" step="0.01" placeholder="price"></span>
       <span class="pm-opt-pct-wrap pm-opt-pricing"><input type="number" class="pm-opt-sale" min="0" max="100" step="0.01" placeholder="inherit" title="Leave blank to use the product-level sale"></span>
-      <span class="pm-opt-stockcol"><input type="number" class="pm-opt-stock" min="0" step="1" placeholder="inherit" title="Leave blank for unlimited / product-level stock"></span>
+      <span class="pm-opt-saleout pm-opt-pricing" aria-live="polite"></span>
       <button type="button" class="pm-remove" aria-label="Remove option">Remove</button>`;
     row.querySelector('.pm-opt-value').value = opt.value || '';
     row.querySelector('.pm-opt-price').value = (opt.price === null || opt.price === undefined) ? '' : opt.price;
     row.querySelector('.pm-opt-sale').value = (opt.salePercent === null || opt.salePercent === undefined) ? '' : opt.salePercent;
-    row.querySelector('.pm-opt-stock').value = (opt.stock === null || opt.stock === undefined) ? '' : opt.stock;
     row.querySelector('.pm-opt-sale').addEventListener('input', clampPctInput);
-    row.querySelector('.pm-remove').addEventListener('click', () => row.remove());
+    row.querySelector('.pm-opt-price').addEventListener('input', () => updateRowSaleOut(row));
+    row.querySelector('.pm-opt-sale').addEventListener('input', () => updateRowSaleOut(row));
+    // Changing an option's label changes the set of combinations → rebuild the matrix.
+    row.querySelector('.pm-opt-value').addEventListener('input', renderStockMatrix);
+    row.querySelector('.pm-remove').addEventListener('click', () => { row.remove(); renderStockMatrix(); });
     listEl.appendChild(row);
+    updateRowSaleOut(row);
+  }
+
+  // Shows the effective price after sale for a pricing-dropdown option, using the
+  // option's own price/sale where set and the base Pricing & sale fields otherwise.
+  function optionEffective(row){
+    const basePrice = +document.getElementById('pm-price').value || 0;
+    const baseSale = clampPct(document.getElementById('pm-sale-percent').value);
+    const pRaw = row.querySelector('.pm-opt-price').value;
+    const sRaw = row.querySelector('.pm-opt-sale').value;
+    const price = pRaw === '' ? basePrice : (+pRaw || 0);
+    const pct = sRaw === '' ? baseSale : clampPct(sRaw);
+    return { price, pct };
+  }
+  function updateRowSaleOut(row){
+    const out = row.querySelector('.pm-opt-saleout');
+    if(!out) return;
+    const { price, pct } = optionEffective(row);
+    if(pct > 0){
+      const sale = +(price * (1 - pct / 100)).toFixed(2);
+      out.className = 'pm-opt-saleout pm-opt-pricing';
+      out.innerHTML = `<span class="was">${fmtMoney(price)}</span>${fmtMoney(sale)}`;
+      out.title = `After ${pct}% sale`;
+    } else {
+      out.className = 'pm-opt-saleout pm-opt-pricing is-none';
+      out.textContent = fmtMoney(price);
+      out.title = 'No sale';
+    }
+  }
+  function refreshOptionSaleOuts(){
+    document.querySelectorAll('#pm-option-groups .pm-optgroup:not(.is-stock-only) .pm-opt-row').forEach(updateRowSaleOut);
   }
 
   function addOptionGroup(group = {}){
@@ -945,7 +985,7 @@
         <span>Option</span>
         <span class="pm-opt-pricing">Price (CAD)</span>
         <span class="pm-opt-pricing">Sale %</span>
-        <span class="pm-opt-stockcol">Stock</span>
+        <span class="pm-opt-pricing">After sale</span>
         <span></span>
       </div>
       <div class="pm-opt-list"></div>
@@ -975,14 +1015,76 @@
     });
 
     const list = box.querySelector('.pm-opt-list');
-    (group.options && group.options.length ? group.options : [{ value: '', price: null, salePercent: null, stock: null }])
+    (group.options && group.options.length ? group.options : [{ value: '', price: null, salePercent: null }])
       .forEach(o => addOptionRow(list, o));
 
-    box.querySelector('.pm-optgroup-remove').addEventListener('click', () => { box.remove(); syncPricingMode(); });
-    box.querySelector('.pm-add-option').addEventListener('click', () => addOptionRow(list));
+    box.querySelector('.pm-optgroup-remove').addEventListener('click', () => { box.remove(); syncPricingMode(); renderStockMatrix(); });
+    box.querySelector('.pm-add-option').addEventListener('click', () => { addOptionRow(list); renderStockMatrix(); });
 
     wrap.appendChild(box);
     applyMode();
+  }
+
+  // ---------- Inventory matrix (stock per option combination) ----------
+  // Seeded from the product's stored variants on open and updated as the admin
+  // types; survives option edits so entered counts aren't lost on a rebuild.
+  let stockByKey = {};
+
+  // The option-value combinations across all dropdowns, in dropdown order, joined
+  // by " / " — the same key the cart/order uses for a variation label.
+  function combinationKeys(){
+    const lists = Array.from(document.querySelectorAll('#pm-option-groups .pm-optgroup'))
+      .map(box => Array.from(box.querySelectorAll('.pm-opt-value')).map(i => i.value.trim()).filter(Boolean))
+      .filter(vals => vals.length > 0);
+    if(!lists.length) return [];
+    let combos = [[]];
+    lists.forEach(vals => {
+      const next = [];
+      combos.forEach(c => vals.forEach(v => next.push(c.concat(v))));
+      combos = next;
+    });
+    return combos.map(c => c.join(' / '));
+  }
+
+  function captureMatrixInputs(){
+    document.querySelectorAll('#pm-matrix-rows .pm-var-stock').forEach(inp => { stockByKey[inp.dataset.key] = inp.value; });
+  }
+
+  // Rebuilds the inventory UI: a per-combination grid when there are dropdowns, or
+  // the single base "Stock amount" field when there are none.
+  function renderStockMatrix(){
+    captureMatrixInputs();
+    const keys = combinationKeys();
+    const matrix = document.getElementById('pm-stock-matrix');
+    const baseField = document.getElementById('pm-base-stock-field');
+    const rows = document.getElementById('pm-matrix-rows');
+    if(!matrix || !baseField || !rows) return;
+
+    if(!keys.length){
+      matrix.style.display = 'none';
+      baseField.style.display = '';
+      updatePricePreview();
+      return;
+    }
+    matrix.style.display = '';
+    baseField.style.display = 'none';
+    rows.innerHTML = keys.map(key => {
+      const v = (stockByKey[key] === undefined || stockByKey[key] === null) ? '' : stockByKey[key];
+      return `<div class="pm-matrix-row"><span class="pm-matrix-label">${escAttr(key)}</span>` +
+        `<input type="number" class="pm-var-stock" min="0" step="1" placeholder="0" data-key="${escAttr(key)}" value="${escAttr(v)}"></div>`;
+    }).join('');
+    updatePricePreview();
+  }
+
+  function totalMatrixStock(){
+    let sum = 0;
+    document.querySelectorAll('#pm-matrix-rows .pm-var-stock').forEach(i => { sum += Math.max(0, Math.round(+i.value || 0)); });
+    return sum;
+  }
+
+  function collectVariants(){
+    return Array.from(document.querySelectorAll('#pm-matrix-rows .pm-var-stock'))
+      .map(i => ({ key: i.dataset.key, stock: Math.max(0, Math.round(+i.value || 0)) }));
   }
 
   // Guarantees at most one pricing dropdown (used after loading a product, in
@@ -1021,27 +1123,16 @@
   }
 
   // Reads the default representation: price & sale from the (single) pricing
-  // dropdown's first option, and stock as the smallest first-option stock across
-  // every dropdown (since each selected option must be in stock). Returns null
-  // when no dropdown is the pricing dropdown.
+  // dropdown's first option, and stock as the total across all combinations (the
+  // inventory matrix). Returns null when no dropdown is the pricing dropdown.
   function defaultPricingFromGroups(){
     const base = +document.getElementById('pm-price').value || 0;
     const baseSale = clampPct(document.getElementById('pm-sale-percent').value);
-    const baseStock = Math.max(0, Math.round(+document.getElementById('pm-stock').value || 0));
     const boxes = Array.from(document.querySelectorAll('#pm-option-groups .pm-optgroup'));
     const pricingBox = boxes.find(box => box.querySelector('.pm-optgroup-pricing').checked);
     if(!pricingBox) return null;
     const firstRow = pricingBox.querySelector('.pm-opt-row');
     if(!firstRow) return null;
-
-    // Stock = min of each dropdown's first-option stock (blank = no limit).
-    const stockCands = [];
-    boxes.forEach(box => {
-      const r = box.querySelector('.pm-opt-row');
-      if(!r) return;
-      const s = r.querySelector('.pm-opt-stock').value;
-      if(s !== '') stockCands.push(Math.max(0, Math.round(+s || 0)));
-    });
 
     const priceRaw = firstRow.querySelector('.pm-opt-price').value;
     const saleRaw = firstRow.querySelector('.pm-opt-sale').value;
@@ -1050,7 +1141,7 @@
       optionLabel: firstRow.querySelector('.pm-opt-value').value || 'first option',
       price: priceRaw === '' ? base : (+priceRaw || 0),
       salePercent: saleRaw === '' ? baseSale : clampPct(saleRaw),
-      stock: stockCands.length ? Math.min.apply(null, stockCands) : baseStock
+      stock: totalMatrixStock()
     };
   }
 
@@ -1114,11 +1205,19 @@
     (p && p.images.length ? p.images : ['']).forEach(v => addImageRow(v));
     const feats = document.getElementById('pm-features'); feats.innerHTML = '';
     (p && p.keyFeatures.length ? p.keyFeatures : ['']).forEach(v => addTextRow('pm-features', v, 'e.g. 24 pieces per pack'));
+    // Seed the inventory matrix from the product's stored combination stock.
+    stockByKey = {};
+    if (p && Array.isArray(p.variants)) {
+      p.variants.forEach(v => { if (v && v.key != null) stockByKey[v.key] = String(v.stock); });
+    }
+
     const groups = document.getElementById('pm-option-groups'); groups.innerHTML = '';
     (p ? p.optionGroups : []).forEach(g => addOptionGroup(g));
 
     updateImageMainFlags();
     enforceSinglePricingGroup(); // keep at most one pricing dropdown (legacy data safety)
+    renderStockMatrix(); // base-stock field vs combination grid
+    refreshOptionSaleOuts();
     syncPricingMode(); // also calls updatePricePreview()
     const modal = document.getElementById('product-modal');
     modal.classList.add('is-open');
@@ -1143,13 +1242,12 @@
         const value = row.querySelector('.pm-opt-value').value.trim();
         const priceRaw = row.querySelector('.pm-opt-price').value;
         const saleRaw = row.querySelector('.pm-opt-sale').value;
-        const stockRaw = row.querySelector('.pm-opt-stock').value;
         return {
           value,
           price: priceRaw === '' ? null : +priceRaw,
-          // Blank sale/stock = inherit the product-level value (null).
-          salePercent: saleRaw === '' ? null : clampPct(saleRaw),
-          stock: stockRaw === '' ? null : Math.max(0, Math.round(+stockRaw || 0))
+          // Blank sale = inherit the product-level sale (null). Stock is now per
+          // combination (see `variants`), not per option.
+          salePercent: saleRaw === '' ? null : clampPct(saleRaw)
         };
       }).filter(o => o.value);
       return { label, affectsPricing, options };
@@ -1169,7 +1267,8 @@
       stock: document.getElementById('pm-stock').value,
       description: document.getElementById('pm-description').value,
       keyFeatures,
-      optionGroups
+      optionGroups,
+      variants: collectVariants()
     };
   }
 
@@ -1240,7 +1339,7 @@
     // repeater add buttons
     document.getElementById('pm-add-image').addEventListener('click', () => addImageRow(''));
     document.getElementById('pm-add-feature').addEventListener('click', () => addTextRow('pm-features', '', 'e.g. 24 pieces per pack'));
-    document.getElementById('pm-add-optgroup').addEventListener('click', () => { addOptionGroup(); syncPricingMode(); });
+    document.getElementById('pm-add-optgroup').addEventListener('click', () => { addOptionGroup(); syncPricingMode(); renderStockMatrix(); });
 
     wireImageReorder();
 
@@ -1254,10 +1353,18 @@
     ['pm-price', 'pm-sale-percent', 'pm-sale-start', 'pm-sale-end'].forEach(id => {
       document.getElementById(id).addEventListener('input', updatePricePreview);
     });
+    // Base price/sale changes also move the per-option "after sale" readouts.
+    ['pm-price', 'pm-sale-percent'].forEach(id => {
+      document.getElementById(id).addEventListener('input', refreshOptionSaleOuts);
+    });
     // Cap the base sale % at 0–100 / two decimals as it's typed.
     document.getElementById('pm-sale-percent').addEventListener('input', clampPctInput);
-    // Editing any option field (price/sale/stock/label) refreshes the default preview.
+    // Editing any option field (price/sale/label) refreshes the default preview.
     document.getElementById('pm-option-groups').addEventListener('input', updatePricePreview);
+    // Editing combination stock refreshes the default/preview total.
+    document.getElementById('pm-matrix-rows').addEventListener('input', (e) => {
+      if (e.target.classList.contains('pm-var-stock')) { stockByKey[e.target.dataset.key] = e.target.value; updatePricePreview(); }
+    });
 
     document.getElementById('pm-save').addEventListener('click', saveProductFromForm);
   }
@@ -1304,7 +1411,9 @@
 
   function renderOrderCard(o){
     const money = (c) => fmtMoney((Number(c) || 0) / 100);
-    const status = String(o.status || 'pending').toLowerCase();
+    const refunded = String(o.status).toLowerCase() === 'refunded' || (o.amount_refunded_cents || 0) > 0;
+    // A refunded order always reads REFUNDED (red), never the original PAID.
+    const displayStatus = refunded ? 'refunded' : String(o.status || 'pending').toLowerCase();
     const within24h = (Date.now() - new Date(o.created_at).getTime()) < DAY_MS;
     const created = o.created_at ? new Date(o.created_at).toLocaleString() : '';
     const name = `${o.customer_first_name || ''} ${o.customer_last_name || ''}`.trim() || '—';
@@ -1313,8 +1422,9 @@
       return `<li><span>${Number(it.quantity) || 0} × ${escAttr(it.product_name)}${variant}</span><span>${money(it.line_total_cents)}</span></li>`;
     }).join('');
 
+    // Lock-editing control (only meaningful for a live, non-refunded order in its 24h window).
     let lockHtml;
-    if(status === 'refunded'){
+    if(refunded){
       lockHtml = `<span class="ao-lock-note">Refunded — no longer editable</span>`;
     }else if(within24h){
       lockHtml = o.uneditable
@@ -1324,10 +1434,18 @@
       lockHtml = `<span class="ao-lock-note">Edit window closed${o.uneditable ? ' · was locked' : ''}</span>`;
     }
 
-    const badges = [`<span class="ao-badge is-${status}">${escAttr(status)}</span>`];
-    if(o.uneditable && status !== 'refunded') badges.push(`<span class="ao-badge is-locked">Locked</span>`);
+    // Complete-order control — communicates fulfillment to the customer.
+    const completeHtml = refunded
+      ? ''
+      : (o.completed_at
+        ? `<button type="button" class="ao-complete-btn is-done" data-act="uncomplete" data-id="${escAttr(o.id)}">✓ Completed — undo</button>`
+        : `<button type="button" class="ao-complete-btn" data-act="complete" data-id="${escAttr(o.id)}">Complete order</button>`);
 
-    const refundedNote = o.amount_refunded_cents > 0
+    const badges = [`<span class="ao-badge is-${displayStatus}">${escAttr(displayStatus)}</span>`];
+    if(!refunded && o.completed_at) badges.push(`<span class="ao-badge is-completed">Completed</span>`);
+    if(!refunded && o.uneditable) badges.push(`<span class="ao-badge is-locked">Locked</span>`);
+
+    const refundedNote = (o.amount_refunded_cents || 0) > 0
       ? `<span class="ao-refunded">${money(o.amount_refunded_cents)} refunded</span>` : '';
 
     return `<article class="ao-card">
@@ -1344,20 +1462,32 @@
       <ul class="ao-items">${items}</ul>
       <div class="ao-foot">
         <span class="ao-total">Total ${money(o.total_cents)} ${refundedNote}</span>
-        ${lockHtml}
+        <span class="ao-actions">${completeHtml}${lockHtml}</span>
       </div>
     </article>`;
+  }
+
+  // Applies an updated order returned by an admin action into the cache + re-renders.
+  function applyUpdatedOrder(orderId, updated){
+    if(!updated) return;
+    const i = ordersCache.findIndex(o => o.id === orderId);
+    if(i >= 0) ordersCache[i] = updated;
+    renderOrders();
   }
 
   async function flagOrder(orderId, uneditable){
     try{
       const data = await apiSend(API.flagOrder, 'POST', { orderId, uneditable });
-      const updated = data && data.order;
-      if(updated){
-        const i = ordersCache.findIndex(o => o.id === orderId);
-        if(i >= 0) ordersCache[i] = updated;
-        renderOrders();
-      }
+      applyUpdatedOrder(orderId, data && data.order);
+    }catch(e){
+      window.alert('Could not update the order: ' + e.message);
+    }
+  }
+
+  async function completeOrder(orderId, completed){
+    try{
+      const data = await apiSend(API.completeOrder, 'POST', { orderId, completed });
+      applyUpdatedOrder(orderId, data && data.order);
     }catch(e){
       window.alert('Could not update the order: ' + e.message);
     }
@@ -1371,6 +1501,8 @@
       if(!btn) return;
       if(btn.dataset.act === 'lock') flagOrder(btn.dataset.id, true);
       else if(btn.dataset.act === 'unlock') flagOrder(btn.dataset.id, false);
+      else if(btn.dataset.act === 'complete') completeOrder(btn.dataset.id, true);
+      else if(btn.dataset.act === 'uncomplete') completeOrder(btn.dataset.id, false);
     });
     const refresh = document.getElementById('admin-order-refresh');
     if(refresh) refresh.addEventListener('click', () => loadOrders());

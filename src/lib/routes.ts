@@ -18,7 +18,7 @@ import {
 } from "../controllers/adminProductController.js";
 import { handleCreateCheckout, handleWebhook } from "../controllers/checkoutController.js";
 import { handleGetProfile, handleUpdateProfile, handleLookupOrder } from "../controllers/profileController.js";
-import { handleAdminListOrders, handleAdminFlagOrder } from "../controllers/adminOrderController.js";
+import { handleAdminListOrders, handleAdminFlagOrder, handleAdminCompleteOrder } from "../controllers/adminOrderController.js";
 import { handleGetOrder, handleEditPreview, handleEditCommit, handleRefundOrder } from "../controllers/orderEditController.js";
 
 /**
@@ -107,6 +107,7 @@ const routes: Route[] = [
   { method: "POST", pattern: /^\/api\/orders\/refund$/, handler: handleRefundOrder },
   { method: "GET", pattern: /^\/api\/admin\/orders$/, handler: handleAdminListOrders },
   { method: "POST", pattern: /^\/api\/admin\/orders\/flag$/, handler: handleAdminFlagOrder },
+  { method: "POST", pattern: /^\/api\/admin\/orders\/complete$/, handler: handleAdminCompleteOrder },
 ];
 
 /**

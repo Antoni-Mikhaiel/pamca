@@ -43,6 +43,8 @@
     .status-pill.paid { background: #d4edda; color: #155724; }
     .status-pill.pending { background: #fff3cd; color: #856404; }
     .status-pill.refunded, .status-pill.failed, .status-pill.canceled { background: #f8d7da; color: #721c24; }
+    .status-pill.completed { background: #d6f0ec; color: #0a615b; }
+    .order-pills { display: inline-flex; gap: 8px; flex-wrap: wrap; }
 
     /* Add-products editor */
     .add-grid label { display: block; font-weight: 600; font-size: 0.85rem; color: #333; margin: 12px 0 6px; }
@@ -87,7 +89,10 @@
   <div id="order-body" style="display:none;">
     <div class="order-headrow">
       <h1 class="order-title">Order <span id="order-pid"></span></h1>
-      <span class="status-pill" id="order-status"></span>
+      <span class="order-pills">
+        <span class="status-pill" id="order-status"></span>
+        <span class="status-pill completed" id="order-completed" style="display:none;">Completed</span>
+      </span>
     </div>
     <div class="order-sub" id="order-date"></div>
 

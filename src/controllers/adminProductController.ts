@@ -1,7 +1,8 @@
 import { ApiRequest, ApiResponse } from "../lib/http.js";
 import { requireAdmin, readJsonBody } from "../lib/adminAuth.js";
 import { listProductsForAdmin, upsertProduct, deleteProduct, clampSalePercent } from "../services/productService.js";
-import { AdminProductInput, ProductOptionGroup } from "../models/types.js";
+import { AdminProductInput, ProductOptionGroup, ProductVariantStock } from "../models/types.js";
+import { asVariants, buildCombinationKeys } from "../lib/variants.js";
 
 function slugify(s: string): string {
   return String(s || "")
@@ -43,6 +44,18 @@ function sanitizeOptionGroups(value: unknown): ProductOptionGroup[] {
   return groups;
 }
 
+/**
+ * Keeps only the stock entries for combinations that actually exist for the given
+ * option groups (so removed/renamed options don't leave orphan inventory), and
+ * fills in any missing combination with 0.
+ */
+function sanitizeVariants(value: unknown, groups: ProductOptionGroup[]): ProductVariantStock[] {
+  const validKeys = buildCombinationKeys(groups);
+  if (validKeys.length === 0) return [];
+  const provided = new Map(asVariants(value).map((v) => [v.key, v.stock]));
+  return validKeys.map((key) => ({ key, stock: provided.get(key) ?? 0 }));
+}
+
 export async function handleAdminListProducts(req: ApiRequest, res: ApiResponse): Promise<void> {
   const admin = await requireAdmin(req, res);
   if (!admin) return;
@@ -78,7 +91,9 @@ export async function handleSaveProduct(req: ApiRequest, res: ApiResponse): Prom
     description: String(body.description ?? ""),
     keyFeatures: toStringArray(body.keyFeatures),
     optionGroups: sanitizeOptionGroups(body.optionGroups),
+    variants: [],
   };
+  input.variants = sanitizeVariants(body.variants, input.optionGroups);
 
   const saved = await upsertProduct(input);
   res.status(200).json({ success: true, data: saved });

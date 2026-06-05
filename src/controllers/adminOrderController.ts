@@ -4,6 +4,7 @@ import {
   listAllOrders,
   getFullOrder,
   setOrderUneditable,
+  setOrderCompleted,
   orderAgeMs,
   EDIT_WINDOW_MS,
 } from "../services/orderService.js";
@@ -45,5 +46,30 @@ export async function handleAdminFlagOrder(req: ApiRequest, res: ApiResponse): P
   }
 
   const updated = await setOrderUneditable(orderId, uneditable);
+  res.status(200).json({ success: true, data: { order: updated } });
+}
+
+/**
+ * POST /api/admin/orders/complete — mark/unmark an order as completed (fulfilled).
+ * Surfaced to the customer as a "Completed" status; does not affect editability.
+ */
+export async function handleAdminCompleteOrder(req: ApiRequest, res: ApiResponse): Promise<void> {
+  if (!(await requireAdmin(req, res))) return;
+
+  const body = readJsonBody<{ orderId?: unknown; completed?: unknown }>(req);
+  const orderId = String(body.orderId ?? "");
+  const completed = body.completed === true || body.completed === "true";
+  if (!orderId) {
+    res.status(400).json({ success: false, message: "Missing order id." });
+    return;
+  }
+
+  const order = await getFullOrder(orderId);
+  if (!order) {
+    res.status(404).json({ success: false, message: "Order not found." });
+    return;
+  }
+
+  const updated = await setOrderCompleted(orderId, completed);
   res.status(200).json({ success: true, data: { order: updated } });
 }

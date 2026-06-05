@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import { supabase } from "../lib/supabase.js";
 import { CartItem, CustomerDetails, OrderRecord } from "../models/types.js";
-import { asOptionGroups, resolveDefaultPricing } from "./productService.js";
+import { asVariants } from "../lib/variants.js";
 
 export interface CreatedOrder {
   id: string;
@@ -165,12 +165,12 @@ export async function applyStockForOrder(orderId: string): Promise<void> {
 }
 
 /**
- * Adjusts a product's stock by a *sold delta*: a positive value sells (decrements
- * stock), a negative value restocks (increments). When the product uses per-option
- * stock, the matching option (re-matched from the variation label) is adjusted
- * inside `option_groups` and the top-level default stock is recomputed; otherwise
- * the base `stock` column is adjusted. Never goes below zero. Exported so the
- * order-edit/refund flow can sell added units and restock removed/refunded ones.
+ * Adjusts a product's stock by a *sold delta*: positive sells (decrements),
+ * negative restocks (increments). When the product tracks per-combination stock,
+ * the matching combination (identified by the order item's variation label) is
+ * adjusted in `variants` and the top-level `stock` is recomputed as their sum;
+ * otherwise the base `stock` column is adjusted. Never goes below zero. Exported
+ * so the order-edit/refund flow can sell added units and restock removed ones.
  */
 export async function adjustProductStock(
   productId: number,
@@ -180,49 +180,32 @@ export async function adjustProductStock(
   if (!soldDelta) return;
   const { data: product, error } = await supabase
     .from("products")
-    .select("id, price_regular, sale_percent, stock, option_groups")
+    .select("id, stock, variants")
     .eq("id", productId)
     .maybeSingle();
   if (error) throw error;
   if (!product) return;
 
-  const prod = product as { price_regular: number; sale_percent: number; stock: number; option_groups: unknown };
-  const groups = asOptionGroups(prod.option_groups);
-  const groupsWithOptions = groups.filter((g) => g.options.length > 0);
-  const hasOptionStock = groupsWithOptions.some((g) => g.options.some((o) => o.stock != null));
+  const prod = product as { stock: number; variants: unknown };
+  const variants = asVariants(prod.variants);
 
-  if (!hasOptionStock) {
+  // No per-combination inventory → adjust the base stock column.
+  if (variants.length === 0) {
     const newStock = Math.max(0, (Number(prod.stock) || 0) - soldDelta);
     const { error: updateError } = await supabase.from("products").update({ stock: newStock }).eq("id", productId);
     if (updateError) throw updateError;
     return;
   }
 
-  const selectedValues = (variationLabel ?? "")
-    .split(" / ")
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  const newGroups = groups.map((g) => {
-    if (g.options.length === 0) return g;
-    const matchedIndex = g.options.findIndex((o) => selectedValues.includes(o.value));
-    const idx = matchedIndex >= 0 ? matchedIndex : 0;
-    return {
-      ...g,
-      options: g.options.map((o, i) =>
-        i === idx && o.stock != null ? { ...o, stock: Math.max(0, o.stock - soldDelta) } : o,
-      ),
-    };
-  });
-
-  const resolved = resolveDefaultPricing(
-    { price: Number(prod.price_regular) || 0, salePercent: Number(prod.sale_percent) || 0, stock: Number(prod.stock) || 0 },
-    newGroups,
+  const key = (variationLabel ?? "").trim();
+  const newVariants = variants.map((v) =>
+    v.key === key ? { ...v, stock: Math.max(0, v.stock - soldDelta) } : v,
   );
+  const newStock = newVariants.reduce((sum, v) => sum + v.stock, 0);
 
   const { error: updateError } = await supabase
     .from("products")
-    .update({ option_groups: newGroups, stock: resolved.stock })
+    .update({ variants: newVariants, stock: newStock })
     .eq("id", productId);
   if (updateError) throw updateError;
 }
@@ -233,7 +216,7 @@ export const REFUND_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 const ORDER_SELECT =
   "id, purchase_id, status, currency, total_cents, customer_first_name, customer_last_name, " +
-  "customer_email, customer_phone, customer_address, created_at, uneditable, refunded_at, amount_refunded_cents, " +
+  "customer_email, customer_phone, customer_address, created_at, uneditable, completed_at, refunded_at, amount_refunded_cents, " +
   "order_items(id, product_id, product_name, variation_label, unit_price_cents, quantity, line_total_cents)";
 
 export function orderAgeMs(createdAt: string): number {
@@ -268,6 +251,7 @@ function mapOrder(row: Record<string, unknown>): OrderRecord {
     customer_address: (row.customer_address as string | null) ?? null,
     created_at: createdAt,
     uneditable,
+    completed_at: (row.completed_at as string | null) ?? null,
     amount_refunded_cents: Number(row.amount_refunded_cents ?? 0),
     editable: isOrderEditable({ status, uneditable, refunded_at: refundedAt, created_at: createdAt }),
     refundable: isOrderRefundable({ status, refunded_at: refundedAt, created_at: createdAt }),
@@ -419,6 +403,20 @@ export async function getFullOrder(orderId: string): Promise<FullOrder | null> {
  */
 export async function setOrderUneditable(orderId: string, value: boolean): Promise<OrderRecord | null> {
   const { error } = await supabase.from("orders").update({ uneditable: value }).eq("id", orderId);
+  if (error) throw error;
+  return getOrderRecordById(orderId);
+}
+
+/**
+ * Admin "Complete Order" toggle — stamps/clears `completed_at`. This is purely a
+ * fulfillment/communication marker shown to the customer; it does not affect edit
+ * or refund eligibility. Returns the updated display record.
+ */
+export async function setOrderCompleted(orderId: string, value: boolean): Promise<OrderRecord | null> {
+  const { error } = await supabase
+    .from("orders")
+    .update({ completed_at: value ? new Date().toISOString() : null })
+    .eq("id", orderId);
   if (error) throw error;
   return getOrderRecordById(orderId);
 }

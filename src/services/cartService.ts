@@ -1,6 +1,7 @@
 import { supabase } from "../lib/supabase.js";
 import { CartItem, ProductOption, ProductOptionGroup } from "../models/types.js";
 import { getProductBySlug, asOptionGroups, clampSalePercent } from "./productService.js";
+import { asVariants, resolveCombinationStock, variantKey } from "../lib/variants.js";
 
 export interface SelectedOption {
   label: string;
@@ -10,19 +11,17 @@ export interface SelectedOption {
 export type AddToCartResult = { ok: true } | { ok: false; reason: "not_found" | "sold_out" | "invalid_quantity" };
 
 /**
- * Resolves a product's effective regular price, sale %, and stock for a given
- * option selection. Price & sale come from the single pricing dropdown (the
- * first group flagged `affectsPricing`); every other dropdown is stock-only.
- * Available stock is the smallest selected-option stock across all dropdowns
- * (each chosen attribute must be in stock), falling back to the base stock when
- * no option specifies one. `pick` chooses the relevant option for a group,
- * defaulting to its first option.
+ * Resolves a product's effective regular price and sale % for a given option
+ * selection. Both come from the single pricing dropdown (the first group flagged
+ * `affectsPricing`); every other dropdown is attribute-only. `pick` chooses the
+ * relevant option for a group, defaulting to its first option. (Stock is no longer
+ * derived here — it's resolved per combination from `Product.variants`.)
  */
 function resolvePricing(
-  base: { regular: number; salePercent: number; stock: number },
+  base: { regular: number; salePercent: number },
   groups: ProductOptionGroup[],
   pick: (group: ProductOptionGroup) => ProductOption | undefined,
-): { regular: number; salePercent: number; stock: number } {
+): { regular: number; salePercent: number } {
   const groupsWithOptions = groups.filter((g) => g.options.length > 0);
 
   let { regular, salePercent } = base;
@@ -33,14 +32,7 @@ function resolvePricing(
     if (opt.salePercent != null) salePercent = clampSalePercent(opt.salePercent);
   }
 
-  const stockCandidates: number[] = [];
-  for (const group of groupsWithOptions) {
-    const opt = pick(group) ?? group.options[0];
-    if (opt && opt.stock != null) stockCandidates.push(Math.max(0, Math.round(Number(opt.stock))));
-  }
-  const stock = stockCandidates.length ? Math.min(...stockCandidates) : Math.max(0, Math.round(base.stock));
-
-  return { regular, salePercent, stock };
+  return { regular, salePercent };
 }
 
 export interface ResolvedLine {
@@ -68,27 +60,39 @@ export async function resolveProductLine(
   const product = await getProductBySlug(slug);
   if (!product) return { ok: false, reason: "not_found" };
 
+  const pick = (group: ProductOptionGroup) => {
+    const selected = selectedOptions.find((o) => o.label === group.label);
+    return selected ? group.options.find((o) => o.value === selected.value) : undefined;
+  };
+
   const resolved = resolvePricing(
     {
       regular: Number(product.price_regular) || 0,
       salePercent: product.is_on_sale ? clampSalePercent(product.sale_percent) : 0,
-      stock: Math.max(0, Math.round(Number(product.stock) || 0)),
     },
     product.option_groups,
-    (group) => {
-      const selected = selectedOptions.find((o) => o.label === group.label);
-      return selected ? group.options.find((o) => o.value === selected.value) : undefined;
-    },
+    pick,
   );
 
-  if (resolved.stock <= 0) return { ok: false, reason: "sold_out" };
+  // Build the combination in dropdown order so the label/key match the stored
+  // variants and what the cart records, then resolve that combination's stock.
+  const groupsWithOptions = product.option_groups.filter((g) => g.options.length > 0);
+  const selectedValues = groupsWithOptions.map((g) => (pick(g) ?? g.options[0]).value);
+  const stock = resolveCombinationStock(
+    product.variants,
+    product.option_groups,
+    selectedValues,
+    Number(product.stock) || 0,
+  );
+
+  if (stock <= 0) return { ok: false, reason: "sold_out" };
 
   const unitPrice =
     resolved.salePercent > 0
       ? Number((resolved.regular * (1 - resolved.salePercent / 100)).toFixed(2))
       : Number(resolved.regular.toFixed(2));
 
-  const variationLabel = selectedOptions.map((o) => o.value).filter(Boolean).join(" / ") || null;
+  const variationLabel = variantKey(selectedValues) || null;
 
   return {
     ok: true,
@@ -97,7 +101,7 @@ export async function resolveProductLine(
       productName: product.name,
       variationLabel,
       unitPrice,
-      stock: resolved.stock,
+      stock,
       imageUrl: product.image_url,
     },
   };
@@ -220,10 +224,9 @@ export async function updateCartQuantity(params: {
 }
 
 /**
- * Looks up the available stock for a cart line (null if unknown). When the line's
- * product has price-affecting dropdowns, the stock comes from the selected
- * option (re-matched from the stored variation label); otherwise it's the
- * product's base stock.
+ * Looks up the available stock for a cart line (null if unknown). The stored
+ * variation label identifies the option combination, whose stock is read from the
+ * product's `variants`; products without dropdowns use the base stock.
  */
 async function getItemStock(itemId: string, cartToken: string): Promise<number | null> {
   const { data: item, error: itemError } = await supabase
@@ -238,31 +241,23 @@ async function getItemStock(itemId: string, cartToken: string): Promise<number |
 
   const { data: product, error: productError } = await supabase
     .from("products")
-    .select("stock, option_groups")
+    .select("stock, option_groups, variants")
     .eq("id", row.product_id)
     .maybeSingle();
   if (productError) throw productError;
   if (!product) return null;
 
-  const prod = product as { stock: number; option_groups: unknown };
+  const prod = product as { stock: number; option_groups: unknown; variants: unknown };
   const baseStock = Math.max(0, Math.round(Number(prod.stock) || 0));
-
-  const groupsWithOptions = asOptionGroups(prod.option_groups).filter((g) => g.options.length > 0);
-  if (groupsWithOptions.length === 0) return baseStock;
+  const groups = asOptionGroups(prod.option_groups);
+  if (groups.filter((g) => g.options.length > 0).length === 0) return baseStock;
 
   const selectedValues = (row.variation_label ?? "")
     .split(" / ")
     .map((s) => s.trim())
     .filter(Boolean);
 
-  // Available stock is the smallest stock among the selected options across every
-  // dropdown (each chosen attribute must be in stock); falls back to base stock.
-  const stockCandidates: number[] = [];
-  for (const group of groupsWithOptions) {
-    const opt = group.options.find((o) => selectedValues.includes(o.value)) ?? group.options[0];
-    if (opt && opt.stock != null) stockCandidates.push(Math.max(0, Math.round(Number(opt.stock))));
-  }
-  return stockCandidates.length ? Math.min(...stockCandidates) : baseStock;
+  return resolveCombinationStock(asVariants(prod.variants), groups, selectedValues, baseStock);
 }
 
 export async function removeCartItem(cartToken: string, itemId: string): Promise<boolean> {

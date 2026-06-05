@@ -389,6 +389,9 @@
 		const refunded = Number(order.amount_refunded_cents) > 0
 			? `<div class="order-refunded">${money(order.amount_refunded_cents)} refunded</div>`
 			: "";
+		const completedPill = order.completed_at
+			? `<span class="order-status order-status-completed">completed</span>`
+			: "";
 		const actions = [];
 		if (order.editable) actions.push(`<button type="button" class="order-edit-btn" data-order-id="${escapeHtml(order.id)}">Edit order</button>`);
 		if (order.refundable) actions.push(`<button type="button" class="order-refund-btn" data-order-id="${escapeHtml(order.id)}">Refund</button>`);
@@ -397,7 +400,7 @@
 			<div class="order-card" data-order-id="${escapeHtml(order.id)}">
 				<div class="order-card-head">
 					<span class="order-pid">#${escapeHtml(order.purchase_id || "")}</span>
-					<span class="order-status order-status-${escapeHtml(status)}">${escapeHtml(status)}</span>
+					<span class="order-card-pills">${completedPill}<span class="order-status order-status-${escapeHtml(status)}">${escapeHtml(status)}</span></span>
 				</div>
 				<div class="order-meta">${escapeHtml(created)} · Total ${money(order.total_cents)}</div>
 				${refunded}

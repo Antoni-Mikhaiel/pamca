@@ -23,6 +23,12 @@ alter table products add column if not exists sale_end date;
 alter table products add column if not exists stock integer not null default 0;
 alter table products add column if not exists key_features jsonb not null default '[]'::jsonb;
 alter table products add column if not exists option_groups jsonb not null default '[]'::jsonb;
+-- Per-combination inventory for multi-dropdown products. Each entry is
+-- { "key": "<opt> / <opt>", "stock": N } where key is the option values joined by
+-- " / " in dropdown order (the same label the cart stores as variation_label). This
+-- replaces the ambiguous per-option stock: 3 styles × 2 colours = 6 tracked counts.
+-- When a product has no dropdowns, the top-level `stock` column is used instead.
+alter table products add column if not exists variants jsonb not null default '[]'::jsonb;
 -- The former free-text "specifications" list was removed; "key_features" is now
 -- surfaced as "Specifications" in the UI. Drop the old column if it still exists.
 alter table products drop column if exists specifications;
@@ -174,6 +180,9 @@ alter table orders add column if not exists stock_applied boolean not null defau
 -- [{ square_payment_id, amount_cents, refunded_cents }], so refunds can be issued
 -- against the right payment(s) and never exceed what was charged.
 alter table orders add column if not exists uneditable boolean not null default false;
+-- Admin-set fulfillment marker surfaced to the customer ("Completed"). Purely a
+-- status/communication flag — it does not change edit/refund eligibility.
+alter table orders add column if not exists completed_at timestamptz;
 alter table orders add column if not exists refunded_at timestamptz;
 alter table orders add column if not exists amount_refunded_cents integer not null default 0;
 alter table orders add column if not exists payments jsonb not null default '[]'::jsonb;

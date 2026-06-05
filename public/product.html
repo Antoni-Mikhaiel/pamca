@@ -238,6 +238,9 @@
         // point that price-affecting dropdowns override in "Mode 2".
         const baseStock = Math.max(0, Math.round(Number(p.stock || 0)));
         const baseSale = onSale ? (Number(p.sale_percent) || 0) : 0;
+        // Per-combination inventory (see Product.variants). Empty => no dropdowns,
+        // so the base stock applies.
+        const variants = Array.isArray(p.variants) ? p.variants : [];
 
         root.innerHTML =
           '<div class="product-container">' +
@@ -290,17 +293,20 @@
 
         // Resolve the active price / sale% / stock from the current selection.
         // Price & sale come from the single pricing dropdown (data-affects="1");
-        // a blank option price keeps the base price. Available stock is the
-        // smallest selected-option stock across every dropdown (each chosen
-        // attribute must be in stock), falling back to the base stock.
+        // a blank option price keeps the base price. Stock is the selected option
+        // *combination's* count (from `variants`, keyed by the values joined " / "
+        // in dropdown order); products without dropdowns use the base stock; legacy
+        // products (no variants) fall back to the smallest per-option data-stock.
         function getActiveSelection() {
           let regular = baseRegular;
           let salePercent = baseSale;
-          var stockCandidates = [];
+          var selectedValues = [];
+          var legacyStockCandidates = [];
           var pricingApplied = false;
           document.querySelectorAll('#pd-root select[data-group]').forEach(function (sel) {
             const opt = sel.options[sel.selectedIndex];
             if (!opt) return;
+            selectedValues.push(opt.value);
             if (sel.getAttribute('data-affects') === '1' && !pricingApplied) {
               pricingApplied = true;
               const praw = opt.getAttribute('data-price');
@@ -308,10 +314,19 @@
               const sraw = opt.getAttribute('data-sale');   // '' => inherit base sale
               if (sraw !== '' && sraw != null) salePercent = Math.max(0, Math.min(100, Number(sraw) || 0));
             }
-            const straw = opt.getAttribute('data-stock');    // '' => no limit from this option
-            if (straw !== '' && straw != null) stockCandidates.push(Math.max(0, Math.round(Number(straw) || 0)));
+            const straw = opt.getAttribute('data-stock');    // legacy only
+            if (straw !== '' && straw != null) legacyStockCandidates.push(Math.max(0, Math.round(Number(straw) || 0)));
           });
-          const stock = stockCandidates.length ? Math.min.apply(null, stockCandidates) : baseStock;
+
+          var stock;
+          if (selectedValues.length === 0) {
+            stock = baseStock;                                  // no dropdowns
+          } else if (variants.length) {
+            var match = variants.find(function (v) { return v && v.key === selectedValues.join(' / '); });
+            stock = match ? Math.max(0, Math.round(Number(match.stock) || 0)) : 0;
+          } else {
+            stock = legacyStockCandidates.length ? Math.min.apply(null, legacyStockCandidates) : baseStock;
+          }
           return { regular: regular, salePercent: salePercent, stock: stock };
         }
 

@@ -228,8 +228,19 @@ export function isOrderEditable(row: { status: string; uneditable: boolean; refu
   return row.status === "paid" && !row.uneditable && !row.refunded_at && orderAgeMs(row.created_at) < EDIT_WINDOW_MS;
 }
 
-export function isOrderRefundable(row: { status: string; refunded_at: string | null; created_at: string }): boolean {
-  return row.status === "paid" && !row.refunded_at && orderAgeMs(row.created_at) < REFUND_WINDOW_MS;
+export function isOrderRefundable(row: {
+  status: string;
+  refunded_at: string | null;
+  created_at: string;
+  completed_at: string | null;
+}): boolean {
+  // A completed (fulfilled) order can no longer be refunded online, even inside the window.
+  return (
+    row.status === "paid" &&
+    !row.refunded_at &&
+    !row.completed_at &&
+    orderAgeMs(row.created_at) < REFUND_WINDOW_MS
+  );
 }
 
 function mapOrder(row: Record<string, unknown>): OrderRecord {
@@ -237,6 +248,7 @@ function mapOrder(row: Record<string, unknown>): OrderRecord {
   const status = String(row.status ?? "pending");
   const uneditable = Boolean(row.uneditable);
   const refundedAt = (row.refunded_at as string | null) ?? null;
+  const completedAt = (row.completed_at as string | null) ?? null;
   const createdAt = String(row.created_at ?? "");
   return {
     id: String(row.id),
@@ -251,10 +263,10 @@ function mapOrder(row: Record<string, unknown>): OrderRecord {
     customer_address: (row.customer_address as string | null) ?? null,
     created_at: createdAt,
     uneditable,
-    completed_at: (row.completed_at as string | null) ?? null,
+    completed_at: completedAt,
     amount_refunded_cents: Number(row.amount_refunded_cents ?? 0),
     editable: isOrderEditable({ status, uneditable, refunded_at: refundedAt, created_at: createdAt }),
-    refundable: isOrderRefundable({ status, refunded_at: refundedAt, created_at: createdAt }),
+    refundable: isOrderRefundable({ status, refunded_at: refundedAt, created_at: createdAt, completed_at: completedAt }),
     items: items.map((it) => ({
       id: it.id != null ? String(it.id) : undefined,
       product_id: it.product_id == null ? null : Number(it.product_id),
@@ -336,6 +348,7 @@ export interface FullOrder {
   currency: string;
   total_cents: number;
   uneditable: boolean;
+  completed_at: string | null;
   refunded_at: string | null;
   amount_refunded_cents: number;
   payments: OrderPaymentEntry[];
@@ -345,7 +358,7 @@ export interface FullOrder {
 }
 
 const FULL_ORDER_SELECT =
-  "id, user_id, cart_token, purchase_id, status, currency, total_cents, uneditable, refunded_at, " +
+  "id, user_id, cart_token, purchase_id, status, currency, total_cents, uneditable, completed_at, refunded_at, " +
   "amount_refunded_cents, payments, created_at, customer_first_name, customer_last_name, customer_email, " +
   "customer_phone, customer_address, " +
   "order_items(id, product_id, variation_id, product_name, variation_label, unit_price_cents, quantity, line_total_cents)";
@@ -369,6 +382,7 @@ export async function getFullOrder(orderId: string): Promise<FullOrder | null> {
     currency: String(row.currency ?? "CAD"),
     total_cents: Number(row.total_cents ?? 0),
     uneditable: Boolean(row.uneditable),
+    completed_at: (row.completed_at as string | null) ?? null,
     refunded_at: (row.refunded_at as string | null) ?? null,
     amount_refunded_cents: Number(row.amount_refunded_cents ?? 0),
     payments: payments.map((p) => ({

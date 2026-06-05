@@ -4,10 +4,19 @@ import { ContactSubmission } from "../models/types.js";
 // there). Only the API key is needed — we call Brevo's REST API directly.
 const brevoApiKey = process.env.BREVO_API_KEY ?? "";
 const recaptchaSecret = process.env.RECAPTCHA_SECRET ?? "";
+// reCAPTCHA v3 returns a 0.0–1.0 score; reject submissions below this. Ignored for
+// v2 responses (which carry no score). Override with RECAPTCHA_MIN_SCORE.
+const recaptchaMinScore = Number(process.env.RECAPTCHA_MIN_SCORE ?? "0.5") || 0.5;
 const toEmail = process.env.CONTACT_TO_EMAIL ?? "sales@pamca.net";
 const fromEmail = process.env.CONTACT_FROM_EMAIL ?? "noreply@pamca.net";
 const fromName = process.env.CONTACT_FROM_NAME ?? "PAMCA Website";
 
+/**
+ * Verifies a reCAPTCHA token via Google's siteverify. Works for both v3 (score
+ * based) and v2 (challenge): the token must be valid, and — when a score is
+ * present (v3) — it must meet the minimum threshold. Skipped entirely when no
+ * secret is configured.
+ */
 export async function validateRecaptcha(token: string, remoteIp?: string): Promise<boolean> {
   if (!recaptchaSecret) return true;
   if (!token) return false;
@@ -29,8 +38,11 @@ export async function validateRecaptcha(token: string, remoteIp?: string): Promi
 
   if (!response.ok) return false;
 
-  const json = (await response.json()) as { success?: boolean };
-  return Boolean(json.success);
+  const json = (await response.json()) as { success?: boolean; score?: number };
+  if (!json.success) return false;
+  // v3 only: enforce the score threshold (v2 responses have no score).
+  if (typeof json.score === "number" && json.score < recaptchaMinScore) return false;
+  return true;
 }
 
 export async function sendContactEmail(input: ContactSubmission): Promise<void> {

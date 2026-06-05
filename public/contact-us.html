@@ -738,8 +738,6 @@
                         </div>
 
                        <button type="button" class="submit-btn" onclick="onContactSubmit()">Send Message</button>
-                        <!-- Container where the invisible v2 widget will be rendered -->
-<div id="recaptcha-container" aria-hidden="true"></div>
 </form>
                 </div>
                 </div>
@@ -830,104 +828,39 @@
         </div>
     </section>
 
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <script src="https://www.google.com/recaptcha/api.js?render=6Le6NA8tAAAAAK5Ee1PecmX-edcwwDLDaKimk5GA" async defer></script>
     <script>
-    // Called when user clicks Send — triggers reCAPTCHA execute
-/* ---------- reCAPTCHA v2 (invisible) — programmatic render + execute ---------- */
-let recaptchaWidgetId = null;
-let recaptchaInitInterval = null;
+/* ---------- reCAPTCHA v3 (score based) — execute on submit ---------- */
+var RECAPTCHA_SITE_KEY = '6Le6NA8tAAAAAK5Ee1PecmX-edcwwDLDaKimk5GA'; // v3 site key (pairs with RECAPTCHA_SECRET)
 
-function initRecaptcha() {
-  // Only render once
-  if (typeof grecaptcha === 'undefined' || typeof grecaptcha.render !== 'function') {
-    return;
-  }
-  if (recaptchaWidgetId !== null) return;
-
-  try {
-    recaptchaWidgetId = grecaptcha.render('recaptcha-container', {
-      'sitekey': '6Le6NA8tAAAAAK5Ee1PecmX-edcwwDLDaKimk5GA', // reCAPTCHA v2 invisible site key (pairs with RECAPTCHA_SECRET)
-      'size': 'invisible',
-      'callback': onReCaptchaSuccess,
-      'badge': 'inline' // optional; change if you want badge position
-    });
-    console.log('reCAPTCHA rendered, widgetId =', recaptchaWidgetId);
-
-    // If we started an interval to wait for grecaptcha, clear it
-    if (recaptchaInitInterval) {
-      clearInterval(recaptchaInitInterval);
-      recaptchaInitInterval = null;
-    }
-  } catch (err) {
-    console.error('initRecaptcha render error:', err);
-  }
-}
-
-// Attempt to init when grecaptcha is available.
-// Some themes/scripts load the recaptcha script async — so poll a few times.
-(function waitForRecaptcha() {
-  // Try immediately if grecaptcha already present
-  if (typeof grecaptcha !== 'undefined' && typeof grecaptcha.render === 'function') {
-    initRecaptcha();
-    return;
-  }
-  // Otherwise poll every 200ms up to a short limit
-  let tries = 0;
-  recaptchaInitInterval = setInterval(function() {
-    tries++;
-    if (typeof grecaptcha !== 'undefined' && typeof grecaptcha.render === 'function') {
-      initRecaptcha();
-    } else if (tries > 50) { // ~10 seconds
-      clearInterval(recaptchaInitInterval);
-      recaptchaInitInterval = null;
-      console.warn('reCAPTCHA did not load in time.');
-    }
-  }, 200);
-})();
-
+// Called when the user clicks Send: get a fresh v3 token, attach it to the form
+// (as g-recaptcha-response, which the server reads), then submit.
 function onContactSubmit() {
-  console.log('onContactSubmit called; widgetId=', recaptchaWidgetId);
-
-  // If grecaptcha isn't ready, try to initialize and wait a tiny bit.
-  if (typeof grecaptcha === 'undefined') {
-    alert('reCAPTCHA still loading — please wait a second and try again.');
+  if (typeof grecaptcha === 'undefined' || typeof grecaptcha.execute !== 'function') {
+    alert('reCAPTCHA is still loading — please try again in a moment.');
     return;
   }
-
-  if (recaptchaWidgetId === null) {
-    // try to render synchronously now
-    initRecaptcha();
-    // short delay to allow render -> then execute
-    setTimeout(function() {
-      if (recaptchaWidgetId !== null) {
-        try { grecaptcha.execute(recaptchaWidgetId); }
-        catch(e) { console.error('execute error after init:', e); alert('reCAPTCHA error — check console.'); }
-      } else {
-        alert('reCAPTCHA not ready — please wait a second.');
-      }
-    }, 250);
-    return;
-  }
-
-  // Normal path: execute the rendered widget
-  try {
-    grecaptcha.execute(recaptchaWidgetId);
-  } catch (e) {
-    console.error('grecaptcha.execute error:', e);
-    alert('reCAPTCHA error — check console.');
-  }
-}
-
-// Called by reCAPTCHA when token is received
-function onReCaptchaSuccess(token) {
-  console.log('reCAPTCHA token received:', token);
-  // `g-recaptcha-response` will be automatically added to the form by the grecaptcha lib.
-  var form = document.getElementById('contactForm');
-  if (!form) {
-    console.error('contactForm element not found');
-    return;
-  }
-  form.submit();
+  grecaptcha.ready(function () {
+    grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'contact' })
+      .then(function (token) {
+        var form = document.getElementById('contactForm');
+        if (!form) { console.error('contactForm element not found'); return; }
+        var input = document.getElementById('g-recaptcha-response');
+        if (!input) {
+          input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'g-recaptcha-response';
+          input.id = 'g-recaptcha-response';
+          form.appendChild(input);
+        }
+        input.value = token;
+        form.submit();
+      })
+      .catch(function (e) {
+        console.error('grecaptcha.execute error:', e);
+        alert('reCAPTCHA error — please try again.');
+      });
+  });
 }
         // Phone number formatting
         function formatPhoneNumber(value) {

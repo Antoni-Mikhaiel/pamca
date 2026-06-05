@@ -1,12 +1,12 @@
 import { ContactSubmission } from "../models/types.js";
-import { Resend } from "resend";
 
-const resendApiKey = process.env.RESEND_API_KEY ?? "";
+// Transactional email is sent through Brevo (the domain is already authenticated
+// there). Only the API key is needed — we call Brevo's REST API directly.
+const brevoApiKey = process.env.BREVO_API_KEY ?? "";
 const recaptchaSecret = process.env.RECAPTCHA_SECRET ?? "";
 const toEmail = process.env.CONTACT_TO_EMAIL ?? "sales@pamca.net";
 const fromEmail = process.env.CONTACT_FROM_EMAIL ?? "noreply@pamca.net";
-
-const resend = resendApiKey ? new Resend(resendApiKey) : null;
+const fromName = process.env.CONTACT_FROM_NAME ?? "PAMCA Website";
 
 export async function validateRecaptcha(token: string, remoteIp?: string): Promise<boolean> {
   if (!recaptchaSecret) return true;
@@ -34,8 +34,8 @@ export async function validateRecaptcha(token: string, remoteIp?: string): Promi
 }
 
 export async function sendContactEmail(input: ContactSubmission): Promise<void> {
-  if (!resend) {
-    throw new Error("RESEND_API_KEY is not configured");
+  if (!brevoApiKey) {
+    throw new Error("BREVO_API_KEY is not configured");
   }
 
   const subject = `New Inquiry: ${input.inquiryType} from ${input.firstName} ${input.lastName}`;
@@ -49,11 +49,26 @@ export async function sendContactEmail(input: ContactSubmission): Promise<void> 
     input.message,
   ].join("\n");
 
-  await resend.emails.send({
-    from: fromEmail,
-    to: toEmail,
-    subject,
-    text,
-    replyTo: input.email,
+  // Brevo transactional email API. `sender.email` must be an authenticated sender
+  // / domain in the Brevo account; replyTo is the person who filled the form.
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": brevoApiKey,
+      "Content-Type": "application/json",
+      accept: "application/json",
+    },
+    body: JSON.stringify({
+      sender: { email: fromEmail, name: fromName },
+      to: [{ email: toEmail }],
+      replyTo: { email: input.email, name: `${input.firstName} ${input.lastName}`.trim() },
+      subject,
+      textContent: text,
+    }),
   });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Brevo email send failed (${response.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+  }
 }

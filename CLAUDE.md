@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-PAMCA is a pharmacy/e-commerce site that was migrated from WordPress/PHP to a TypeScript stack: static HTML frontend + Vercel serverless API functions + Supabase (Postgres) + Resend (email). The API deliberately preserves the legacy WordPress request/response shapes so the existing frontend keeps working — see `docs/endpoint-mapping.md` for the legacy→new mapping.
+PAMCA is a pharmacy/e-commerce site that was migrated from WordPress/PHP to a TypeScript stack: static HTML frontend + Vercel serverless API functions + Supabase (Postgres) + Brevo (transactional email). The API deliberately preserves the legacy WordPress request/response shapes so the existing frontend keeps working — see `docs/endpoint-mapping.md` for the legacy→new mapping.
 
 ## Commands
 
@@ -40,19 +40,19 @@ Both runtimes rely on the `ApiRequest`/`ApiResponse` abstraction in [src/lib/htt
 ```
 api/[...path].ts single catch-all function → src/lib/routes.ts dispatch
 src/controllers  parse/validate input, shape the response (cart, contact, product)
-src/services     all I/O: Supabase queries, Resend email, reCAPTCHA verify
+src/services     all I/O: Supabase queries, Brevo email, reCAPTCHA verify
 src/lib          http helpers, routes table/dispatch, Supabase client, mini-cart HTML
 src/models       shared TypeScript types
 ```
 
-Keep Supabase/Resend calls in `src/services`; controllers should not touch the DB client directly.
+Keep Supabase/Brevo calls in `src/services`; controllers should not touch the DB client directly.
 
 ### Notable conventions
 
 - **`/api/ajax`** is a single endpoint that multiplexes legacy WordPress actions by the `action` field in the form body (`pamca_update_cart_qty`, `update_cart_item`, `pamca_remove_cart_item`). Bodies arrive as `application/x-www-form-urlencoded`; `parseBody()` in `src/lib/http.ts` normalizes form/JSON/object bodies into `Record<string, string>`.
 - **Cart identity is anonymous**, keyed by a `cart_token` UUID stored in an HttpOnly cookie (`ensureCartToken` in `src/lib/http.ts`), not by a logged-in user. Cart rows live in the `cart_items` table.
 - **Server-rendered cart markup**: the mini-cart HTML is generated on the server in [src/lib/miniCartHtml.ts](src/lib/miniCartHtml.ts) and returned in `data.html`; the client injects it verbatim. If you change cart DOM structure, change it here (and keep `escapeHtml` usage for any user/DB-derived strings).
-- **Contact form** posts to `/api/contact/submit`, which validates a honeypot (`website_hp`), optional reCAPTCHA, sends via Resend, then **302-redirects** back to `/contact-us.html?status=...` (it does not return JSON).
+- **Contact form** posts to `/api/contact/submit`, which validates a honeypot (`website_hp`), optional reCAPTCHA, sends via Brevo (`BREVO_API_KEY`), then **302-redirects** back to `/contact-us.html?status=...` (it does not return JSON).
 
 ### Frontend (`public/`)
 

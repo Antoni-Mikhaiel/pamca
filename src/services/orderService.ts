@@ -121,7 +121,10 @@ export async function markOrderPaidBySquareOrderId(
   if (!data) return null;
 
   const row = data as { id: string; cart_token: string | null; status: string; total_cents: number };
-  if (row.status === "paid") return null;
+  // Only ever transition pending → paid. Square also emits payment.updated events
+  // around refunds; without this guard such an event would flip an already-paid OR
+  // refunded order back to "paid" (clobbering the refund + resending emails).
+  if (row.status !== "pending") return null;
 
   const { error: updateError } = await supabase
     .from("orders")

@@ -31,6 +31,7 @@ interface OrderRow {
   total_cents: number;
   amount_refunded_cents: number;
   completed_at: string | null;
+  refunded_at: string | null;
   created_at: string;
 }
 
@@ -60,7 +61,7 @@ function lastTwelveMonths(): Array<{ ym: string; label: string }> {
 export async function getDashboardStats(): Promise<DashboardStats> {
   const [{ data: orders, error: oErr }, { data: items, error: iErr }, { data: products, error: pErr }] =
     await Promise.all([
-      supabase.from("orders").select("id, status, total_cents, amount_refunded_cents, completed_at, created_at"),
+      supabase.from("orders").select("id, status, total_cents, amount_refunded_cents, completed_at, refunded_at, created_at"),
       supabase.from("order_items").select("order_id, product_id, product_name, quantity, unit_price_cents, line_total_cents"),
       supabase.from("products").select("id, cost_price"),
     ]);
@@ -75,16 +76,19 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     costByProduct.set(Number(p.id), Math.round((Number(p.cost_price) || 0) * 100));
   }
 
-  const isPaid = (s: string) => s === "paid"; // 'completed' is a flag; status stays 'paid'
-  const paidOrders = orderRows.filter((o) => isPaid(o.status));
+  // An order is "refunded" whenever it has a refund stamp/amount — robust even if
+  // the status column was left as 'paid' (Square webhooks have done this in the
+  // past). A "paid sale" is a paid order that was NOT refunded.
+  const isRefunded = (o: OrderRow) => Boolean(o.refunded_at) || (Number(o.amount_refunded_cents) || 0) > 0;
+  const isPaidSale = (o: OrderRow) => o.status === "paid" && !isRefunded(o);
+
+  const paidOrders = orderRows.filter(isPaidSale);
   const paidIds = new Set(paidOrders.map((o) => o.id));
 
   // Totals
   const salesCents = paidOrders.reduce((s, o) => s + (Number(o.total_cents) || 0), 0);
   const orderCount = paidOrders.length;
-  const refundedOrders = orderRows.filter(
-    (o) => o.status === "refunded" || (Number(o.amount_refunded_cents) || 0) > 0,
-  );
+  const refundedOrders = orderRows.filter(isRefunded);
   const refundsValueCents = orderRows.reduce((s, o) => s + (Number(o.amount_refunded_cents) || 0), 0);
 
   let unitsSold = 0;
@@ -145,7 +149,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const statusCounts = new Map<string, number>();
   for (const o of orderRows) {
     if (o.status === "pending") continue;
-    const status = o.status === "paid" && o.completed_at ? "completed" : o.status;
+    const status = isRefunded(o) ? "refunded" : o.status === "paid" && o.completed_at ? "completed" : o.status;
     statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
   }
   const statusOrder = ["paid", "completed", "refunded", "failed", "canceled"];

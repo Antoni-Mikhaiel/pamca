@@ -1550,7 +1550,7 @@
     let acc = 0;
     const stops = [];
     const legend = items.map((it, idx) => {
-      const color = DASH_COLORS[idx % DASH_COLORS.length];
+      const color = it.color || DASH_COLORS[idx % DASH_COLORS.length];
       const start = (acc / total) * 100;
       acc += Number(it.value) || 0;
       const end = (acc / total) * 100;
@@ -1629,7 +1629,6 @@
     const kpis = [
       kpiCard('is-sales', 'Total sales', centsMoney(t.salesCents), `${t.orderCount || 0} paid order${t.orderCount === 1 ? '' : 's'}`),
       kpiCard('is-net', 'Net revenue', centsMoney(t.netRevenueCents), 'After refunds', (t.netRevenueCents || 0) < 0),
-      kpiCard('is-profit', 'Profit', centsMoney(t.profitCents), 'Revenue − cost of goods', (t.profitCents || 0) < 0),
       kpiCard('is-orders', 'Units sold', String(t.unitsSold || 0), `${centsMoney(t.avgOrderCents)} avg order`),
       kpiCard('is-refunds', 'Refunds', centsMoney(t.refundsValueCents), `${t.refundCount || 0} refunded`),
       kpiCard('is-aov', 'Avg order value', centsMoney(t.avgOrderCents), 'Per paid order'),
@@ -1638,9 +1637,18 @@
     const revenueItems = (stats.revenueByProduct || []).map((r) => ({
       label: r.name, value: r.revenueCents, display: centsMoney(r.revenueCents),
     }));
-    const statusItems = (stats.statusBreakdown || []).map((s) => ({
-      label: s.status.charAt(0).toUpperCase() + s.status.slice(1), value: s.count, display: String(s.count),
-    }));
+    // Semantic label + colour per order status so the donut reads at a glance.
+    const STATUS_META = {
+      paid: { label: 'Paid', color: '#0c7c74' },
+      completed: { label: 'Completed', color: '#5aa9c5' },
+      refunded: { label: 'Refunded', color: '#cf4626' },
+      failed: { label: 'Failed', color: '#9aa3ad' },
+      canceled: { label: 'Canceled', color: '#b48ead' },
+    };
+    const statusItems = (stats.statusBreakdown || []).map((s) => {
+      const meta = STATUS_META[s.status] || { label: s.status.charAt(0).toUpperCase() + s.status.slice(1), color: undefined };
+      return { label: meta.label, value: s.count, display: String(s.count), color: meta.color };
+    });
 
     root.innerHTML =
       `<div class="dash-kpis">${kpis}</div>` +

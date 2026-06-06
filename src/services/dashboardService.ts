@@ -30,6 +30,7 @@ interface OrderRow {
   status: string;
   total_cents: number;
   amount_refunded_cents: number;
+  completed_at: string | null;
   created_at: string;
 }
 
@@ -59,7 +60,7 @@ function lastTwelveMonths(): Array<{ ym: string; label: string }> {
 export async function getDashboardStats(): Promise<DashboardStats> {
   const [{ data: orders, error: oErr }, { data: items, error: iErr }, { data: products, error: pErr }] =
     await Promise.all([
-      supabase.from("orders").select("id, status, total_cents, amount_refunded_cents, created_at"),
+      supabase.from("orders").select("id, status, total_cents, amount_refunded_cents, completed_at, created_at"),
       supabase.from("order_items").select("order_id, product_id, product_name, quantity, unit_price_cents, line_total_cents"),
       supabase.from("products").select("id, cost_price"),
     ]);
@@ -138,13 +139,23 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     count: byMonth.get(m.ym)?.count ?? 0,
   }));
 
-  // Status breakdown (exclude pending — never a real sale in the admin view)
+  // Status breakdown (exclude pending — never a real sale in the admin view). A
+  // paid order that's been fulfilled is reported as its own "completed" status,
+  // since `completed_at` is a flag rather than a distinct DB status value.
   const statusCounts = new Map<string, number>();
   for (const o of orderRows) {
     if (o.status === "pending") continue;
-    statusCounts.set(o.status, (statusCounts.get(o.status) ?? 0) + 1);
+    const status = o.status === "paid" && o.completed_at ? "completed" : o.status;
+    statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
   }
-  const statusBreakdown = Array.from(statusCounts.entries()).map(([status, count]) => ({ status, count }));
+  const statusOrder = ["paid", "completed", "refunded", "failed", "canceled"];
+  const statusBreakdown = Array.from(statusCounts.entries())
+    .map(([status, count]) => ({ status, count }))
+    .sort((a, b) => {
+      const ai = statusOrder.indexOf(a.status);
+      const bi = statusOrder.indexOf(b.status);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
 
   return {
     currency: "CAD",

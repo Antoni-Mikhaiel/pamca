@@ -1645,10 +1645,15 @@
       failed: { label: 'Failed', color: '#9aa3ad' },
       canceled: { label: 'Canceled', color: '#b48ead' },
     };
-    const statusItems = (stats.statusBreakdown || []).map((s) => {
-      const meta = STATUS_META[s.status] || { label: s.status.charAt(0).toUpperCase() + s.status.slice(1), color: undefined };
-      return { label: meta.label, value: s.count, display: String(s.count), color: meta.color };
-    });
+    // The status donut compares fulfilled (completed) vs refunded orders only.
+    const STATUS_SHOWN = ['completed', 'refunded'];
+    const statusItems = (stats.statusBreakdown || [])
+      .filter((s) => STATUS_SHOWN.includes(s.status))
+      .map((s) => {
+        const meta = STATUS_META[s.status] || { label: s.status.charAt(0).toUpperCase() + s.status.slice(1), color: undefined };
+        return { label: meta.label, value: s.count, display: String(s.count), color: meta.color };
+      });
+    const statusTotal = statusItems.reduce((n, i) => n + i.value, 0);
 
     root.innerHTML =
       `<div class="dash-kpis">${kpis}</div>` +
@@ -1656,7 +1661,7 @@
         '<div>' + timelineCard(stats.salesTimeline || []) + rankingCard(stats.topProducts || []) + '</div>' +
         '<div>' +
           donutCard('Revenue by product', 'Share of sales revenue.', revenueItems, centsMoney(t.salesCents)) +
-          donutCard('Orders by status', 'Paid vs refunded, etc.', statusItems, String((stats.statusBreakdown || []).reduce((s, x) => s + x.count, 0))) +
+          donutCard('Orders by status', 'Completed vs refunded.', statusItems, String(statusTotal)) +
         '</div>' +
       '</div>';
 

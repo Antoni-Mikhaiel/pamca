@@ -21,6 +21,7 @@ import {
   isSquareConfigured,
   SquareLineItem,
 } from "./squareService.js";
+import { sendRefundAdminEmail } from "./emailService.js";
 
 const SITE_URL = (process.env.SITE_URL ?? "").replace(/\/$/, "");
 
@@ -326,6 +327,15 @@ export async function refundOrderFull(order: FullOrder): Promise<{ refundedCents
     if (item.product_id != null) await adjustProductStock(item.product_id, item.variation_label, -item.quantity);
   }
   await recordRefund(order.id, payments, true);
+
+  // Notify the shop owner of the refund (best-effort).
+  try {
+    const record = await getOrderRecordById(order.id);
+    if (record) await sendRefundAdminEmail(record, refundedCents);
+  } catch {
+    // Email is best-effort; the refund itself already succeeded.
+  }
+
   return { refundedCents };
 }
 

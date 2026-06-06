@@ -1,15 +1,11 @@
 import { ContactSubmission } from "../models/types.js";
+import { sendBrevoEmail } from "./emailService.js";
 
-// Transactional email is sent through Brevo (the domain is already authenticated
-// there). Only the API key is needed — we call Brevo's REST API directly.
-const brevoApiKey = process.env.BREVO_API_KEY ?? "";
 const recaptchaSecret = process.env.RECAPTCHA_SECRET ?? "";
 // reCAPTCHA v3 returns a 0.0–1.0 score; reject submissions below this. Ignored for
 // v2 responses (which carry no score). Override with RECAPTCHA_MIN_SCORE.
 const recaptchaMinScore = Number(process.env.RECAPTCHA_MIN_SCORE ?? "0.5") || 0.5;
 const toEmail = process.env.CONTACT_TO_EMAIL ?? "sales@pamca.net";
-const fromEmail = process.env.CONTACT_FROM_EMAIL ?? "noreply@pamca.net";
-const fromName = process.env.CONTACT_FROM_NAME ?? "PAMCA Website";
 
 /**
  * Verifies a reCAPTCHA token via Google's siteverify. Works for both v3 (score
@@ -46,41 +42,36 @@ export async function validateRecaptcha(token: string, remoteIp?: string): Promi
 }
 
 export async function sendContactEmail(input: ContactSubmission): Promise<void> {
-  if (!brevoApiKey) {
-    throw new Error("BREVO_API_KEY is not configured");
-  }
-
-  const subject = `New Inquiry: ${input.inquiryType} from ${input.firstName} ${input.lastName}`;
+  const fullName = `${input.firstName} ${input.lastName}`.trim();
+  const subject = `New contact message from ${fullName}`;
   const text = [
     `Name: ${input.firstName} ${input.lastName}`,
     `Email: ${input.email}`,
     `Phone: ${input.phone}`,
-    `Inquiry Type: ${input.inquiryType}`,
     "",
     "Message:",
     input.message,
   ].join("\n");
+  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#222;">
+      <p><strong>Name:</strong> ${escapeHtmlBasic(input.firstName)} ${escapeHtmlBasic(input.lastName)}</p>
+      <p><strong>Email:</strong> ${escapeHtmlBasic(input.email)}</p>
+      <p><strong>Phone:</strong> ${escapeHtmlBasic(input.phone || "—")}</p>
+      <p><strong>Message:</strong></p>
+      <p style="white-space:pre-wrap;">${escapeHtmlBasic(input.message)}</p>
+    </div>`;
 
-  // Brevo transactional email API. `sender.email` must be an authenticated sender
-  // / domain in the Brevo account; replyTo is the person who filled the form.
-  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-    method: "POST",
-    headers: {
-      "api-key": brevoApiKey,
-      "Content-Type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify({
-      sender: { email: fromEmail, name: fromName },
-      to: [{ email: toEmail }],
-      replyTo: { email: input.email, name: `${input.firstName} ${input.lastName}`.trim() },
-      subject,
-      textContent: text,
-    }),
+  await sendBrevoEmail({
+    to: [{ email: toEmail }],
+    subject,
+    html,
+    text,
+    replyTo: input.email ? { email: input.email, name: fullName } : undefined,
   });
+}
 
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(`Brevo email send failed (${response.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
-  }
+function escapeHtmlBasic(value: string): string {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }

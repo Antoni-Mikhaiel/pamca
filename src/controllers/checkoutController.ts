@@ -7,8 +7,10 @@ import {
   attachSquareDetails,
   markOrderPaidBySquareOrderId,
   applyStockForOrder,
+  getOrderRecordById,
 } from "../services/orderService.js";
 import { applyEditBySquareOrderId } from "../services/orderEditService.js";
+import { sendPurchaseEmails } from "../services/emailService.js";
 import { updateProfile } from "../services/profileService.js";
 import {
   createPaymentLink,
@@ -152,6 +154,14 @@ export async function handleWebhook(req: ApiRequest, res: ApiResponse): Promise<
         } catch {
           // Stock application is guarded against double-apply; a failure here
           // shouldn't make us 500 and trigger endless Square retries.
+        }
+        // Confirmation emails (owner + customer). markOrderPaid... only returns a
+        // result on the first paid transition, so these send exactly once.
+        try {
+          const record = await getOrderRecordById(result.orderId);
+          if (record) await sendPurchaseEmails(record);
+        } catch {
+          // Email is best-effort; never fail the webhook over it.
         }
         if (result.cartToken) {
           try {

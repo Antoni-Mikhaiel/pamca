@@ -15,7 +15,8 @@
     upload: '/api/admin/upload',
     orders: '/api/admin/orders',
     flagOrder: '/api/admin/orders/flag',
-    completeOrder: '/api/admin/orders/complete'
+    completeOrder: '/api/admin/orders/complete',
+    dashboard: '/api/admin/dashboard'
   };
 
   function whenAuthReady(){
@@ -610,6 +611,7 @@
     d.saleStart = p.saleStart || '';
     d.saleEnd = p.saleEnd || '';
     d.stock = Number.isFinite(+p.stock) ? Math.max(0, Math.round(+p.stock)) : 0;
+    d.cost = Number.isFinite(+p.cost) ? Math.max(0, +p.cost) : 0;
     d.description = typeof p.description === 'string' ? p.description : '';
     d.keyFeatures = Array.isArray(p.keyFeatures) ? p.keyFeatures.filter(Boolean) : [];
     d.optionGroups = Array.isArray(p.optionGroups) ? p.optionGroups.map(g => {
@@ -1116,7 +1118,8 @@
     const section = document.getElementById('pm-pricing-section');
     if (!section) return;
     section.classList.toggle('is-disabled', hasPricingGroup);
-    section.querySelectorAll('input').forEach(input => { input.disabled = hasPricingGroup; });
+    // Unit cost is product-level (not per option), so it stays editable in Mode 2.
+    section.querySelectorAll('input:not(#pm-cost)').forEach(input => { input.disabled = hasPricingGroup; });
     const note = document.getElementById('pm-pricing-mode-note');
     if (note) note.style.display = hasPricingGroup ? 'block' : 'none';
     updatePricePreview();
@@ -1194,6 +1197,7 @@
     document.getElementById('pm-slug').dataset.edited = p ? '1' : '';
     document.getElementById('pm-status').value = p ? p.status : 'active';
     document.getElementById('pm-price').value = p ? p.price : '';
+    document.getElementById('pm-cost').value = p ? (p.cost || '') : '';
     document.getElementById('pm-sale-percent').value = p ? (p.salePercent || '') : '';
     document.getElementById('pm-sale-start').value = p ? p.saleStart : '';
     document.getElementById('pm-sale-end').value = p ? p.saleEnd : '';
@@ -1261,6 +1265,7 @@
       status: document.getElementById('pm-status').value,
       images,
       price: document.getElementById('pm-price').value,
+      cost: document.getElementById('pm-cost').value,
       salePercent: document.getElementById('pm-sale-percent').value,
       saleStart: document.getElementById('pm-sale-start').value,
       saleEnd: document.getElementById('pm-sale-end').value,
@@ -1511,6 +1516,152 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Dashboard — store statistics with dependency-free charts (CSS bars + conic
+  // gradient donuts). Data comes from /api/admin/dashboard (admin only).
+  // ---------------------------------------------------------------------------
+  const DASH_COLORS = ['#0c7c74', '#5aa9c5', '#6f5acd', '#c98a18', '#2e9e5b', '#cf4626', '#9aa3ad', '#b48ead'];
+
+  function centsMoney(c) { return fmtMoney((Number(c) || 0) / 100); }
+  function compactMoney(c) {
+    const n = (Number(c) || 0) / 100;
+    if (Math.abs(n) >= 1000) return '$' + (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    return '$' + Math.round(n);
+  }
+
+  async function loadDashboard() {
+    const root = document.getElementById('dashboard-root');
+    if (!root) return;
+    try {
+      const stats = await apiGet(API.dashboard);
+      renderDashboard(stats);
+    } catch (e) {
+      console.error('loadDashboard', e);
+      root.innerHTML = '<div class="dash-empty">Could not load statistics: ' + escAttr(e.message) + '</div>';
+    }
+  }
+
+  // Builds a conic-gradient donut + legend from [{label, value}] entries.
+  function donutCard(title, note, items, centerLabel) {
+    const total = items.reduce((s, i) => s + (Number(i.value) || 0), 0);
+    if (total <= 0) {
+      return `<div class="dash-card"><h3>${escAttr(title)}</h3><p class="dash-card-note">${escAttr(note)}</p>
+        <div class="dash-empty" style="padding:20px;">No data yet.</div></div>`;
+    }
+    let acc = 0;
+    const stops = [];
+    const legend = items.map((it, idx) => {
+      const color = DASH_COLORS[idx % DASH_COLORS.length];
+      const start = (acc / total) * 100;
+      acc += Number(it.value) || 0;
+      const end = (acc / total) * 100;
+      stops.push(`${color} ${start.toFixed(2)}% ${end.toFixed(2)}%`);
+      const pct = Math.round(((Number(it.value) || 0) / total) * 100);
+      return `<li><span class="swatch" style="background:${color}"></span>` +
+        `<span class="lg-name">${escAttr(it.label)}</span>` +
+        `<span class="lg-val">${escAttr(it.display != null ? it.display : it.value)} · ${pct}%</span></li>`;
+    }).join('');
+    return `<div class="dash-card">
+      <h3>${escAttr(title)}</h3><p class="dash-card-note">${escAttr(note)}</p>
+      <div class="dash-pie-wrap">
+        <div class="dash-pie donut" style="background:conic-gradient(${stops.join(',')})">
+          <div class="dash-pie-center"><b>${escAttr(centerLabel || '')}</b><span>${escAttr(title.split(' ')[0])}</span></div>
+        </div>
+        <ul class="dash-legend">${legend}</ul>
+      </div>
+    </div>`;
+  }
+
+  function timelineCard(timeline) {
+    const max = timeline.reduce((m, t) => Math.max(m, Number(t.cents) || 0), 0);
+    const hasData = max > 0;
+    const bars = timeline.map((t) => {
+      const cents = Number(t.cents) || 0;
+      const h = hasData ? Math.max(2, Math.round((cents / max) * 100)) : 2;
+      const title = `${t.label}: ${centsMoney(cents)} · ${t.count} order${t.count === 1 ? '' : 's'}`;
+      return `<div class="dash-bar" title="${escAttr(title)}">
+        <span class="bar-amt">${cents > 0 ? compactMoney(cents) : ''}</span>
+        <div class="bar-fill" style="height:${h}%"></div>
+        <span class="bar-label">${escAttr(t.label)}</span>
+      </div>`;
+    }).join('');
+    return `<div class="dash-card">
+      <h3>Sales — last 12 months</h3><p class="dash-card-note">Paid orders, by month.</p>
+      ${hasData ? `<div class="dash-bars">${bars}</div>` : '<div class="dash-empty" style="padding:20px;">No sales yet.</div>'}
+    </div>`;
+  }
+
+  function rankingCard(topProducts) {
+    if (!topProducts.length) {
+      return `<div class="dash-card"><h3>Best sellers</h3><p class="dash-card-note">Ranked by units sold.</p>
+        <div class="dash-empty" style="padding:20px;">No sales yet.</div></div>`;
+    }
+    const max = topProducts.reduce((m, p) => Math.max(m, p.qty), 0) || 1;
+    const medals = ['🥇', '🥈', '🥉'];
+    const rows = topProducts.map((p, i) => {
+      const w = Math.max(3, Math.round((p.qty / max) * 100));
+      const medal = i < 3 ? medals[i] : (i + 1);
+      return `<li>
+        <span class="rank-medal top${i + 1}">${typeof medal === 'string' ? medal : '#' + medal}</span>
+        <span class="rank-body">
+          <div class="rank-name">${escAttr(p.name)}</div>
+          <div class="rank-track"><div class="rank-fill" style="width:${w}%"></div></div>
+        </span>
+        <span class="rank-qty">${p.qty}<small>${centsMoney(p.revenueCents)}</small></span>
+      </li>`;
+    }).join('');
+    return `<div class="dash-card"><h3>Best sellers</h3><p class="dash-card-note">Ranked by units sold.</p>
+      <ul class="dash-rank">${rows}</ul></div>`;
+  }
+
+  function kpiCard(cls, label, value, sub, neg) {
+    return `<div class="kpi ${cls}">
+      <div class="kpi-label">${escAttr(label)}</div>
+      <div class="kpi-value${neg ? ' neg' : ''}">${escAttr(value)}</div>
+      ${sub ? `<div class="kpi-sub">${escAttr(sub)}</div>` : ''}
+    </div>`;
+  }
+
+  function renderDashboard(stats) {
+    const root = document.getElementById('dashboard-root');
+    if (!root || !stats) return;
+    const t = stats.totals || {};
+
+    const kpis = [
+      kpiCard('is-sales', 'Total sales', centsMoney(t.salesCents), `${t.orderCount || 0} paid order${t.orderCount === 1 ? '' : 's'}`),
+      kpiCard('is-net', 'Net revenue', centsMoney(t.netRevenueCents), 'After refunds', (t.netRevenueCents || 0) < 0),
+      kpiCard('is-profit', 'Profit', centsMoney(t.profitCents), 'Revenue − cost of goods', (t.profitCents || 0) < 0),
+      kpiCard('is-orders', 'Units sold', String(t.unitsSold || 0), `${centsMoney(t.avgOrderCents)} avg order`),
+      kpiCard('is-refunds', 'Refunds', centsMoney(t.refundsValueCents), `${t.refundCount || 0} refunded`),
+      kpiCard('is-aov', 'Avg order value', centsMoney(t.avgOrderCents), 'Per paid order'),
+    ].join('');
+
+    const revenueItems = (stats.revenueByProduct || []).map((r) => ({
+      label: r.name, value: r.revenueCents, display: centsMoney(r.revenueCents),
+    }));
+    const statusItems = (stats.statusBreakdown || []).map((s) => ({
+      label: s.status.charAt(0).toUpperCase() + s.status.slice(1), value: s.count, display: String(s.count),
+    }));
+
+    root.innerHTML =
+      `<div class="dash-kpis">${kpis}</div>` +
+      '<div class="dash-grid">' +
+        '<div>' + timelineCard(stats.salesTimeline || []) + rankingCard(stats.topProducts || []) + '</div>' +
+        '<div>' +
+          donutCard('Revenue by product', 'Share of sales revenue.', revenueItems, centsMoney(t.salesCents)) +
+          donutCard('Orders by status', 'Paid vs refunded, etc.', statusItems, String((stats.statusBreakdown || []).reduce((s, x) => s + x.count, 0))) +
+        '</div>' +
+      '</div>';
+
+    const updated = document.getElementById('dash-updated');
+    if (updated) updated.textContent = 'Updated ' + new Date(stats.generatedAt || Date.now()).toLocaleString();
+  }
+
+  function wireDashboardControls() {
+    const refresh = document.getElementById('dash-refresh');
+    if (refresh) refresh.addEventListener('click', () => loadDashboard());
+  }
+
+  // ---------------------------------------------------------------------------
   // Auth gate + bootstrap
   // ---------------------------------------------------------------------------
   let appInitialized = false;
@@ -1560,6 +1711,9 @@
 
     wireOrderControls();
     await loadOrders();
+
+    wireDashboardControls();
+    await loadDashboard();
   }
 
   async function handleLogin(event){

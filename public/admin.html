@@ -1434,6 +1434,87 @@
     .ao-complete-btn { border: none; background: var(--signal); color: #fff; border-radius: 8px; padding: 8px 14px; font-weight: 700; cursor: pointer; font-size: 0.85rem; }
     .ao-complete-btn:hover { background: var(--signal-deep); }
     .ao-complete-btn.is-done { background: var(--surface); color: var(--signal-deep); border: 1px solid var(--signal); }
+
+    /* ============================ Dashboard ============================ */
+    .dash-loading, .dash-empty { padding: 40px; text-align: center; color: var(--ink-soft); }
+
+    /* KPI cards */
+    .dash-kpis {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 14px; margin-bottom: 22px;
+    }
+    .kpi {
+      position: relative; overflow: hidden;
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 18px 18px 16px; box-shadow: var(--shadow-sm);
+    }
+    .kpi::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+      background: var(--accent, var(--signal));
+    }
+    .kpi-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 700; }
+    .kpi-value { font-size: 1.7rem; font-weight: 700; color: var(--ink); margin-top: 6px; line-height: 1.1; letter-spacing: -0.02em; }
+    .kpi-sub { font-size: 0.78rem; color: var(--ink-soft); margin-top: 4px; }
+    .kpi.is-sales   { --accent: var(--signal); }
+    .kpi.is-net     { --accent: var(--sky); }
+    .kpi.is-profit  { --accent: #2e9e5b; }
+    .kpi.is-orders  { --accent: #6f5acd; }
+    .kpi.is-refunds { --accent: var(--ember); }
+    .kpi.is-aov     { --accent: #c98a18; }
+    .kpi-value.neg { color: var(--ember); }
+
+    /* Chart cards grid */
+    .dash-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; align-items: start; }
+    @media (max-width: 900px) { .dash-grid { grid-template-columns: 1fr; } }
+    .dash-card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 20px; box-shadow: var(--shadow-sm); margin-bottom: 18px;
+    }
+    .dash-card h3 { font-family: var(--font-display); font-size: 1.05rem; color: var(--ink); margin: 0 0 4px; }
+    .dash-card .dash-card-note { font-size: 0.78rem; color: var(--ink-faint); margin: 0 0 16px; }
+
+    /* Timeline histogram (CSS bars) */
+    .dash-bars { display: flex; align-items: flex-end; gap: 8px; height: 200px; padding-top: 10px; }
+    .dash-bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; }
+    .dash-bar .bar-fill {
+      width: 100%; max-width: 34px; border-radius: 6px 6px 0 0;
+      background: linear-gradient(180deg, var(--sky), var(--signal));
+      min-height: 2px; transition: height 0.4s ease; position: relative;
+    }
+    .dash-bar .bar-fill:hover { filter: brightness(1.08); }
+    .dash-bar .bar-amt { font-size: 0.62rem; color: var(--ink-soft); font-family: var(--font-mono); white-space: nowrap; }
+    .dash-bar .bar-label { font-size: 0.62rem; color: var(--ink-faint); font-family: var(--font-mono); }
+
+    /* Donut / pie via conic-gradient */
+    .dash-pie-wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .dash-pie {
+      width: 150px; height: 150px; border-radius: 50%; flex-shrink: 0;
+      position: relative;
+    }
+    .dash-pie.donut::after {
+      content: ''; position: absolute; inset: 26%; background: var(--surface); border-radius: 50%;
+      box-shadow: inset 0 0 0 1px var(--line);
+    }
+    .dash-pie-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; z-index: 1; }
+    .dash-pie-center b { font-size: 1.1rem; color: var(--ink); }
+    .dash-pie-center span { font-size: 0.6rem; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.05em; }
+    .dash-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
+    .dash-legend li { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--ink); }
+    .dash-legend .swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+    .dash-legend .lg-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dash-legend .lg-val { color: var(--ink-soft); font-family: var(--font-mono); font-size: 0.78rem; }
+
+    /* Ranking bars */
+    .dash-rank { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+    .dash-rank li { display: grid; grid-template-columns: 26px 1fr auto; gap: 12px; align-items: center; }
+    .rank-medal { font-size: 1rem; text-align: center; font-weight: 700; color: var(--ink-faint); }
+    .rank-medal.top1 { color: #d4a017; } .rank-medal.top2 { color: #9aa3ad; } .rank-medal.top3 { color: #c0793f; }
+    .rank-body { min-width: 0; }
+    .rank-name { font-size: 0.88rem; color: var(--ink); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rank-track { height: 8px; background: var(--paper-2); border-radius: 999px; overflow: hidden; }
+    .rank-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--signal), var(--sky)); }
+    .rank-qty { font-family: var(--font-mono); font-weight: 700; color: var(--signal-deep); font-size: 0.9rem; white-space: nowrap; }
+    .rank-qty small { color: var(--ink-faint); font-weight: 400; display: block; text-align: right; }
   </style>
 </head>
 <body>
@@ -1464,17 +1545,20 @@
       <div class="rail-divider"></div>
 
       <nav class="admin-tabs" aria-label="Admin panels">
-        <button class="admin-tab is-active" type="button" data-panel-target="panel-orders">
-          <span class="tab-index">01</span><span class="tab-label">Orders</span>
+        <button class="admin-tab is-active" type="button" data-panel-target="panel-dashboard">
+          <span class="tab-index">01</span><span class="tab-label">Dashboard</span>
+        </button>
+        <button class="admin-tab" type="button" data-panel-target="panel-orders">
+          <span class="tab-index">02</span><span class="tab-label">Orders</span>
         </button>
         <button class="admin-tab" type="button" data-panel-target="panel-pam">
-          <span class="tab-index">02</span><span class="tab-label">Minor Ailments</span>
+          <span class="tab-index">03</span><span class="tab-label">Minor Ailments</span>
         </button>
         <button class="admin-tab" type="button" data-panel-target="panel-incident">
-          <span class="tab-index">03</span><span class="tab-label">Incident Report</span>
+          <span class="tab-index">04</span><span class="tab-label">Incident Report</span>
         </button>
         <button class="admin-tab" type="button" data-panel-target="panel-products">
-          <span class="tab-index">04</span><span class="tab-label">Pharmacy Products</span>
+          <span class="tab-index">05</span><span class="tab-label">Pharmacy Products</span>
         </button>
       </nav>
 
@@ -1492,9 +1576,26 @@
       </div>
 
       <div class="admin-content">
-        <section class="admin-panel is-active" id="panel-orders">
+        <section class="admin-panel is-active" id="panel-dashboard">
           <div class="admin-hero">
             <span class="panel-kicker">Panel 01</span>
+            <h2>Dashboard</h2>
+            <p>Live store performance — sales, profit, refunds, and your best sellers at a glance.</p>
+          </div>
+
+          <div class="pm-toolbar">
+            <span class="pm-count" id="dash-updated">—</span>
+            <button class="button" type="button" id="dash-refresh">Refresh</button>
+          </div>
+
+          <div id="dashboard-root">
+            <div class="dash-loading">Loading statistics…</div>
+          </div>
+        </section>
+
+        <section class="admin-panel" id="panel-orders">
+          <div class="admin-hero">
+            <span class="panel-kicker">Panel 02</span>
             <h2>Orders</h2>
             <p>Every order placed through the store, with the customer's details and items. Within an order's first 24 hours you can lock it against customer edits.</p>
           </div>
@@ -1512,7 +1613,7 @@
 
         <section class="admin-panel" id="panel-pam">
           <div class="admin-hero">
-            <span class="panel-kicker">Panel 02</span>
+            <span class="panel-kicker">Panel 03</span>
             <h2>Minor Ailments Solution</h2>
             <p>Edit the three pillars shown on the public Minor Ailments page. Open a pillar to update its title, description, and bullet points.</p>
           </div>
@@ -1530,7 +1631,7 @@
 
         <section class="admin-panel" id="panel-incident">
           <div class="admin-hero">
-            <span class="panel-kicker">Panel 03</span>
+            <span class="panel-kicker">Panel 04</span>
             <h2>Incident Report Page</h2>
             <p>Edit each batch of the PharmaScript IR incident reporting page — top of page, pricing, features, and the call to action.</p>
           </div>
@@ -1548,7 +1649,7 @@
 
         <section class="admin-panel" id="panel-products">
           <div class="admin-hero">
-            <span class="panel-kicker">Panel 04</span>
+            <span class="panel-kicker">Panel 05</span>
             <h2>Pharmacy Products</h2>
             <p>Manage the products shown on the public store. Add a new product, edit an existing one, or remove it — including images, pricing, sale schedule, option dropdowns, stock, description, and key features.</p>
           </div>
@@ -1618,6 +1719,12 @@
                   <div class="pm-field">
                     <label for="pm-sale-percent">Sale discount (%)</label>
                     <input type="number" id="pm-sale-percent" min="0" max="100" step="1" placeholder="0">
+                  </div>
+                </div>
+                <div class="pm-row">
+                  <div class="pm-field pm-cost-field">
+                    <label for="pm-cost">Unit cost (CAD) <span style="font-weight:400;color:var(--ink-faint);">— your cost, for profit reporting only</span></label>
+                    <input type="number" id="pm-cost" min="0" step="0.01" placeholder="0.00">
                   </div>
                 </div>
                 <div class="pm-row">

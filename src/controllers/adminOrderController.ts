@@ -8,6 +8,14 @@ import {
   orderAgeMs,
   EDIT_WINDOW_MS,
 } from "../services/orderService.js";
+import { getDashboardStats } from "../services/dashboardService.js";
+
+/** GET /api/admin/dashboard — aggregated store statistics (admin only). */
+export async function handleAdminDashboard(req: ApiRequest, res: ApiResponse): Promise<void> {
+  if (!(await requireAdmin(req, res))) return;
+  const stats = await getDashboardStats();
+  res.status(200).json({ success: true, data: stats });
+}
 
 /**
  * GET /api/admin/orders — orders with their items (admin only). Pending orders

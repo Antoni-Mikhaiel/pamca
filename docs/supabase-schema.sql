@@ -21,6 +21,9 @@ alter table products add column if not exists sale_percent numeric(5,2) not null
 alter table products add column if not exists sale_start date;
 alter table products add column if not exists sale_end date;
 alter table products add column if not exists stock integer not null default 0;
+-- Unit cost (what PAMCA pays per unit) — used only for the admin Dashboard's profit
+-- figures. Optional; defaults to 0 (a product with no cost contributes 0 COGS).
+alter table products add column if not exists cost_price numeric(10,2) not null default 0;
 alter table products add column if not exists key_features jsonb not null default '[]'::jsonb;
 alter table products add column if not exists option_groups jsonb not null default '[]'::jsonb;
 -- Per-combination inventory for multi-dropdown products. Each entry is

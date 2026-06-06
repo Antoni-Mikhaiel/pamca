@@ -3,7 +3,7 @@ import { AdminProductInput, Product, ProductOptionGroup, ProductVariation } from
 import { asVariants, buildCombinationKeys, totalVariantStock } from "../lib/variants.js";
 
 const PRODUCT_COLUMNS =
-  "id, slug, name, description, image_url, price_regular, price_sale, is_on_sale, redirect_path, " +
+  "id, slug, name, description, image_url, price_regular, price_sale, is_on_sale, cost_price, redirect_path, " +
   "status, images, sale_percent, sale_start, sale_end, stock, key_features, option_groups, variants";
 
 function asStringArray(value: unknown): string[] {
@@ -91,6 +91,7 @@ function mapRow(row: Record<string, unknown>): Product {
     price_regular: Number(row.price_regular ?? 0),
     price_sale: row.price_sale == null ? null : Number(row.price_sale),
     is_on_sale: Boolean(row.is_on_sale),
+    cost_price: Number(row.cost_price ?? 0),
     redirect_path: String(row.redirect_path ?? ""),
     status: String(row.status ?? "active"),
     images: asStringArray(row.images),
@@ -155,6 +156,7 @@ function toAdminShape(p: Product): AdminProductInput & { id: number } {
     saleStart: p.sale_start ?? "",
     saleEnd: p.sale_end ?? "",
     stock: p.stock,
+    cost: p.cost_price,
     description: p.description,
     keyFeatures: p.key_features,
     optionGroups: p.option_groups,
@@ -210,6 +212,7 @@ function buildRow(input: AdminProductInput) {
     sale_end: input.saleEnd || null,
     price_sale: pct > 0 ? Number((price * (1 - pct / 100)).toFixed(2)) : null,
     is_on_sale: pct > 0,
+    cost_price: Math.max(0, Number(input.cost) || 0),
     stock,
     variants,
     key_features: asStringArray(input.keyFeatures),

@@ -38,6 +38,8 @@ export interface Product {
   price_regular: number;
   price_sale: number | null;
   is_on_sale: boolean;
+  /** Unit cost (COGS) for the admin Dashboard's profit metric; 0 when unset. */
+  cost_price: number;
   redirect_path: string;
   // Rich fields managed by the admin console (see supabase-schema.sql).
   status: string;
@@ -65,6 +67,8 @@ export interface AdminProductInput {
   saleStart: string;
   saleEnd: string;
   stock: number;
+  /** Unit cost (COGS) for profit reporting; 0 when unset. */
+  cost: number;
   description: string;
   keyFeatures: string[];
   optionGroups: ProductOptionGroup[];
@@ -150,7 +154,6 @@ export interface ContactSubmission {
   lastName: string;
   email: string;
   phone: string;
-  inquiryType: string;
   message: string;
   recaptchaResponse: string;
   websiteHp: string;

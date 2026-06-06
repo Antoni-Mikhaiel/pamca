@@ -24,11 +24,10 @@ export async function handleContactSubmit(req: ApiRequest, res: ApiResponse): Pr
   const lastName = (body.lastName ?? "").trim();
   const email = (body.email ?? "").trim();
   const phone = (body.phone ?? "").trim();
-  const inquiryType = (body.inquiryType ?? "").trim();
   const message = (body.message ?? "").trim();
   const recaptchaResponse = (body["g-recaptcha-response"] ?? "").trim();
 
-  if (!firstName || !lastName || !email || !inquiryType || !message) {
+  if (!firstName || !lastName || !email || !message) {
     redirect(res, "/contact-us.html?status=error&reason=required");
     return;
   }
@@ -52,7 +51,6 @@ export async function handleContactSubmit(req: ApiRequest, res: ApiResponse): Pr
       lastName,
       email,
       phone,
-      inquiryType,
       message,
       recaptchaResponse,
       websiteHp: body.website_hp ?? "",

@@ -88,6 +88,7 @@ export async function handleSaveProduct(req: ApiRequest, res: ApiResponse): Prom
     saleStart: String(body.saleStart ?? ""),
     saleEnd: String(body.saleEnd ?? ""),
     stock: Number(body.stock) || 0,
+    cost: Math.max(0, Number(body.cost) || 0),
     description: String(body.description ?? ""),
     keyFeatures: toStringArray(body.keyFeatures),
     optionGroups: sanitizeOptionGroups(body.optionGroups),

@@ -188,16 +188,25 @@ export async function sendPurchaseEmails(order: OrderRecord): Promise<void> {
   }
 }
 
-/** Notifies the shop owner that an order was refunded (customer details, value, items, date). */
+/**
+ * Notifies the shop owner that an order was refunded. Mirrors the order-made email
+ * (purchase date, full customer details, items) and adds the refund date + value.
+ */
 export async function sendRefundAdminEmail(order: OrderRecord, refundedCents: number): Promise<void> {
+  const refundDate = formatDate(new Date().toISOString());
+  const purchaseDate = formatDate(order.created_at);
   const html = shell(
-    `Refund processed #${order.purchase_id ?? ""}`,
-    `<p style="margin:0 0 14px;">An order was refunded on ${escapeHtml(formatDate(new Date().toISOString()))}.</p>
+    `Order refunded #${order.purchase_id ?? ""}`,
+    `<p style="margin:0 0 14px;">This order has been <strong style="color:#b02a37;">refunded</strong>.</p>
      <div style="display:inline-block;background:#fbeaea;border:1px solid #f0c4c4;border-radius:10px;padding:10px 16px;margin:6px 0;">
        <span style="color:#888;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Refund value</span><br>
        <span style="font-size:22px;font-weight:700;color:#b02a37;">${money(refundedCents)}</span>
      </div>
      ${pidBadge(order)}
+     <table style="font-size:14px;color:#333;line-height:1.6;margin:8px 0;">
+       <tr><td style="color:#888;padding-right:12px;">Refund date</td><td>${escapeHtml(refundDate)}</td></tr>
+       <tr><td style="color:#888;padding-right:12px;">Purchase date</td><td>${escapeHtml(purchaseDate)}</td></tr>
+     </table>
      <h3 style="margin:18px 0 6px;color:#0a615b;">Customer</h3>
      ${detailsBlock(order)}
      <h3 style="margin:18px 0 6px;color:#0a615b;">Items in the order</h3>
@@ -205,7 +214,7 @@ export async function sendRefundAdminEmail(order: OrderRecord, refundedCents: nu
   );
   await sendBrevoEmail({
     to: [{ email: adminEmail }],
-    subject: `Refund #${order.purchase_id ?? ""} — ${customerName(order)} — ${money(refundedCents)}`,
+    subject: `REFUNDED — Order #${order.purchase_id ?? ""} — ${customerName(order)} — ${money(refundedCents)}`,
     html,
     ...(order.customer_email ? { replyTo: { email: order.customer_email, name: customerName(order) } } : {}),
   });

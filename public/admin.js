@@ -1628,7 +1628,6 @@
 
     const kpis = [
       kpiCard('is-sales', 'Total sales', centsMoney(t.salesCents), `${t.orderCount || 0} paid order${t.orderCount === 1 ? '' : 's'}`),
-      kpiCard('is-net', 'Net revenue', centsMoney(t.netRevenueCents), 'After refunds', (t.netRevenueCents || 0) < 0),
       kpiCard('is-orders', 'Units sold', String(t.unitsSold || 0), `${centsMoney(t.avgOrderCents)} avg order`),
       kpiCard('is-refunds', 'Refunds', centsMoney(t.refundsValueCents), `${t.refundCount || 0} refunded`),
       kpiCard('is-aov', 'Avg order value', centsMoney(t.avgOrderCents), 'Per paid order'),

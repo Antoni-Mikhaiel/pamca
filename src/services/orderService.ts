@@ -282,12 +282,14 @@ function mapOrder(row: Record<string, unknown>): OrderRecord {
   };
 }
 
-/** Orders belonging to a signed-in user, newest first. */
+/** Orders belonging to a signed-in user, newest first. Pending (never-paid) orders
+ *  — e.g. checkouts that were abandoned before payment — are excluded. */
 export async function listOrdersForUser(userId: string): Promise<OrderRecord[]> {
   const { data, error } = await supabase
     .from("orders")
     .select(ORDER_SELECT)
     .eq("user_id", userId)
+    .neq("status", "pending")
     .order("created_at", { ascending: false });
   if (error) throw error;
   return ((data ?? []) as unknown as Record<string, unknown>[]).map(mapOrder);

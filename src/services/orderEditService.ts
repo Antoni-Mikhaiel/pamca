@@ -224,6 +224,10 @@ export async function commitEdit(order: FullOrder, edit: OrderEditRequest): Prom
       { name: `Order #${order.purchase_id ?? ""} changes`, quantity: 1, amountCents: plan.deltaCents },
     ];
     const redirect = SITE_URL ? `${SITE_URL}/?order=edit-success&pid=${order.purchase_id ?? ""}` : undefined;
+    // Construct the full address line for Square from separate fields
+    const addressLine = order.customer.streetNumber && order.customer.streetName
+      ? `${order.customer.streetNumber} ${order.customer.streetName}, ${order.customer.province} ${order.customer.postalCode}`
+      : undefined;
     const link = await createPaymentLink({
       lineItems,
       redirectUrl: redirect,
@@ -234,7 +238,7 @@ export async function commitEdit(order: FullOrder, edit: OrderEditRequest): Prom
         phone: order.customer.phone,
         firstName: order.customer.firstName,
         lastName: order.customer.lastName,
-        addressLine1: order.customer.address,
+        addressLine1: addressLine,
       },
     });
 

@@ -65,7 +65,10 @@ export async function createPendingOrder(params: {
         customer_last_name: customer.lastName,
         customer_email: customer.email,
         customer_phone: customer.phone,
-        customer_address: customer.address,
+        customer_street_number: customer.streetNumber,
+        customer_street_name: customer.streetName,
+        customer_province: customer.province,
+        customer_postal_code: customer.postalCode,
       })
       .select("id, purchase_id")
       .single();
@@ -219,7 +222,7 @@ export const REFUND_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 const ORDER_SELECT =
   "id, purchase_id, status, currency, total_cents, customer_first_name, customer_last_name, " +
-  "customer_email, customer_phone, customer_address, created_at, uneditable, completed_at, refunded_at, amount_refunded_cents, " +
+  "customer_email, customer_phone, customer_street_number, customer_street_name, customer_province, customer_postal_code, created_at, uneditable, completed_at, refunded_at, amount_refunded_cents, " +
   "order_items(id, product_id, product_name, variation_label, unit_price_cents, quantity, line_total_cents)";
 
 export function orderAgeMs(createdAt: string): number {
@@ -263,7 +266,10 @@ function mapOrder(row: Record<string, unknown>): OrderRecord {
     customer_last_name: (row.customer_last_name as string | null) ?? null,
     customer_email: (row.customer_email as string | null) ?? null,
     customer_phone: (row.customer_phone as string | null) ?? null,
-    customer_address: (row.customer_address as string | null) ?? null,
+    customer_street_number: (row.customer_street_number as string | null) ?? null,
+    customer_street_name: (row.customer_street_name as string | null) ?? null,
+    customer_province: (row.customer_province as string | null) ?? null,
+    customer_postal_code: (row.customer_postal_code as string | null) ?? null,
     created_at: createdAt,
     uneditable,
     completed_at: completedAt,
@@ -365,7 +371,7 @@ export interface FullOrder {
 const FULL_ORDER_SELECT =
   "id, user_id, cart_token, purchase_id, status, currency, total_cents, uneditable, completed_at, refunded_at, " +
   "amount_refunded_cents, payments, created_at, customer_first_name, customer_last_name, customer_email, " +
-  "customer_phone, customer_address, " +
+  "customer_phone, customer_street_number, customer_street_name, customer_province, customer_postal_code, " +
   "order_items(id, product_id, variation_id, product_name, variation_label, unit_price_cents, quantity, line_total_cents)";
 
 /** Loads an order with everything the edit/refund flow needs (raw, not display-shaped). */
@@ -401,7 +407,10 @@ export async function getFullOrder(orderId: string): Promise<FullOrder | null> {
       lastName: String(row.customer_last_name ?? ""),
       email: String(row.customer_email ?? ""),
       phone: String(row.customer_phone ?? ""),
-      address: String(row.customer_address ?? ""),
+      streetNumber: String(row.customer_street_number ?? ""),
+      streetName: String(row.customer_street_name ?? ""),
+      province: String(row.customer_province ?? ""),
+      postalCode: String(row.customer_postal_code ?? ""),
     },
     items: items.map((it) => ({
       id: String(it.id),

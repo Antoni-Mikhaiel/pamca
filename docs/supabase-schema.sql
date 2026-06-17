@@ -74,10 +74,17 @@ create index if not exists user_profiles_role_idx on user_profiles(role);
 -- the checkout pop-up. `email` above stays the login email; `contact_email` is
 -- the (optionally different) address used for orders/receipts. Phone is stored as
 -- the 10-digit national number (the +1 country code is implied — Canada only).
+-- Address is now broken down into separate fields for Canadian Post API integration.
 alter table user_profiles add column if not exists first_name text;
 alter table user_profiles add column if not exists last_name text;
 alter table user_profiles add column if not exists contact_email text;
+-- Legacy address field (deprecated — will be migrated to separate fields)
 alter table user_profiles add column if not exists address text;
+-- New address fields (Canadian)
+alter table user_profiles add column if not exists street_number text;
+alter table user_profiles add column if not exists street_name text;
+alter table user_profiles add column if not exists province text;  -- e.g. 'ON', 'BC', 'AB'
+alter table user_profiles add column if not exists postal_code text; -- e.g. 'M4S 3E6'
 alter table user_profiles add column if not exists phone text;
 
 create table if not exists cart_items (
@@ -173,7 +180,13 @@ alter table orders add column if not exists user_id uuid references auth.users(i
 alter table orders add column if not exists customer_first_name text;
 alter table orders add column if not exists customer_last_name text;
 alter table orders add column if not exists customer_phone text;     -- '+1' + 10 digits
+-- Legacy address field (deprecated — will be migrated to separate fields)
 alter table orders add column if not exists customer_address text;
+-- New address fields (Canadian)
+alter table orders add column if not exists customer_street_number text;
+alter table orders add column if not exists customer_street_name text;
+alter table orders add column if not exists customer_province text;  -- e.g. 'ON', 'BC', 'AB'
+alter table orders add column if not exists customer_postal_code text; -- e.g. 'M4S 3E6'
 alter table orders add column if not exists stock_applied boolean not null default false;
 
 -- Order editing (24h window) & refunds (48h window).

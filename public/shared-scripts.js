@@ -205,7 +205,10 @@
 			setFieldValue("checkout-first", p.firstName);
 			setFieldValue("checkout-last", p.lastName);
 			setFieldValue("checkout-email", p.email);
-			setFieldValue("checkout-address", p.address);
+			setFieldValue("checkout-street-number", p.streetNumber);
+			setFieldValue("checkout-street-name", p.streetName);
+			setFieldValue("checkout-province", p.province);
+			setFieldValue("checkout-postal-code", p.postalCode);
 			setFieldValue("checkout-phone", (p.phone || "").replace(/^\+1/, ""));
 		} catch (_) {}
 	}
@@ -236,10 +239,13 @@
 			firstName: fieldValue("checkout-first"),
 			lastName: fieldValue("checkout-last"),
 			email: fieldValue("checkout-email"),
-			address: fieldValue("checkout-address"),
+			streetNumber: fieldValue("checkout-street-number"),
+			streetName: fieldValue("checkout-street-name"),
+			province: fieldValue("checkout-province"),
+			postalCode: fieldValue("checkout-postal-code"),
 			phone: fieldValue("checkout-phone"),
 		};
-		if (!payload.firstName || !payload.lastName || !payload.email || !payload.address) {
+		if (!payload.firstName || !payload.lastName || !payload.email || !payload.streetNumber || !payload.streetName || !payload.province || !payload.postalCode) {
 			setCheckoutMessage("Please fill in every field.");
 			return;
 		}

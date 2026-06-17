@@ -105,7 +105,14 @@ export interface CustomerDetails {
   email: string;
   /** '+1' followed by exactly 10 digits (Canada only). */
   phone: string;
-  address: string;
+  /** Street number (e.g. '1920'). */
+  streetNumber: string;
+  /** Street name (e.g. 'Yonge Street'). */
+  streetName: string;
+  /** Canadian province code (e.g. 'ON', 'BC', 'AB'). */
+  province: string;
+  /** Canadian postal code (e.g. 'M4S 3E6'). */
+  postalCode: string;
 }
 
 export interface UserProfile extends CustomerDetails {
@@ -135,7 +142,10 @@ export interface OrderRecord {
   customer_last_name: string | null;
   customer_email: string | null;
   customer_phone: string | null;
-  customer_address: string | null;
+  customer_street_number: string | null;
+  customer_street_name: string | null;
+  customer_province: string | null;
+  customer_postal_code: string | null;
   created_at: string;
   /** Admin early-lock; blocks edits (never refunds). */
   uneditable: boolean;

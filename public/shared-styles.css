@@ -28,6 +28,17 @@ body {
     z-index: 1002;  /* above navbar */
 }
 
+.announcement-bar a {
+    color: #FFFFFF;
+    text-decoration: underline;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.announcement-bar a:hover {
+    color: #87CEEB;
+}
+
 /* Navigation Header */
 .navbar {
     background: rgba(255, 255, 255, 0.95);
@@ -639,6 +650,17 @@ input.quantity-display::-webkit-inner-spin-button {
 .contact-info p {
     margin-bottom: 8px;
     font-size: 0.95rem;
+}
+
+.contact-info a {
+    color: #87CEEB;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.contact-info a:hover {
+    color: #FFFFFF;
+    text-decoration: underline;
 }
 
 .directions-btn {
@@ -1285,6 +1307,7 @@ section:nth-of-type(4) { animation-delay: 0.21s; }
 
 @media (max-width: 480px) {
     .checkout-row { flex-wrap: wrap; gap: 0; }
+    .form-row { flex-wrap: wrap; gap: 0; }
 }
 
 .order-refunded {
@@ -1333,3 +1356,32 @@ section:nth-of-type(4) { animation-delay: 0.21s; }
     padding: 6px;
 }
 .refund-cancel:hover { color: #333; }
+
+/* Form row for multi-column layouts (used in checkout and profile address sections) */
+.form-row {
+    display: flex;
+    gap: 14px;
+}
+.form-row .form-group {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Select element styling */
+.form-group select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.form-group select:focus {
+    outline: none;
+    border-color: #008080;
+    box-shadow: 0 0 0 3px rgba(0, 128, 128, 0.1);
+}

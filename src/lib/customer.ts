@@ -26,14 +26,20 @@ export function validateCustomerDetails(input: Record<string, unknown>): Custome
   const firstName = String(input.firstName ?? "").trim();
   const lastName = String(input.lastName ?? "").trim();
   const email = String(input.email ?? "").trim().toLowerCase();
-  const address = String(input.address ?? "").trim();
+  const streetNumber = String(input.streetNumber ?? "").trim();
+  const streetName = String(input.streetName ?? "").trim();
+  const province = String(input.province ?? "").trim().toUpperCase();
+  const postalCode = String(input.postalCode ?? "").trim().toUpperCase();
   const phone = normalizePhone(input.phone);
 
   if (!firstName) return { ok: false, error: "First name is required." };
   if (!lastName) return { ok: false, error: "Last name is required." };
   if (!isValidEmail(email)) return { ok: false, error: "Enter a valid email address." };
-  if (!address) return { ok: false, error: "Address is required." };
+  if (!streetNumber) return { ok: false, error: "Street number is required." };
+  if (!streetName) return { ok: false, error: "Street name is required." };
+  if (!province || province.length !== 2) return { ok: false, error: "Enter a valid province code (2 letters)." };
+  if (!postalCode) return { ok: false, error: "Postal code is required." };
   if (!phone) return { ok: false, error: "Enter a valid 10-digit Canadian phone number." };
 
-  return { ok: true, value: { firstName, lastName, email, address, phone } };
+  return { ok: true, value: { firstName, lastName, email, streetNumber, streetName, province, postalCode, phone } };
 }

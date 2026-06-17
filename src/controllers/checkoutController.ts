@@ -87,6 +87,11 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
 
   const redirectUrl = SITE_URL ? `${SITE_URL}/?order=success&pid=${order.purchaseId}` : undefined;
 
+  // Construct the full address line for Square from separate fields
+  const addressLine = customer.streetNumber && customer.streetName
+    ? `${customer.streetNumber} ${customer.streetName}, ${customer.province} ${customer.postalCode}`
+    : undefined;
+
   try {
     const link = await createPaymentLink({
       lineItems,
@@ -98,7 +103,7 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
         phone: customer.phone,
         firstName: customer.firstName,
         lastName: customer.lastName,
-        addressLine1: customer.address,
+        addressLine1: addressLine,
       },
     });
 

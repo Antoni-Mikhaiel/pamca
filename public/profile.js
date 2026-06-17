@@ -80,7 +80,10 @@
     setVal("profile-first", p.firstName);
     setVal("profile-last", p.lastName);
     setVal("profile-email", p.email);
-    setVal("profile-address", p.address);
+    setVal("profile-street-number", p.streetNumber);
+    setVal("profile-street-name", p.streetName);
+    setVal("profile-province", p.province);
+    setVal("profile-postal-code", p.postalCode);
     setVal("profile-phone", (p.phone || "").replace(/^\+1/, ""));
     if (typeof window.pamcaFormatPhone === "function") window.pamcaFormatPhone(document.getElementById("profile-phone"));
     const note = document.getElementById("login-email-note");
@@ -163,10 +166,13 @@
       firstName: getVal("profile-first"),
       lastName: getVal("profile-last"),
       email: getVal("profile-email"),
-      address: getVal("profile-address"),
+      streetNumber: getVal("profile-street-number"),
+      streetName: getVal("profile-street-name"),
+      province: getVal("profile-province"),
+      postalCode: getVal("profile-postal-code"),
       phone: getVal("profile-phone"),
     };
-    if (!payload.firstName || !payload.lastName || !payload.email || !payload.address) {
+    if (!payload.firstName || !payload.lastName || !payload.email || !payload.streetNumber || !payload.streetName || !payload.province || !payload.postalCode) {
       setMessage("Please fill in every field.");
       return;
     }

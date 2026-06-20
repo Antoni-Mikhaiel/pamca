@@ -202,14 +202,14 @@
           </div>
           <div class="form-group">
             <label for="checkout-postal-code">Postal Code</label>
-            <input type="text" id="checkout-postal-code" name="postalCode" autocomplete="postal-code" placeholder="A1A 1A1" required />
+            <input type="text" id="checkout-postal-code" name="postalCode" autocomplete="postal-code" placeholder="A1A 1A1" maxlength="7" autocapitalize="characters" spellcheck="false" required />
           </div>
         </div>
         <div class="form-group">
           <label for="checkout-phone">Phone</label>
           <div class="phone-field">
             <span class="phone-prefix" aria-hidden="true">+1</span>
-            <input type="tel" id="checkout-phone" name="phone" inputmode="numeric" maxlength="14" placeholder="613 555 1234" autocomplete="tel-national" required />
+            <input type="tel" id="checkout-phone" name="phone" inputmode="numeric" maxlength="14" placeholder="(613) 555-1234" autocomplete="tel-national" required />
           </div>
           <small class="checkout-hint">Canadian numbers only.</small>
         </div>

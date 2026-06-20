@@ -96,6 +96,7 @@
     setVal("profile-postal-code", p.postalCode);
     setVal("profile-phone", (p.phone || "").replace(/^\+1/, ""));
     if (typeof window.pamcaFormatPhone === "function") window.pamcaFormatPhone(document.getElementById("profile-phone"));
+    if (typeof window.pamcaFormatPostal === "function") window.pamcaFormatPostal(document.getElementById("profile-postal-code"));
     const note = document.getElementById("login-email-note");
     if (note && p.loginEmail) note.textContent = "Signed in as " + p.loginEmail;
   }
@@ -242,6 +243,7 @@
     wireOrderActions();
     document.getElementById("profile-form")?.addEventListener("submit", saveProfile);
     if (typeof window.pamcaFormatPhone === "function") window.pamcaFormatPhone(document.getElementById("profile-phone"));
+    if (typeof window.pamcaFormatPostal === "function") window.pamcaFormatPostal(document.getElementById("profile-postal-code"));
     await loadProfile();
   }
 

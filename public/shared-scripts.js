@@ -323,6 +323,26 @@
 		input.addEventListener("input", apply);
 	}
 
+	// ---- Live Canadian postal-code formatting --------------------------------
+	// Upper-cases and inserts the space so the field always reads "A1A 1A1" while
+	// typing. Cosmetic only (the value is validated server-side); keeps at most
+	// 6 alphanumerics. Exposed for pages with their own postal inputs (profile).
+	function formatPostalValue(raw) {
+		const s = String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+		return s.length > 3 ? s.slice(0, 3) + " " + s.slice(3) : s;
+	}
+
+	function attachPostalFormatter(input) {
+		if (!input || input._postalFormatted) return;
+		input._postalFormatted = true;
+		const apply = () => {
+			// Preserve the caret at the end for the common "typing" case.
+			input.value = formatPostalValue(input.value);
+		};
+		apply(); // format any prefilled value
+		input.addEventListener("input", apply);
+	}
+
 	// ---- Refund confirmation card --------------------------------------------
 	// Shared by the profile order list and the order detail page. `opts`:
 	//   { creds, headers, purchaseId?, onDone? }
@@ -389,6 +409,8 @@
 		// Format the +1 phone fields that live in the injected header (checkout +
 		// guest lookup). Page-local fields opt in via window.pamcaFormatPhone.
 		["checkout-phone", "purchase-phone-input"].forEach((id) => attachPhoneFormatter(document.getElementById(id)));
+		// Auto-format the checkout postal code (A1A 1A1). Profile opts in itself.
+		attachPostalFormatter(document.getElementById("checkout-postal-code"));
 	}
 
 	// Renders an order summary card (shared by the profile page and guest lookup).
@@ -1105,6 +1127,7 @@
 		window.pamcaGetAuthHeader = getAuthHeader;
 		window.pamcaConfirmRefund = openRefundConfirm;
 		window.pamcaFormatPhone = attachPhoneFormatter;
+		window.pamcaFormatPostal = attachPostalFormatter;
 
 		await Promise.allSettled([productsReady, detailsReady]);
 	}

@@ -109,6 +109,8 @@ export interface CustomerDetails {
   streetNumber: string;
   /** Street name (e.g. 'Yonge Street'). */
   streetName: string;
+  /** City / municipality (e.g. 'Toronto'). */
+  city: string;
   /** Canadian province code (e.g. 'ON', 'BC', 'AB'). */
   province: string;
   /** Canadian postal code (e.g. 'M4S 3E6'). */
@@ -147,6 +149,7 @@ export interface OrderRecord {
   customer_phone: string | null;
   customer_street_number: string | null;
   customer_street_name: string | null;
+  customer_city: string | null;
   customer_province: string | null;
   customer_postal_code: string | null;
   created_at: string;

@@ -83,6 +83,7 @@ alter table user_profiles add column if not exists address text;
 -- New address fields (Canadian)
 alter table user_profiles add column if not exists street_number text;
 alter table user_profiles add column if not exists street_name text;
+alter table user_profiles add column if not exists city text;  -- e.g. 'Toronto'
 alter table user_profiles add column if not exists province text;  -- e.g. 'ON', 'BC', 'AB'
 alter table user_profiles add column if not exists postal_code text; -- e.g. 'M4S 3E6'
 alter table user_profiles add column if not exists phone text;
@@ -185,6 +186,7 @@ alter table orders add column if not exists customer_address text;
 -- New address fields (Canadian)
 alter table orders add column if not exists customer_street_number text;
 alter table orders add column if not exists customer_street_name text;
+alter table orders add column if not exists customer_city text;  -- e.g. 'Toronto'
 alter table orders add column if not exists customer_province text;  -- e.g. 'ON', 'BC', 'AB'
 alter table orders add column if not exists customer_postal_code text; -- e.g. 'M4S 3E6'
 alter table orders add column if not exists stock_applied boolean not null default false;

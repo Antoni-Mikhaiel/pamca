@@ -116,7 +116,7 @@ function itemsTable(order: OrderRecord): string {
 
 function detailsBlock(order: OrderRecord): string {
   const addressLine = order.customer_street_number && order.customer_street_name
-    ? `${escapeHtml(order.customer_street_number)} ${escapeHtml(order.customer_street_name)}, ${escapeHtml(order.customer_province || "")} ${escapeHtml(order.customer_postal_code || "")}`
+    ? `${escapeHtml(order.customer_street_number)} ${escapeHtml(order.customer_street_name)}, ${escapeHtml(order.customer_city || "")} ${escapeHtml(order.customer_province || "")} ${escapeHtml(order.customer_postal_code || "")}`
     : "—";
   return `<table style="font-size:14px;color:#333;line-height:1.6;">
       <tr><td style="color:#888;padding-right:12px;">Name</td><td>${escapeHtml(customerName(order))}</td></tr>

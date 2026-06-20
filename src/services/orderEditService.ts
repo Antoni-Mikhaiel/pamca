@@ -236,7 +236,7 @@ export async function commitEdit(order: FullOrder, edit: OrderEditRequest): Prom
     const redirect = SITE_URL ? `${SITE_URL}/?order=edit-success&pid=${order.purchase_id ?? ""}` : undefined;
     // Construct the full address line for Square from separate fields
     const addressLine = order.customer.streetNumber && order.customer.streetName
-      ? `${order.customer.streetNumber} ${order.customer.streetName}, ${order.customer.province} ${order.customer.postalCode}`
+      ? `${order.customer.streetNumber} ${order.customer.streetName}, ${order.customer.city} ${order.customer.province} ${order.customer.postalCode}`
       : undefined;
     const link = await createPaymentLink({
       lineItems,

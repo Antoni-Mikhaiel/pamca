@@ -1,7 +1,7 @@
 import { supabase } from "../lib/supabase.js";
 import { CustomerDetails, UserProfile } from "../models/types.js";
 
-const PROFILE_COLUMNS = "id, email, first_name, last_name, contact_email, street_number, street_name, province, postal_code, phone";
+const PROFILE_COLUMNS = "id, email, first_name, last_name, contact_email, street_number, street_name, city, province, postal_code, phone";
 
 /**
  * Reads a user's profile, falling back to the login email for the contact email
@@ -25,6 +25,7 @@ export async function getProfile(userId: string, loginEmail: string): Promise<Us
     email: row.contact_email || loginEmail || "",
     streetNumber: row.street_number ?? "",
     streetName: row.street_name ?? "",
+    city: row.city ?? "",
     province: row.province ?? "",
     postalCode: row.postal_code ?? "",
     phone: row.phone ?? "",
@@ -43,6 +44,7 @@ export async function updateProfile(userId: string, loginEmail: string, details:
     contact_email: details.email,
     street_number: details.streetNumber,
     street_name: details.streetName,
+    city: details.city,
     province: details.province,
     postal_code: details.postalCode,
     phone: details.phone,

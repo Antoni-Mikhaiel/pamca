@@ -96,6 +96,7 @@
     setVal("profile-email", p.email);
     setVal("profile-street-number", p.streetNumber);
     setVal("profile-street-name", p.streetName);
+    setVal("profile-city", p.city);
     setVal("profile-province", p.province);
     setVal("profile-postal-code", p.postalCode);
     setVal("profile-phone", (p.phone || "").replace(/^\+1/, ""));
@@ -209,11 +210,12 @@
       email: getVal("profile-email"),
       streetNumber: getVal("profile-street-number"),
       streetName: getVal("profile-street-name"),
+      city: getVal("profile-city"),
       province: getVal("profile-province"),
       postalCode: getVal("profile-postal-code"),
       phone: getVal("profile-phone"),
     };
-    if (!payload.firstName || !payload.lastName || !payload.email || !payload.streetNumber || !payload.streetName || !payload.province || !payload.postalCode) {
+    if (!payload.firstName || !payload.lastName || !payload.email || !payload.streetNumber || !payload.streetName || !payload.city || !payload.province || !payload.postalCode) {
       setMessage("Please fill in every field.");
       return;
     }

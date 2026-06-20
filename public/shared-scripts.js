@@ -221,6 +221,7 @@
 			setFieldValue("checkout-email", p.email);
 			setFieldValue("checkout-street-number", p.streetNumber);
 			setFieldValue("checkout-street-name", p.streetName);
+			setFieldValue("checkout-city", p.city);
 			setFieldValue("checkout-province", p.province);
 			setFieldValue("checkout-postal-code", p.postalCode);
 			setFieldValue("checkout-phone", (p.phone || "").replace(/^\+1/, ""));
@@ -260,11 +261,12 @@
 			email: fieldValue("checkout-email"),
 			streetNumber: fieldValue("checkout-street-number"),
 			streetName: fieldValue("checkout-street-name"),
+			city: fieldValue("checkout-city"),
 			province: fieldValue("checkout-province"),
 			postalCode: fieldValue("checkout-postal-code"),
 			phone: fieldValue("checkout-phone"),
 		};
-		if (!payload.firstName || !payload.lastName || !payload.email || !payload.streetNumber || !payload.streetName || !payload.province || !payload.postalCode) {
+		if (!payload.firstName || !payload.lastName || !payload.email || !payload.streetNumber || !payload.streetName || !payload.city || !payload.province || !payload.postalCode) {
 			setCheckoutMessage("Please fill in every field.");
 			return;
 		}

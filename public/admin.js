@@ -1430,10 +1430,10 @@
     const within24h = (Date.now() - new Date(o.created_at).getTime()) < DAY_MS;
     const created = o.created_at ? new Date(o.created_at).toLocaleString() : '';
     const name = `${o.customer_first_name || ''} ${o.customer_last_name || ''}`.trim() || '—';
-    // Delivery address, assembled from the split fields (street number/name, province, postal).
+    // Delivery address, assembled from the split fields (street number/name, city, province, postal).
     const street = [o.customer_street_number, o.customer_street_name].filter(Boolean).join(' ');
     const region = [o.customer_province, o.customer_postal_code].filter(Boolean).join(' ');
-    const address = [street, region].filter(Boolean).join(', ') || '—';
+    const address = [street, o.customer_city, region].filter(Boolean).join(', ') || '—';
     const items = (o.items || []).map(it => {
       const variant = it.variation_label ? ` <span style="color:var(--ink-faint)">(${escAttr(it.variation_label)})</span>` : '';
       return `<li><span>${Number(it.quantity) || 0} × ${escAttr(it.product_name)}${variant}</span><span>${money(it.line_total_cents)}</span></li>`;

@@ -97,7 +97,7 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
 
   // Construct the full address line for Square from separate fields
   const addressLine = customer.streetNumber && customer.streetName
-    ? `${customer.streetNumber} ${customer.streetName}, ${customer.province} ${customer.postalCode}`
+    ? `${customer.streetNumber} ${customer.streetName}, ${customer.city} ${customer.province} ${customer.postalCode}`
     : undefined;
 
   try {

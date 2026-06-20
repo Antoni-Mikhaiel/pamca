@@ -84,6 +84,8 @@
     .add-to-cart-btn.sold-out { background: #6c757d; cursor: not-allowed; }
     .add-to-cart-btn.sold-out:hover { transform: none; box-shadow: none; }
     .pd-available { font-size: 0.95rem; font-weight: 600; color: #27ae60; margin: -4px 0 18px; }
+    .pd-available.low-stock { color: #e67e22; }
+    .pd-available.out-of-stock { color: #c0392b; }
     .pd-msg { font-size: 0.9rem; color: #008080; margin-bottom: 24px; min-height: 1.2em; }
 
     .product-description { margin-top: 30px; padding-top: 26px; border-top: 1px solid #eef2f5; }
@@ -342,11 +344,22 @@
           const soldOut = s.stock <= 0;
           stockEl.className = 'pd-stock ' + (soldOut ? 'out' : 'in');
           stockEl.textContent = soldOut ? 'Sold out' : 'In stock';
-          // Frontend display only: hide the exact count; show "Low Stock" when 10 or
-          // fewer remain (stock/maxQty/clamping below are unchanged).
-          const lowStock = !soldOut && s.stock <= 10;
-          availEl.textContent = lowStock ? 'Low Stock' : '';
-          availEl.style.display = lowStock ? '' : 'none';
+          // Frontend display only (stock/maxQty/clamping below are unchanged): hide the
+          // exact count, show an orange "Low Stock" at 10 or fewer, and a red
+          // out-of-stock notice when there are none left.
+          if (soldOut) {
+            availEl.textContent = 'Out of stock - please check back later';
+            availEl.className = 'pd-available out-of-stock';
+            availEl.style.display = '';
+          } else if (s.stock <= 10) {
+            availEl.textContent = 'Low Stock';
+            availEl.className = 'pd-available low-stock';
+            availEl.style.display = '';
+          } else {
+            availEl.textContent = '';
+            availEl.className = 'pd-available';
+            availEl.style.display = 'none';
+          }
           maxQty = Math.max(1, s.stock);
           qty.max = String(maxQty);
           qty.value = String(Math.min(maxQty, Math.max(1, parseInt(qty.value, 10) || 1)));

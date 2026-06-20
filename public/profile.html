@@ -41,8 +41,20 @@
     .orders-window-note { background: #f4f7f7; border: 1px solid #e3eded; border-radius: 10px; padding: 12px 14px; font-size: 0.86rem; color: #4a5a5a; margin-bottom: 18px; line-height: 1.5; }
 
     .profile-skeleton { color: #999; padding: 40px; text-align: center; }
+
+    /* Account bar (sign-out) shown above the tabs once signed in. */
+    .profile-account-bar { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+    .profile-signout {
+      background: none; border: 1px solid #ddd; color: #666; border-radius: 8px;
+      padding: 8px 16px; font-weight: 600; font-size: 0.85rem; cursor: pointer;
+      transition: border-color 0.2s ease, color 0.2s ease; white-space: nowrap;
+    }
+    .profile-signout:hover { border-color: #c0392b; color: #c0392b; }
+    .profile-signout:disabled { opacity: 0.6; cursor: default; }
   </style>
-</head>
+    <link rel="icon" type="image/png" href="/images/pamca_tab_logo.png">
+    <link rel="apple-touch-icon" href="/images/pamca_tab_logo.png">
+  </head>
 <body>
 <div id="header-placeholder"></div>
 
@@ -73,6 +85,9 @@
   </div>
 
   <div class="profile-content" id="profile-content">
+    <div class="profile-account-bar">
+      <button type="button" class="profile-signout" id="profile-signout-btn">Sign out</button>
+    </div>
     <div class="profile-tabs" role="tablist">
       <button type="button" class="profile-tab is-active" data-panel="panel-details">Personal Details</button>
       <button type="button" class="profile-tab" data-panel="panel-orders">Orders</button>

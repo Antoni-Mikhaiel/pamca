@@ -1335,6 +1335,16 @@ section:nth-of-type(4) { animation-delay: 0.21s; }
     margin: 2px 0 6px;
 }
 
+.order-tax-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #555;
+}
+
 .order-actions-row {
     display: flex;
     gap: 10px;

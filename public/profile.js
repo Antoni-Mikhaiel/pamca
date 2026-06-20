@@ -143,6 +143,19 @@
     });
   }
 
+  function wireSignOut() {
+    const btn = document.getElementById("profile-signout-btn");
+    if (!btn || btn._wired) return;
+    btn._wired = true;
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      try { if (typeof window.signOut === "function") await window.signOut(); } catch (_) {}
+      // Clear the nav auth cache so the navbar doesn't flash a logged-in state.
+      try { localStorage.removeItem(AUTH_CACHE_KEY); sessionStorage.removeItem(AUTH_CACHE_KEY); } catch (_) {}
+      window.location.href = "/";
+    });
+  }
+
   function wireTabs() {
     document.querySelectorAll(".profile-tab").forEach((tab) => {
       tab.addEventListener("click", () => {
@@ -243,6 +256,7 @@
     }
     wireTabs();
     wireOrderActions();
+    wireSignOut();
     document.getElementById("profile-form")?.addEventListener("submit", saveProfile);
     // The phone/postal formatters and custom dropdown are published together by
     // shared-scripts at the end of its bootstrap; wait for that (same readiness as

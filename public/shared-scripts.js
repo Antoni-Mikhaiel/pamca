@@ -537,6 +537,11 @@
 		const refunded = Number(order.amount_refunded_cents) > 0
 			? `<div class="order-refunded">${money(order.amount_refunded_cents)} refunded</div>`
 			: "";
+		// Tax breakdown row (only for orders that actually carry HST; older pre-tax
+		// orders have tax_cents = 0 and just show their single total).
+		const taxRow = Number(order.tax_cents) > 0
+			? `<div class="order-tax-row"><span>HST (${Number(order.hst_percent) || 0}%)</span><span>${money(order.tax_cents)}</span></div>`
+			: "";
 		const completedPill = order.completed_at
 			? `<span class="order-status order-status-completed">completed</span>`
 			: "";
@@ -553,6 +558,7 @@
 				<div class="order-meta">${escapeHtml(created)} · Total ${money(order.total_cents)}</div>
 				${refunded}
 				<ul class="order-lines">${lines}</ul>
+					${taxRow}
 				${actionsHtml}
 			</div>`;
 	}

@@ -1465,6 +1465,11 @@
     const refundedNote = (o.amount_refunded_cents || 0) > 0
       ? `<span class="ao-refunded">${money(o.amount_refunded_cents)} refunded</span>` : '';
 
+    // HST line shown between the items and the Total (only when tax was applied).
+    const taxRow = (Number(o.tax_cents) || 0) > 0
+      ? `<div class="ao-tax"><span>HST (${Number(o.hst_percent) || 0}%)</span><span>${money(o.tax_cents)}</span></div>`
+      : '';
+
     return `<article class="ao-card">
       <div class="ao-top">
         <span class="ao-pid">#${escAttr(o.purchase_id || '—')}</span>
@@ -1478,6 +1483,7 @@
         <div class="ao-addr"><span>Address</span><b>${escAttr(address)}</b></div>
       </div>
       <ul class="ao-items">${items}</ul>
+      ${taxRow}
       <div class="ao-foot">
         <span class="ao-total">Total ${money(o.total_cents)} ${refundedNote}</span>
         <span class="ao-actions">${completeHtml}${lockHtml}</span>

@@ -37,6 +37,10 @@
       const el = document.getElementById(ids[key]);
       if (el) el.style.display = key === state ? "block" : "none";
     });
+    // The sign-out button lives in the page header (next to the title); only show it
+    // once the signed-in content is on screen.
+    const signout = document.getElementById("profile-signout-btn");
+    if (signout) signout.style.display = state === "content" ? "inline-flex" : "none";
   }
 
   function showSkeleton() {

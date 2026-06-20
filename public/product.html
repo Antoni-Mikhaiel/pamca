@@ -342,8 +342,11 @@
           const soldOut = s.stock <= 0;
           stockEl.className = 'pd-stock ' + (soldOut ? 'out' : 'in');
           stockEl.textContent = soldOut ? 'Sold out' : 'In stock';
-          availEl.textContent = soldOut ? '' : (s.stock + ' available');
-          availEl.style.display = soldOut ? 'none' : '';
+          // Frontend display only: hide the exact count; show "Low Stock" when 10 or
+          // fewer remain (stock/maxQty/clamping below are unchanged).
+          const lowStock = !soldOut && s.stock <= 10;
+          availEl.textContent = lowStock ? 'Low Stock' : '';
+          availEl.style.display = lowStock ? '' : 'none';
           maxQty = Math.max(1, s.stock);
           qty.max = String(maxQty);
           qty.value = String(Math.min(maxQty, Math.max(1, parseInt(qty.value, 10) || 1)));

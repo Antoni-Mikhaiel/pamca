@@ -15,7 +15,7 @@
 
     .profile-wrap { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
     .profile-wrap h1 { font-size: 1.8rem; color: #008080; margin-bottom: 6px; }
-    .profile-intro { color: #888; margin-bottom: 22px; }
+    .profile-intro { color: #888; margin-bottom: 0; }
 
     /* Tab switcher between Personal Details and Orders */
     .profile-tabs { display: flex; gap: 8px; border-bottom: 2px solid #eee; margin-bottom: 24px; }
@@ -42,9 +42,12 @@
 
     .profile-skeleton { color: #999; padding: 40px; text-align: center; }
 
-    /* Account bar (sign-out) shown above the tabs once signed in. */
-    .profile-account-bar { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+    /* Header row: title/intro on the left, sign-out on the right (only shown once
+       signed in — toggled by setState in profile.js). */
+    .profile-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+    .profile-heading { min-width: 0; }
     .profile-signout {
+      margin-left: auto;
       background: none; border: 1px solid #ddd; color: #666; border-radius: 8px;
       padding: 8px 16px; font-weight: 600; font-size: 0.85rem; cursor: pointer;
       transition: border-color 0.2s ease, color 0.2s ease; white-space: nowrap;
@@ -59,8 +62,13 @@
 <div id="header-placeholder"></div>
 
 <main class="profile-wrap">
-  <h1>My Profile</h1>
-  <p class="profile-intro">Manage your details and review your orders.</p>
+  <div class="profile-header">
+    <div class="profile-heading">
+      <h1>My Profile</h1>
+      <p class="profile-intro">Manage your details and review your orders.</p>
+    </div>
+    <button type="button" class="profile-signout" id="profile-signout-btn" style="display:none;">Sign out</button>
+  </div>
 
   <!-- Shown immediately so the page is never blank while we check the session. -->
   <div class="profile-skeleton" id="profile-skeleton">Loading your profile…</div>
@@ -85,9 +93,6 @@
   </div>
 
   <div class="profile-content" id="profile-content">
-    <div class="profile-account-bar">
-      <button type="button" class="profile-signout" id="profile-signout-btn">Sign out</button>
-    </div>
     <div class="profile-tabs" role="tablist">
       <button type="button" class="profile-tab is-active" data-panel="panel-details">Personal Details</button>
       <button type="button" class="profile-tab" data-panel="panel-orders">Orders</button>

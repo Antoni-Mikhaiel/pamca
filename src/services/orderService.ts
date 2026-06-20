@@ -2,10 +2,14 @@ import { randomInt } from "node:crypto";
 import { supabase } from "../lib/supabase.js";
 import { CartItem, CustomerDetails, OrderRecord } from "../models/types.js";
 import { asVariants } from "../lib/variants.js";
+import { getHSTPercent, calculateTaxCents } from "./taxService.js";
 
 export interface CreatedOrder {
   id: string;
   purchaseId: string;
+  subtotalCents: number;
+  taxCents: number;
+  hstPercent: number;
   totalCents: number;
   currency: string;
 }
@@ -46,7 +50,12 @@ export async function createPendingOrder(params: {
       line_total_cents: unitCents * item.quantity,
     };
   });
-  const totalCents = lineRows.reduce((sum, r) => sum + r.line_total_cents, 0);
+  const subtotalCents = lineRows.reduce((sum, r) => sum + r.line_total_cents, 0);
+  
+  // Get current HST percent and calculate tax
+  const hstPercent = await getHSTPercent();
+  const taxCents = calculateTaxCents(subtotalCents, hstPercent);
+  const totalCents = subtotalCents + taxCents;
 
   // Insert with a fresh purchase id, retrying on the (rare) unique-index clash.
   let created: { id: string; purchase_id: string } | null = null;
@@ -58,8 +67,10 @@ export async function createPendingOrder(params: {
         user_id: userId ?? null,
         status: "pending",
         currency,
-        subtotal_cents: totalCents,
+        subtotal_cents: subtotalCents,
+        tax_cents: taxCents,
         total_cents: totalCents,
+        hst_percent: hstPercent,
         purchase_id: generatePurchaseId(),
         customer_first_name: customer.firstName,
         customer_last_name: customer.lastName,
@@ -87,7 +98,7 @@ export async function createPendingOrder(params: {
     .insert(lineRows.map((r) => ({ ...r, order_id: created!.id })));
   if (itemsError) throw itemsError;
 
-  return { id: created.id, purchaseId: created.purchase_id, totalCents, currency };
+  return { id: created.id, purchaseId: created.purchase_id, subtotalCents, taxCents, hstPercent, totalCents, currency };
 }
 
 /** Records the Square identifiers once the payment link has been created. */
@@ -221,7 +232,8 @@ export const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const REFUND_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 const ORDER_SELECT =
-  "id, purchase_id, status, currency, total_cents, customer_first_name, customer_last_name, " +
+  "id, purchase_id, status, currency, subtotal_cents, tax_cents, total_cents, hst_percent, " +
+  "customer_first_name, customer_last_name, " +
   "customer_email, customer_phone, customer_street_number, customer_street_name, customer_province, customer_postal_code, created_at, uneditable, completed_at, refunded_at, amount_refunded_cents, " +
   "order_items(id, product_id, product_name, variation_label, unit_price_cents, quantity, line_total_cents)";
 
@@ -261,7 +273,10 @@ function mapOrder(row: Record<string, unknown>): OrderRecord {
     purchase_id: (row.purchase_id as string | null) ?? null,
     status,
     currency: String(row.currency ?? "CAD"),
+    subtotal_cents: Number(row.subtotal_cents ?? 0),
+    tax_cents: Number(row.tax_cents ?? 0),
     total_cents: Number(row.total_cents ?? 0),
+    hst_percent: Number(row.hst_percent ?? 13),
     customer_first_name: (row.customer_first_name as string | null) ?? null,
     customer_last_name: (row.customer_last_name as string | null) ?? null,
     customer_email: (row.customer_email as string | null) ?? null,
@@ -357,7 +372,10 @@ export interface FullOrder {
   purchase_id: string | null;
   status: string;
   currency: string;
+  subtotal_cents: number;
+  tax_cents: number;
   total_cents: number;
+  hst_percent: number;
   uneditable: boolean;
   completed_at: string | null;
   refunded_at: string | null;
@@ -369,7 +387,7 @@ export interface FullOrder {
 }
 
 const FULL_ORDER_SELECT =
-  "id, user_id, cart_token, purchase_id, status, currency, total_cents, uneditable, completed_at, refunded_at, " +
+  "id, user_id, cart_token, purchase_id, status, currency, subtotal_cents, tax_cents, total_cents, hst_percent, uneditable, completed_at, refunded_at, " +
   "amount_refunded_cents, payments, created_at, customer_first_name, customer_last_name, customer_email, " +
   "customer_phone, customer_street_number, customer_street_name, customer_province, customer_postal_code, " +
   "order_items(id, product_id, variation_id, product_name, variation_label, unit_price_cents, quantity, line_total_cents)";
@@ -391,7 +409,10 @@ export async function getFullOrder(orderId: string): Promise<FullOrder | null> {
     purchase_id: (row.purchase_id as string | null) ?? null,
     status: String(row.status ?? "pending"),
     currency: String(row.currency ?? "CAD"),
+    subtotal_cents: Number(row.subtotal_cents ?? 0),
+    tax_cents: Number(row.tax_cents ?? 0),
     total_cents: Number(row.total_cents ?? 0),
+    hst_percent: Number(row.hst_percent ?? 13),
     uneditable: Boolean(row.uneditable),
     completed_at: (row.completed_at as string | null) ?? null,
     refunded_at: (row.refunded_at as string | null) ?? null,
@@ -449,29 +470,38 @@ export async function setOrderCompleted(orderId: string, value: boolean): Promis
   return getOrderRecordById(orderId);
 }
 
-/** Appends a successful charge to an order's payments ledger and bumps its total. */
+/** Appends a successful charge to an order's payments ledger and bumps its subtotal/tax/total. */
 export async function recordPaymentAndTotal(
   orderId: string,
   payment: OrderPaymentEntry,
   newTotalCents: number,
+  subtotalCents?: number,
+  taxCents?: number,
 ): Promise<void> {
   const { data, error } = await supabase.from("orders").select("payments").eq("id", orderId).maybeSingle();
   if (error) throw error;
   const existing = Array.isArray((data as { payments?: unknown })?.payments)
     ? ((data as { payments: OrderPaymentEntry[] }).payments)
     : [];
+  const update: Record<string, unknown> = { payments: [...existing, payment], total_cents: newTotalCents };
+  if (subtotalCents !== undefined) update.subtotal_cents = subtotalCents;
+  if (taxCents !== undefined) update.tax_cents = taxCents;
   const { error: updateError } = await supabase
     .from("orders")
-    .update({ payments: [...existing, payment], total_cents: newTotalCents })
+    .update(update)
     .eq("id", orderId);
   if (updateError) throw updateError;
 }
 
-/** Sets an order's total (used when an edit is applied without a new charge). */
-export async function updateOrderTotal(orderId: string, totalCents: number): Promise<void> {
+/** Sets an order's subtotal, tax, and total (used when an edit is applied without a new charge). */
+export async function updateOrderTotal(orderId: string, totalCents: number, subtotalCents?: number, taxCents?: number): Promise<void> {
+  const update: Record<string, unknown> = { total_cents: totalCents };
+  if (subtotalCents !== undefined) update.subtotal_cents = subtotalCents;
+  if (taxCents !== undefined) update.tax_cents = taxCents;
+  
   const { error } = await supabase
     .from("orders")
-    .update({ subtotal_cents: totalCents, total_cents: totalCents })
+    .update(update)
     .eq("id", orderId);
   if (error) throw error;
 }

@@ -413,11 +413,29 @@ input.quantity-display::-webkit-inner-spin-button {
     background: #f8f9fa;
 }
 
-.cart-total {
+.cart-summary {
     margin-bottom: 15px;
+}
+
+.cart-summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95rem;
+    color: #555;
+    padding: 4px 0;
+}
+
+.cart-summary-row.cart-total {
+    margin-top: 6px;
+    padding-top: 10px;
+    border-top: 1px solid #e0e0e0;
     font-size: 1.1rem;
-    text-align: center;
     color: #333;
+}
+
+.cart-summary-row.cart-total .cart-total-amount {
+    color: #008080;
 }
 
 .checkout-btn {

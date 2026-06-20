@@ -16,7 +16,8 @@
     orders: '/api/admin/orders',
     flagOrder: '/api/admin/orders/flag',
     completeOrder: '/api/admin/orders/complete',
-    dashboard: '/api/admin/dashboard'
+    dashboard: '/api/admin/dashboard',
+    hst: '/api/admin/tax/hst'
   };
 
   function whenAuthReady(){
@@ -1498,6 +1499,60 @@
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // HST (sales tax) setting — lives in the Orders panel. The saved rate is applied
+  // server-side to every new purchase, order edit, and refund.
+  // ---------------------------------------------------------------------------
+  function setHstMsg(text, kind){
+    const msg = document.getElementById('hst-msg');
+    if(!msg) return;
+    msg.textContent = text || '';
+    msg.className = 'hst-msg' + (text ? (kind === 'error' ? ' is-error' : ' is-ok') : '');
+  }
+
+  async function loadHst(){
+    const input = document.getElementById('hst-input');
+    if(!input) return;
+    try{
+      const data = await apiGet(API.hst);
+      if(data && data.hstPercent != null) input.value = String(data.hstPercent);
+    }catch(e){
+      console.error('loadHst', e);
+    }
+  }
+
+  async function saveHst(){
+    const input = document.getElementById('hst-input');
+    const btn = document.getElementById('hst-save');
+    if(!input) return;
+    const percent = Number(input.value);
+    if(!Number.isFinite(percent) || percent < 0 || percent > 100){
+      setHstMsg('Enter a rate between 0 and 100.', 'error');
+      return;
+    }
+    if(btn) btn.disabled = true;
+    setHstMsg('Saving…');
+    try{
+      const data = await apiSend(API.hst, 'POST', { hstPercent: percent });
+      if(data && data.hstPercent != null) input.value = String(data.hstPercent);
+      setHstMsg('Saved');
+    }catch(e){
+      setHstMsg('Could not save: ' + e.message, 'error');
+    }finally{
+      if(btn) btn.disabled = false;
+    }
+  }
+
+  function wireHstControls(){
+    const btn = document.getElementById('hst-save');
+    if(btn) btn.addEventListener('click', saveHst);
+    const input = document.getElementById('hst-input');
+    if(input){
+      input.addEventListener('input', () => setHstMsg(''));
+      input.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); saveHst(); } });
+    }
+  }
+
   function wireOrderControls(){
     const host = document.getElementById('admin-orders-list');
     if(!host) return;
@@ -1722,7 +1777,9 @@
     await loadProducts();
 
     wireOrderControls();
+    wireHstControls();
     await loadOrders();
+    await loadHst();
 
     wireDashboardControls();
     await loadDashboard();

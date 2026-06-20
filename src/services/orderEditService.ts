@@ -22,6 +22,7 @@ import {
   SquareLineItem,
 } from "./squareService.js";
 import { sendRefundAdminEmail } from "./emailService.js";
+import { calculateTaxCents } from "./taxService.js";
 
 const SITE_URL = (process.env.SITE_URL ?? "").replace(/\/$/, "");
 
@@ -46,6 +47,8 @@ export interface EditDiffLine {
 
 export interface EditPlan {
   newItems: NewItem[];
+  newSubtotalCents: number;
+  newTaxCents: number;
   newTotalCents: number;
   chargeCents: number;
   refundCents: number;
@@ -138,8 +141,15 @@ export async function buildEditPlan(order: FullOrder, edit: OrderEditRequest): P
     throw new Error("An order can't be emptied — cancel it with a full refund instead.");
   }
 
-  const newTotalCents = newItems.reduce((s, i) => s + i.line_total_cents, 0);
-  return { newItems, newTotalCents, chargeCents, refundCents, deltaCents: chargeCents - refundCents, diff };
+  const newSubtotalCents = newItems.reduce((s, i) => s + i.line_total_cents, 0);
+  const newTaxCents = calculateTaxCents(newSubtotalCents, order.hst_percent);
+  const newTotalCents = newSubtotalCents + newTaxCents;
+  // The money the customer pays/receives is the change in the tax-inclusive total,
+  // not just the subtotal difference — otherwise the tax on added/removed units would
+  // never be charged or refunded. (chargeCents/refundCents remain the pre-tax line
+  // amounts, used only for the itemized diff shown to the shopper.)
+  const deltaCents = newTotalCents - order.total_cents;
+  return { newItems, newSubtotalCents, newTaxCents, newTotalCents, chargeCents, refundCents, deltaCents, diff };
 }
 
 /** Stock changes needed to move from `oldItems` to `newItems` (positive = sell more). */
@@ -262,7 +272,7 @@ export async function commitEdit(order: FullOrder, edit: OrderEditRequest): Prom
   }
 
   await applyItemsAndStock(order, plan.newItems);
-  await updateOrderTotal(order.id, plan.newTotalCents);
+  await updateOrderTotal(order.id, plan.newTotalCents, plan.newSubtotalCents, plan.newTaxCents);
   return { applied: true, refundedCents };
 }
 
@@ -300,13 +310,17 @@ export async function applyEditBySquareOrderId(squareOrderId: string, squarePaym
     quantity: Number(it.quantity) || 0,
     line_total_cents: Number(it.line_total_cents) || 0,
   }));
-  const newTotalCents = newItems.reduce((s, i) => s + i.line_total_cents, 0);
+  const newSubtotalCents = newItems.reduce((s, i) => s + i.line_total_cents, 0);
+  const newTaxCents = calculateTaxCents(newSubtotalCents, order.hst_percent);
+  const newTotalCents = newSubtotalCents + newTaxCents;
 
   await applyItemsAndStock(order, newItems);
   await recordPaymentAndTotal(
     order.id,
     { square_payment_id: squarePaymentId, amount_cents: editRow.delta_cents, refunded_cents: 0 },
     newTotalCents,
+    newSubtotalCents,
+    newTaxCents,
   );
   return true;
 }

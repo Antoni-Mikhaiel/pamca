@@ -85,6 +85,14 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
     note: item.variation_label,
   }));
 
+  // Charge the HST as its own line so the amount Square collects equals the order's
+  // stored total_cents (subtotal + tax). Without this the customer would only pay
+  // the pre-tax subtotal while the order — and the payments ledger used for refunds
+  // — recorded the tax-inclusive total.
+  if (order.taxCents > 0) {
+    lineItems.push({ name: `HST (${order.hstPercent}%)`, quantity: 1, amountCents: order.taxCents });
+  }
+
   const redirectUrl = SITE_URL ? `${SITE_URL}/?order=success&pid=${order.purchaseId}` : undefined;
 
   // Construct the full address line for Square from separate fields

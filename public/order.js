@@ -73,7 +73,15 @@
     }).join("");
 
     const refunded = Number(order.amount_refunded_cents) || 0;
-    let rows = `<div class="receipt-total-row grand"><span>Total paid</span><span>${money(order.total_cents)}</span></div>`;
+    const taxCents = Number(order.tax_cents) || 0;
+    let rows = "";
+    // Break out subtotal + HST only when tax was actually applied (older orders
+    // placed before HST have tax_cents = 0 and just show the single total).
+    if (taxCents > 0) {
+      rows += `<div class="receipt-total-row"><span>Subtotal</span><span>${money(order.subtotal_cents)}</span></div>`;
+      rows += `<div class="receipt-total-row"><span>HST (${order.hst_percent}%)</span><span>${money(taxCents)}</span></div>`;
+    }
+    rows += `<div class="receipt-total-row grand"><span>Total paid</span><span>${money(order.total_cents)}</span></div>`;
     if (refunded > 0) {
       rows += `<div class="receipt-total-row refund"><span>Refunded</span><span>−${money(refunded)}</span></div>`;
     }

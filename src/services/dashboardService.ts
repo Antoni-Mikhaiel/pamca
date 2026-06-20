@@ -28,6 +28,7 @@ export interface DashboardStats {
 interface OrderRow {
   id: string;
   status: string;
+  subtotal_cents: number;
   total_cents: number;
   amount_refunded_cents: number;
   completed_at: string | null;
@@ -61,7 +62,7 @@ function lastTwelveMonths(): Array<{ ym: string; label: string }> {
 export async function getDashboardStats(): Promise<DashboardStats> {
   const [{ data: orders, error: oErr }, { data: items, error: iErr }, { data: products, error: pErr }] =
     await Promise.all([
-      supabase.from("orders").select("id, status, total_cents, amount_refunded_cents, completed_at, refunded_at, created_at"),
+      supabase.from("orders").select("id, status, subtotal_cents, total_cents, amount_refunded_cents, completed_at, refunded_at, created_at"),
       supabase.from("order_items").select("order_id, product_id, product_name, quantity, unit_price_cents, line_total_cents"),
       supabase.from("products").select("id, cost_price"),
     ]);
@@ -85,8 +86,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const paidOrders = orderRows.filter(isPaidSale);
   const paidIds = new Set(paidOrders.map((o) => o.id));
 
-  // Totals
-  const salesCents = paidOrders.reduce((s, o) => s + (Number(o.total_cents) || 0), 0);
+  // Totals — "sales" is the pre-tax subtotal. Collected HST is a pass-through
+  // liability remitted to the government, not store revenue, so it is excluded
+  // from sales/AOV/timeline (the tax-inclusive amount lives on each order's total).
+  const salesCents = paidOrders.reduce((s, o) => s + (Number(o.subtotal_cents) || 0), 0);
   const orderCount = paidOrders.length;
   const refundedOrders = orderRows.filter(isRefunded);
   const refundsValueCents = orderRows.reduce((s, o) => s + (Number(o.amount_refunded_cents) || 0), 0);
@@ -132,7 +135,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     if (Number.isNaN(d.getTime())) continue;
     const k = monthKey(d);
     const m = byMonth.get(k) ?? { cents: 0, count: 0 };
-    m.cents += Number(o.total_cents) || 0;
+    m.cents += Number(o.subtotal_cents) || 0;
     m.count += 1;
     byMonth.set(k, m);
   }

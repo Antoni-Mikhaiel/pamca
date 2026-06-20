@@ -85,6 +85,10 @@
 		return res.json();
 	}
 
+	// Last HST rate the server reported, kept so the optimistic quantity-change
+	// recompute (recomputeCartLocally) can re-derive the tax before the next sync.
+	let cartHstPercent = 13;
+
 	function applyCartData(data) {
 		if (!data) return;
 		const items = document.getElementById("cart-items");
@@ -93,6 +97,16 @@
 		const badge = document.getElementById("cart-badge");
 		if (badge) badge.textContent = String(data.count ?? 0);
 
+		if (data.hst_percent != null) {
+			cartHstPercent = Number(data.hst_percent) || 0;
+			const rate = document.querySelector(".cart-hst-rate");
+			if (rate) rate.textContent = String(data.hst_percent);
+		}
+
+		const subtotal = document.querySelector(".cart-subtotal-amount");
+		if (subtotal && data.subtotal_html != null) subtotal.innerHTML = data.subtotal_html;
+		const tax = document.querySelector(".cart-tax-amount");
+		if (tax && data.tax_html != null) tax.innerHTML = data.tax_html;
 		const total = document.querySelector(".cart-total-amount");
 		if (total) total.innerHTML = data.total_html ?? "$0.00";
 	}
@@ -453,21 +467,29 @@
 
 	function recomputeCartLocally() {
 		let count = 0;
-		let total = 0;
+		let subtotal = 0;
 		document.querySelectorAll("#cart-items .cart-item").forEach((row) => {
 			const unit = parseFloat(row.getAttribute("data-unit-price")) || 0;
 			const input = row.querySelector("[data-qty-input], input.qty, input[type='number']");
 			const qty = Math.max(1, parseInt(input && input.value, 10) || 1);
 			const sub = unit * qty;
 			count += qty;
-			total += sub;
+			subtotal += sub;
 			const subEl = row.querySelector(".cart-item-subtotal");
 			if (subEl) subEl.textContent = " · " + formatMoney(sub);
 		});
+		// Mirror the server's cents-based tax rounding so the optimistic total matches
+		// the next /api/cart response (and what Square will charge).
+		const subtotalCents = Math.round(subtotal * 100);
+		const taxCents = Math.round((subtotalCents * (Number(cartHstPercent) || 0)) / 100);
 		const badge = document.getElementById("cart-badge");
 		if (badge) badge.textContent = String(count);
+		const subtotalEl = document.querySelector(".cart-subtotal-amount");
+		if (subtotalEl) subtotalEl.innerHTML = formatMoney(subtotalCents / 100);
+		const taxEl = document.querySelector(".cart-tax-amount");
+		if (taxEl) taxEl.innerHTML = formatMoney(taxCents / 100);
 		const totalEl = document.querySelector(".cart-total-amount");
-		if (totalEl) totalEl.innerHTML = formatMoney(total);
+		if (totalEl) totalEl.innerHTML = formatMoney((subtotalCents + taxCents) / 100);
 	}
 
 	function queueQtyUpdate(key, quantity) {

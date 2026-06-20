@@ -251,9 +251,19 @@
       </div>
 
       <div class="cart-footer">
-        <div class="cart-total">
-          <div class="cart-total-label" aria-hidden="true">Total</div>
-          <strong class="cart-total-amount">$0.00</strong>
+        <div class="cart-summary">
+          <div class="cart-summary-row">
+            <span>Subtotal</span>
+            <span class="cart-subtotal-amount">$0.00</span>
+          </div>
+          <div class="cart-summary-row">
+            <span>HST (<span class="cart-hst-rate">13</span>%)</span>
+            <span class="cart-tax-amount">$0.00</span>
+          </div>
+          <div class="cart-summary-row cart-total">
+            <span class="cart-total-label">Total</span>
+            <strong class="cart-total-amount">$0.00</strong>
+          </div>
         </div>
         <button type="button" class="checkout-btn" id="checkout-btn">Proceed to Checkout</button>
       </div>

@@ -103,6 +103,10 @@ function itemsTable(order: OrderRecord): string {
       </thead>
       <tbody>${rows}</tbody>
       <tfoot>
+        <tr><td colspan="3" style="padding:10px;text-align:right;font-weight:700;">Subtotal</td>
+        <td style="padding:10px;text-align:right;font-weight:700;">${money(order.subtotal_cents)}</td></tr>
+        <tr><td colspan="3" style="padding:10px;text-align:right;font-weight:700;">HST (${order.hst_percent}%)</td>
+        <td style="padding:10px;text-align:right;font-weight:700;">${money(order.tax_cents)}</td></tr>
         <tr><td colspan="3" style="padding:10px;text-align:right;font-weight:700;">Total</td>
         <td style="padding:10px;text-align:right;font-weight:700;font-size:15px;">${money(order.total_cents)}</td></tr>
         ${refundRow}

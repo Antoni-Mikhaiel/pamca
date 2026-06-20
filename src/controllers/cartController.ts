@@ -1,6 +1,30 @@
 import { ensureCartToken, parseBody, ApiRequest, ApiResponse, toCurrency } from "../lib/http.js";
 import { buildMiniCartHtml, computeCartTotals } from "../lib/miniCartHtml.js";
 import { addToCart, getCartItems, removeCartItem, updateCartQuantity, SelectedOption } from "../services/cartService.js";
+import { CartItem } from "../models/types.js";
+import { getHSTPercent, calculateTaxCents } from "../services/taxService.js";
+
+/**
+ * Builds the cart payload returned to the client: the rendered drawer markup, the
+ * item count, and the money breakdown (subtotal + HST + tax-inclusive total). The
+ * HST rate is the admin-configured one; `total_html` is tax-inclusive so the cart's
+ * displayed total matches what Square will charge.
+ */
+async function buildCartPayload(items: CartItem[]) {
+  const { count, total } = computeCartTotals(items);
+  const hstPercent = await getHSTPercent();
+  const subtotalCents = Math.round(total * 100);
+  const taxCents = calculateTaxCents(subtotalCents, hstPercent);
+  const totalCents = subtotalCents + taxCents;
+  return {
+    html: buildMiniCartHtml(items),
+    count,
+    hst_percent: hstPercent,
+    subtotal_html: toCurrency(subtotalCents / 100),
+    tax_html: toCurrency(taxCents / 100),
+    total_html: toCurrency(totalCents / 100),
+  };
+}
 
 export async function handleAddToCart(req: ApiRequest, res: ApiResponse): Promise<void> {
   const body = await parseBody(req);
@@ -40,15 +64,10 @@ export async function handleAddToCart(req: ApiRequest, res: ApiResponse): Promis
   }
 
   const items = await getCartItems(cartToken);
-  const totals = computeCartTotals(items);
 
   res.status(200).json({
     success: true,
-    data: {
-      html: buildMiniCartHtml(items),
-      count: totals.count,
-      total_html: toCurrency(totals.total),
-    },
+    data: await buildCartPayload(items),
   });
 }
 
@@ -67,15 +86,11 @@ export async function handleUpdateCartQty(req: ApiRequest, res: ApiResponse): Pr
   const result = await updateCartQuantity({ cartToken, itemId: cartItemKey, quantity });
 
   const items = await getCartItems(cartToken);
-  const html = buildMiniCartHtml(items);
-  const totals = computeCartTotals(items);
 
   res.status(200).json({
     success: true,
     data: {
-      html,
-      count: totals.count,
-      total_html: toCurrency(totals.total),
+      ...(await buildCartPayload(items)),
       clamped: result.clamped,
       available: result.stock,
     },
@@ -128,31 +143,21 @@ export async function handleRemoveCartItem(req: ApiRequest, res: ApiResponse): P
   }
 
   const items = await getCartItems(cartToken);
-  const html = buildMiniCartHtml(items);
-  const totals = computeCartTotals(items);
 
   res.status(200).json({
     success: true,
-    data: {
-      html,
-      count: totals.count,
-      total_html: toCurrency(totals.total),
-    },
+    data: await buildCartPayload(items),
   });
 }
 
 export async function handleGetCart(req: ApiRequest, res: ApiResponse): Promise<void> {
   const cartToken = ensureCartToken(req, res);
   const items = await getCartItems(cartToken);
-  const html = buildMiniCartHtml(items);
-  const totals = computeCartTotals(items);
 
   res.status(200).json({
     success: true,
     data: {
-      html,
-      count: totals.count,
-      total_html: toCurrency(totals.total),
+      ...(await buildCartPayload(items)),
       items,
     },
   });

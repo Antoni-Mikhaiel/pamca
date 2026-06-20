@@ -137,7 +137,10 @@ export interface OrderRecord {
   purchase_id: string | null;
   status: string;
   currency: string;
+  subtotal_cents: number;
+  tax_cents: number;
   total_cents: number;
+  hst_percent: number;
   customer_first_name: string | null;
   customer_last_name: string | null;
   customer_email: string | null;

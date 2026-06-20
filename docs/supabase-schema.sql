@@ -202,6 +202,10 @@ alter table orders add column if not exists completed_at timestamptz;
 alter table orders add column if not exists refunded_at timestamptz;
 alter table orders add column if not exists amount_refunded_cents integer not null default 0;
 alter table orders add column if not exists payments jsonb not null default '[]'::jsonb;
+-- Tax amount (in cents) applied to the order. Calculated from subtotal_cents * (hst_percent / 100).
+alter table orders add column if not exists tax_cents integer not null default 0;
+-- HST percent applied to this order (e.g. 13 for 13%). Snapshot of the rate at order creation time.
+alter table orders add column if not exists hst_percent numeric(5,2) not null default 13;
 
 -- A staged edit that requires an extra payment. The new item set + stock changes
 -- are applied only when its top-up payment completes (Square webhook). Edits that

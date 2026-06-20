@@ -224,6 +224,11 @@
 			setFieldValue("checkout-province", p.province);
 			setFieldValue("checkout-postal-code", p.postalCode);
 			setFieldValue("checkout-phone", (p.phone || "").replace(/^\+1/, ""));
+			// Reformat/resync the prefilled values so they display formatted, and the
+			// custom province dropdown reflects the chosen province.
+			attachPhoneFormatter(document.getElementById("checkout-phone"));
+			attachPostalFormatter(document.getElementById("checkout-postal-code"));
+			document.getElementById("checkout-province")?.dispatchEvent(new Event("change"));
 		} catch (_) {}
 	}
 
@@ -316,11 +321,14 @@
 	}
 
 	function attachPhoneFormatter(input) {
-		if (!input || input._phoneFormatted) return;
+		if (!input) return;
+		// Always (re)format the current value — this is what makes a *prefilled* value
+		// (profile/checkout prefill) display formatted, not just live typing. The input
+		// listener is wired only once so re-calling this is safe.
+		input.value = formatPhoneValue(input.value);
+		if (input._phoneFormatted) return;
 		input._phoneFormatted = true;
-		const apply = () => { input.value = formatPhoneValue(input.value); };
-		apply(); // format any prefilled value
-		input.addEventListener("input", apply);
+		input.addEventListener("input", () => { input.value = formatPhoneValue(input.value); });
 	}
 
 	// ---- Live Canadian postal-code formatting --------------------------------
@@ -333,14 +341,110 @@
 	}
 
 	function attachPostalFormatter(input) {
-		if (!input || input._postalFormatted) return;
+		if (!input) return;
+		input.value = formatPostalValue(input.value); // (re)format prefilled value too
+		if (input._postalFormatted) return;
 		input._postalFormatted = true;
-		const apply = () => {
-			// Preserve the caret at the end for the common "typing" case.
-			input.value = formatPostalValue(input.value);
-		};
-		apply(); // format any prefilled value
-		input.addEventListener("input", apply);
+		input.addEventListener("input", () => { input.value = formatPostalValue(input.value); });
+	}
+
+	// ---- Custom styled dropdown ----------------------------------------------
+	// Native <select> option lists can't be styled, so we build a custom menu that
+	// mirrors the real <select> (which stays in the DOM, hidden, to carry the value
+	// and submit with the form). Progressive enhancement: until this runs, the native
+	// select is fully usable. Re-syncs when the underlying select fires "change", so
+	// programmatic prefill (profile/checkout) updates the visible label too.
+	function enhanceSelect(select) {
+		if (!select || select._enhanced) return;
+		select._enhanced = true;
+
+		const wrap = document.createElement("div");
+		wrap.className = "c-select";
+
+		const trigger = document.createElement("button");
+		trigger.type = "button";
+		trigger.className = "c-select-trigger";
+		trigger.setAttribute("aria-haspopup", "listbox");
+		trigger.setAttribute("aria-expanded", "false");
+		const valueEl = document.createElement("span");
+		valueEl.className = "c-select-value";
+		trigger.appendChild(valueEl);
+		trigger.insertAdjacentHTML(
+			"beforeend",
+			'<svg class="c-select-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>',
+		);
+
+		const menu = document.createElement("ul");
+		menu.className = "c-select-menu";
+		menu.setAttribute("role", "listbox");
+
+		Array.from(select.options).forEach((opt) => {
+			const li = document.createElement("li");
+			li.className = "c-select-option" + (opt.value === "" ? " is-placeholder" : "");
+			li.setAttribute("role", "option");
+			li.dataset.value = opt.value;
+			li.textContent = opt.textContent;
+			li.addEventListener("click", () => {
+				select.value = opt.value;
+				select.dispatchEvent(new Event("change", { bubbles: true }));
+				close();
+				trigger.focus();
+			});
+			menu.appendChild(li);
+		});
+
+		function syncFromSelect() {
+			const sel = select.options[select.selectedIndex] || select.options[0];
+			const isPlaceholder = !sel || sel.value === "";
+			valueEl.textContent = sel ? sel.textContent : "";
+			wrap.classList.toggle("is-placeholder", isPlaceholder);
+			menu.querySelectorAll(".c-select-option").forEach((li) => {
+				const on = li.dataset.value === select.value;
+				li.classList.toggle("is-selected", on);
+				li.setAttribute("aria-selected", on ? "true" : "false");
+			});
+		}
+
+		function open() {
+			wrap.classList.add("is-open");
+			trigger.setAttribute("aria-expanded", "true");
+			const sel = menu.querySelector(".c-select-option.is-selected");
+			if (sel) sel.scrollIntoView({ block: "nearest" });
+			document.addEventListener("click", onDocClick, true);
+			document.addEventListener("keydown", onKey, true);
+		}
+		function close() {
+			wrap.classList.remove("is-open");
+			trigger.setAttribute("aria-expanded", "false");
+			document.removeEventListener("click", onDocClick, true);
+			document.removeEventListener("keydown", onKey, true);
+		}
+		function onDocClick(e) { if (!wrap.contains(e.target)) close(); }
+		function onKey(e) {
+			const opts = Array.from(menu.querySelectorAll(".c-select-option"));
+			const cur = opts.findIndex((li) => li.dataset.value === select.value);
+			if (e.key === "Escape") { close(); trigger.focus(); }
+			else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+				e.preventDefault();
+				const next = e.key === "ArrowDown" ? Math.min(opts.length - 1, cur + 1) : Math.max(0, cur - 1);
+				const li = opts[next];
+				if (li) { select.value = li.dataset.value; syncFromSelect(); li.scrollIntoView({ block: "nearest" }); }
+			} else if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault(); close(); trigger.focus();
+			}
+		}
+
+		trigger.addEventListener("click", (e) => {
+			e.preventDefault();
+			wrap.classList.contains("is-open") ? close() : open();
+		});
+		select.addEventListener("change", syncFromSelect);
+
+		select.parentNode.insertBefore(wrap, select.nextSibling);
+		wrap.appendChild(trigger);
+		wrap.appendChild(menu);
+		select.classList.add("c-select-native"); // visually hide the native control
+		syncFromSelect();
 	}
 
 	// ---- Refund confirmation card --------------------------------------------
@@ -411,6 +515,8 @@
 		["checkout-phone", "purchase-phone-input"].forEach((id) => attachPhoneFormatter(document.getElementById(id)));
 		// Auto-format the checkout postal code (A1A 1A1). Profile opts in itself.
 		attachPostalFormatter(document.getElementById("checkout-postal-code"));
+		// Replace the native province <select> with the styled custom dropdown.
+		enhanceSelect(document.getElementById("checkout-province"));
 	}
 
 	// Renders an order summary card (shared by the profile page and guest lookup).
@@ -1128,6 +1234,7 @@
 		window.pamcaConfirmRefund = openRefundConfirm;
 		window.pamcaFormatPhone = attachPhoneFormatter;
 		window.pamcaFormatPostal = attachPostalFormatter;
+		window.pamcaEnhanceSelect = enhanceSelect;
 
 		await Promise.allSettled([productsReady, detailsReady]);
 	}

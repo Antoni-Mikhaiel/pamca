@@ -1427,3 +1427,111 @@ section:nth-of-type(4) { animation-delay: 0.21s; }
 .form-group select option {
     color: #333;
 }
+
+/* ---- Custom styled dropdown (enhanceSelect in shared-scripts.js) ----------
+   Replaces the native option list with a menu we can theme. The native <select>
+   is hidden (kept in the DOM to carry the value); .c-select is the visible UI. */
+.c-select-native {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.c-select {
+    position: relative;
+    width: 100%;
+}
+
+.c-select-trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 1rem;
+    color: #333;
+    text-align: left;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.c-select-trigger:hover { border-color: #bdbdbd; }
+
+.c-select.is-open .c-select-trigger,
+.c-select-trigger:focus-visible {
+    outline: none;
+    border-color: #008080;
+    box-shadow: 0 0 0 3px rgba(0, 128, 128, 0.1);
+}
+
+.c-select.is-placeholder .c-select-value { color: #999; }
+
+.c-select-chevron {
+    flex: none;
+    color: #008080;
+    transition: transform 0.2s ease;
+}
+
+.c-select.is-open .c-select-chevron { transform: rotate(180deg); }
+
+.c-select-menu {
+    position: absolute;
+    z-index: 60;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    background: #fff;
+    border: 1px solid #e2e8e8;
+    border-radius: 12px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.14);
+    max-height: 260px;
+    overflow-y: auto;
+    display: none;
+    animation: c-select-pop 0.14s ease;
+}
+
+@keyframes c-select-pop {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.c-select.is-open .c-select-menu { display: block; }
+
+.c-select-option {
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #333;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.c-select-option:hover { background: #f0f7f7; }
+
+.c-select-option.is-selected {
+    background: linear-gradient(135deg, #008080, #20b2aa);
+    color: #fff;
+    font-weight: 600;
+}
+
+.c-select-option.is-placeholder { color: #999; }
+
+/* Slim, themed scrollbar for the menu (WebKit). */
+.c-select-menu::-webkit-scrollbar { width: 8px; }
+.c-select-menu::-webkit-scrollbar-thumb { background: #cfe0df; border-radius: 8px; }
+.c-select-menu::-webkit-scrollbar-thumb:hover { background: #008080; }

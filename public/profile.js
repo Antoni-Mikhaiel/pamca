@@ -97,6 +97,8 @@
     setVal("profile-phone", (p.phone || "").replace(/^\+1/, ""));
     if (typeof window.pamcaFormatPhone === "function") window.pamcaFormatPhone(document.getElementById("profile-phone"));
     if (typeof window.pamcaFormatPostal === "function") window.pamcaFormatPostal(document.getElementById("profile-postal-code"));
+    // Resync the custom province dropdown to the value we just set programmatically.
+    document.getElementById("profile-province")?.dispatchEvent(new Event("change"));
     const note = document.getElementById("login-email-note");
     if (note && p.loginEmail) note.textContent = "Signed in as " + p.loginEmail;
   }
@@ -242,6 +244,11 @@
     wireTabs();
     wireOrderActions();
     document.getElementById("profile-form")?.addEventListener("submit", saveProfile);
+    // The phone/postal formatters and custom dropdown are published together by
+    // shared-scripts at the end of its bootstrap; wait for that (same readiness as
+    // the order-card renderer) before upgrading the static fields.
+    await whenRendererReady();
+    if (typeof window.pamcaEnhanceSelect === "function") window.pamcaEnhanceSelect(document.getElementById("profile-province"));
     if (typeof window.pamcaFormatPhone === "function") window.pamcaFormatPhone(document.getElementById("profile-phone"));
     if (typeof window.pamcaFormatPostal === "function") window.pamcaFormatPostal(document.getElementById("profile-postal-code"));
     await loadProfile();

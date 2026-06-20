@@ -28,22 +28,23 @@
     box.className = "auth-message" + (text ? " " + (kind || "error") : "");
   }
 
+  // Exactly one of the four page states is visible at a time. Keeping this in one
+  // place avoids the bug where a half-updated set of toggles left the page showing
+  // the wrong panel (e.g. the sign-in gate while actually signed in).
+  function setState(state) {
+    const ids = { skeleton: "profile-skeleton", gate: "profile-gate", error: "profile-error", content: "profile-content" };
+    Object.keys(ids).forEach((key) => {
+      const el = document.getElementById(ids[key]);
+      if (el) el.style.display = key === state ? "block" : "none";
+    });
+  }
+
   function showSkeleton() {
-    const sk = document.getElementById("profile-skeleton");
-    if (sk) sk.style.display = "block";
-    const gate = document.getElementById("profile-gate");
-    const content = document.getElementById("profile-content");
-    if (gate) gate.style.display = "none";
-    if (content) content.style.display = "none";
+    setState("skeleton");
   }
 
   function showGate() {
-    const sk = document.getElementById("profile-skeleton");
-    if (sk) sk.style.display = "none";
-    const gate = document.getElementById("profile-gate");
-    const content = document.getElementById("profile-content");
-    if (gate) gate.style.display = "block";
-    if (content) content.style.display = "none";
+    setState("gate");
     const btn = document.getElementById("profile-signin-btn");
     if (btn && !btn._wired) {
       btn._wired = true;
@@ -54,13 +55,22 @@
     }
   }
 
+  // Shown when we ARE signed in but the server couldn't return the profile (e.g. a
+  // backend/database error). Surfacing the real reason — instead of the misleading
+  // "Please sign in" gate — means a server fault never looks like a logout.
+  function showError(text) {
+    setState("error");
+    const msg = document.getElementById("profile-error-text");
+    if (msg && text) msg.textContent = text;
+    const retry = document.getElementById("profile-retry-btn");
+    if (retry && !retry._wired) {
+      retry._wired = true;
+      retry.addEventListener("click", () => { showSkeleton(); loadProfile(); });
+    }
+  }
+
   function showContent() {
-    const sk = document.getElementById("profile-skeleton");
-    if (sk) sk.style.display = "none";
-    const gate = document.getElementById("profile-gate");
-    const content = document.getElementById("profile-content");
-    if (gate) gate.style.display = "none";
-    if (content) content.style.display = "block";
+    setState("content");
   }
 
   function whenRendererReady() {
@@ -142,15 +152,26 @@
 
   async function loadProfile() {
     const auth = authHeader();
+    // No session at all → genuinely signed out → show the sign-in gate.
     if (!auth) { showGate(); return; }
 
-    let json = null;
+    let res;
     try {
-      const res = await fetch("/api/profile", { headers: auth });
-      if (res.status === 401) { showGate(); return; }
-      json = await res.json().catch(() => null);
-    } catch (_) { showGate(); return; }
-    if (!json || !json.success || !json.data) { showGate(); return; }
+      res = await fetch("/api/profile", { headers: auth });
+    } catch (_) {
+      showError("We couldn't reach the server. Check your connection and try again.");
+      return;
+    }
+    // Only a 401 means the session is no longer valid → back to the sign-in gate.
+    if (res.status === 401) { showGate(); return; }
+
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json || !json.success || !json.data) {
+      // Signed in, but the server failed (e.g. a database error). Show the real
+      // message rather than pretending the shopper is logged out.
+      showError((json && json.message) || "Something went wrong loading your profile. Please try again.");
+      return;
+    }
 
     showContent();
     fillProfile(json.data.profile || {});

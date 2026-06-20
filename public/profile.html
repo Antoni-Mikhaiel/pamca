@@ -34,8 +34,8 @@
     }
     .profile-card h2 { font-size: 1.2rem; color: #333; margin-bottom: 18px; }
 
-    .profile-gate, .profile-content { display: none; }
-    .profile-gate p { color: #555; margin-bottom: 18px; }
+    .profile-gate, .profile-content, .profile-error { display: none; }
+    .profile-gate p, .profile-error p { color: #555; margin-bottom: 18px; }
     .login-email-note { color: #888; font-size: 0.85rem; margin: -10px 0 18px; }
     .profile-orders-empty, .profile-loading { color: #888; padding: 8px 0; }
     .orders-window-note { background: #f4f7f7; border: 1px solid #e3eded; border-radius: 10px; padding: 12px 14px; font-size: 0.86rem; color: #4a5a5a; margin-bottom: 18px; line-height: 1.5; }
@@ -58,6 +58,17 @@
       <h2>Please sign in</h2>
       <p>Sign in to manage your details and view your orders.</p>
       <button type="button" class="auth-submit-btn" id="profile-signin-btn" style="max-width:200px;">Sign in</button>
+    </div>
+  </div>
+
+  <!-- Shown when the server fails to return the profile while the shopper IS signed
+       in (e.g. a backend/database error) — distinct from the sign-in gate above so
+       a transient failure is never mistaken for being logged out. -->
+  <div class="profile-error" id="profile-error">
+    <div class="profile-card">
+      <h2>Couldn't load your profile</h2>
+      <p id="profile-error-text">Something went wrong loading your profile. Please try again.</p>
+      <button type="button" class="auth-submit-btn" id="profile-retry-btn" style="max-width:200px;">Try again</button>
     </div>
   </div>
 

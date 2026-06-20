@@ -1389,6 +1389,13 @@
     }catch(e){
       console.error('loadOrders', e);
       ordersCache = [];
+      // Surface the failure instead of silently rendering an empty "No orders"
+      // list — an empty list and a broken request must not look the same.
+      const host = document.getElementById('admin-orders-list');
+      if(host) host.innerHTML = `<div class="ao-empty">Could not load orders: ${escAttr(e.message)}</div>`;
+      const countEl = document.getElementById('admin-order-count');
+      if(countEl) countEl.textContent = '—';
+      return;
     }
     renderOrders();
   }

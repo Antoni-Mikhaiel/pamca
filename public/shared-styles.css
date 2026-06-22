@@ -1204,7 +1204,16 @@ section:nth-of-type(4) { animation-delay: 0.21s; }
    Checkout details modal, phone input, saved-details toggle,
    and order cards (profile page + guest Purchase ID lookup).
    ============================================================ */
-.checkout-card { max-width: 460px; }
+/* Wider + scrollable so the longer delivery form (now with City) always fits the
+   viewport instead of overflowing it. Tighter padding/field spacing keep it compact. */
+.checkout-card {
+    max-width: 520px;
+    max-height: 92vh;
+    overflow-y: auto;
+    padding: 26px 30px;
+}
+.checkout-card .auth-purchase-sub { margin-bottom: 16px; }
+.checkout-card .form-group { margin-bottom: 14px; }
 
 .checkout-row {
     display: flex;
@@ -1486,6 +1495,7 @@ section:nth-of-type(4) { animation-delay: 0.21s; }
     box-shadow: 0 0 0 3px rgba(0, 128, 128, 0.1);
 }
 
+.c-select-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .c-select.is-placeholder .c-select-value { color: #999; }
 
 .c-select-chevron {

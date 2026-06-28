@@ -24,6 +24,9 @@ alter table products add column if not exists stock integer not null default 0;
 -- Unit cost (what PAMCA pays per unit) — used only for the admin Dashboard's profit
 -- figures. Optional; defaults to 0 (a product with no cost contributes 0 COGS).
 alter table products add column if not exists cost_price numeric(10,2) not null default 0;
+-- Shipping weight per unit (grams), used to compute the Canada Post parcel weight at
+-- checkout. 0 = unset → the checkout falls back to CANADA_POST_DEFAULT_ITEM_WEIGHT_G.
+alter table products add column if not exists weight_grams integer not null default 0;
 alter table products add column if not exists key_features jsonb not null default '[]'::jsonb;
 alter table products add column if not exists option_groups jsonb not null default '[]'::jsonb;
 -- Per-combination inventory for multi-dropdown products. Each entry is
@@ -208,6 +211,16 @@ alter table orders add column if not exists payments jsonb not null default '[]'
 alter table orders add column if not exists tax_cents integer not null default 0;
 -- HST percent applied to this order (e.g. 13 for 13%). Snapshot of the rate at order creation time.
 alter table orders add column if not exists hst_percent numeric(5,2) not null default 13;
+-- Canada Post shipping (chosen at checkout). shipping_cents is the pre-tax rate "base"
+-- charged to the customer; HST is applied to (subtotal_cents + shipping_cents). The
+-- service code/name identify the Canada Post product (e.g. DOM.EP "Expedited Parcel").
+alter table orders add column if not exists shipping_cents integer not null default 0;
+alter table orders add column if not exists shipping_service_code text;
+alter table orders add column if not exists shipping_service_name text;
+-- Canada Post tracking number (PIN) entered by admin at fulfillment; powers live
+-- tracking on the order/profile pages. shipped_at stamps when it was first set.
+alter table orders add column if not exists tracking_pin text;
+alter table orders add column if not exists shipped_at timestamptz;
 
 -- A staged edit that requires an extra payment. The new item set + stock changes
 -- are applied only when its top-up payment completes (Square webhook). Edits that

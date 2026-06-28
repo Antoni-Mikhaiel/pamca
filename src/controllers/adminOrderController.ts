@@ -5,6 +5,7 @@ import {
   getFullOrder,
   setOrderUneditable,
   setOrderCompleted,
+  setOrderTracking,
   orderAgeMs,
   EDIT_WINDOW_MS,
 } from "../services/orderService.js";
@@ -79,5 +80,31 @@ export async function handleAdminCompleteOrder(req: ApiRequest, res: ApiResponse
   }
 
   const updated = await setOrderCompleted(orderId, completed);
+  res.status(200).json({ success: true, data: { order: updated } });
+}
+
+/**
+ * POST /api/admin/orders/tracking — record (or clear) an order's Canada Post
+ * tracking number. Stamps `shipped_at` the first time one is set; powers live
+ * tracking on the customer's order/profile pages.
+ */
+export async function handleAdminSetTracking(req: ApiRequest, res: ApiResponse): Promise<void> {
+  if (!(await requireAdmin(req, res))) return;
+
+  const body = readJsonBody<{ orderId?: unknown; trackingPin?: unknown }>(req);
+  const orderId = String(body.orderId ?? "");
+  const trackingPin = String(body.trackingPin ?? "").trim();
+  if (!orderId) {
+    res.status(400).json({ success: false, message: "Missing order id." });
+    return;
+  }
+
+  const order = await getFullOrder(orderId);
+  if (!order) {
+    res.status(404).json({ success: false, message: "Order not found." });
+    return;
+  }
+
+  const updated = await setOrderTracking(orderId, trackingPin);
   res.status(200).json({ success: true, data: { order: updated } });
 }

@@ -142,8 +142,10 @@ export async function buildEditPlan(order: FullOrder, edit: OrderEditRequest): P
   }
 
   const newSubtotalCents = newItems.reduce((s, i) => s + i.line_total_cents, 0);
-  const newTaxCents = calculateTaxCents(newSubtotalCents, order.hst_percent);
-  const newTotalCents = newSubtotalCents + newTaxCents;
+  // Shipping is fixed at checkout and unchanged by an edit (you don't re-ship), but it
+  // stays in the taxable base and the total so the delta isn't thrown off by it.
+  const newTaxCents = calculateTaxCents(newSubtotalCents + order.shipping_cents, order.hst_percent);
+  const newTotalCents = newSubtotalCents + order.shipping_cents + newTaxCents;
   // The money the customer pays/receives is the change in the tax-inclusive total,
   // not just the subtotal difference — otherwise the tax on added/removed units would
   // never be charged or refunded. (chargeCents/refundCents remain the pre-tax line
@@ -311,8 +313,9 @@ export async function applyEditBySquareOrderId(squareOrderId: string, squarePaym
     line_total_cents: Number(it.line_total_cents) || 0,
   }));
   const newSubtotalCents = newItems.reduce((s, i) => s + i.line_total_cents, 0);
-  const newTaxCents = calculateTaxCents(newSubtotalCents, order.hst_percent);
-  const newTotalCents = newSubtotalCents + newTaxCents;
+  // Preserve shipping in the taxable base and total (see planEdit).
+  const newTaxCents = calculateTaxCents(newSubtotalCents + order.shipping_cents, order.hst_percent);
+  const newTotalCents = newSubtotalCents + order.shipping_cents + newTaxCents;
 
   await applyItemsAndStock(order, newItems);
   await recordPaymentAndTotal(

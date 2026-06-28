@@ -105,6 +105,8 @@ function itemsTable(order: OrderRecord): string {
       <tfoot>
         <tr><td colspan="3" style="padding:10px;text-align:right;font-weight:700;">Subtotal</td>
         <td style="padding:10px;text-align:right;font-weight:700;">${money(order.subtotal_cents)}</td></tr>
+        ${Number(order.shipping_cents) > 0 ? `<tr><td colspan="3" style="padding:10px;text-align:right;font-weight:700;">Shipping${order.shipping_service_name ? ` (${order.shipping_service_name})` : ""}</td>
+        <td style="padding:10px;text-align:right;font-weight:700;">${money(order.shipping_cents)}</td></tr>` : ""}
         <tr><td colspan="3" style="padding:10px;text-align:right;font-weight:700;">HST (${order.hst_percent}%)</td>
         <td style="padding:10px;text-align:right;font-weight:700;">${money(order.tax_cents)}</td></tr>
         <tr><td colspan="3" style="padding:10px;text-align:right;font-weight:700;">Total</td>

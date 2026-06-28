@@ -198,6 +198,79 @@
 		if (modal) modal.classList.remove("active");
 	}
 
+	// ---- Delivery method (Canada Post rates) ---------------------------------
+	// After a valid postal code is entered we quote shipping options from the
+	// server and let the shopper pick one; the chosen service code is sent with the
+	// checkout request (the server re-quotes it, so the price can't be tampered with).
+	let shippingRates = [];
+	let selectedShippingCode = null;
+	let shippingReqToken = 0;
+
+	function resetShippingOptions() {
+		shippingRates = [];
+		selectedShippingCode = null;
+		const wrap = document.getElementById("checkout-shipping");
+		const host = document.getElementById("checkout-shipping-options");
+		if (host) host.innerHTML = "";
+		if (wrap) wrap.style.display = "none";
+	}
+
+	function renderShippingOptions() {
+		const wrap = document.getElementById("checkout-shipping");
+		const host = document.getElementById("checkout-shipping-options");
+		if (!wrap || !host) return;
+		host.innerHTML = shippingRates
+			.map((r) => {
+				const price = Number(r.priceCents) > 0 ? formatMoney(Number(r.priceCents) / 100) : "Free";
+				const days = Number(r.transitDays) || 0;
+				const eta = days ? ` · ${days} business day${days === 1 ? "" : "s"}` : "";
+				const checked = r.serviceCode === selectedShippingCode ? "checked" : "";
+				return `<label class="shipping-option">
+					<input type="radio" name="checkout-shipping-method" value="${escapeHtml(r.serviceCode)}" ${checked} />
+					<span class="shipping-option-name">${escapeHtml(r.serviceName)}${eta}</span>
+					<span class="shipping-option-price">${escapeHtml(price)}</span>
+				</label>`;
+			})
+			.join("");
+		wrap.style.display = "";
+		host.querySelectorAll("input[name='checkout-shipping-method']").forEach((input) => {
+			input.addEventListener("change", () => { selectedShippingCode = input.value; });
+		});
+	}
+
+	async function loadShippingRates() {
+		const postal = fieldValue("checkout-postal-code");
+		const wrap = document.getElementById("checkout-shipping");
+		const host = document.getElementById("checkout-shipping-options");
+		if (!/^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/.test(postal)) { resetShippingOptions(); return; }
+		const token = ++shippingReqToken;
+		if (wrap) wrap.style.display = "";
+		if (host) host.innerHTML = `<div class="shipping-loading">Calculating shipping…</div>`;
+		try {
+			const res = await fetch("/api/checkout/rates", {
+				method: "POST",
+				credentials: "same-origin",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ postalCode: postal }),
+			});
+			const json = await res.json().catch(() => ({}));
+			if (token !== shippingReqToken) return; // a newer request superseded this one
+			const rates = (json && json.data && json.data.rates) || [];
+			if (!res.ok || !rates.length) {
+				shippingRates = [];
+				selectedShippingCode = null;
+				if (host) host.innerHTML = `<div class="shipping-error">${escapeHtml((json && json.message) || "Couldn't get shipping rates — please check your postal code.")}</div>`;
+				return;
+			}
+			shippingRates = rates;
+			selectedShippingCode = rates[0].serviceCode; // default to the cheapest option
+			renderShippingOptions();
+		} catch (_) {
+			if (token !== shippingReqToken) return;
+			if (host) host.innerHTML = `<div class="shipping-error">Couldn't get shipping rates — please try again.</div>`;
+		}
+	}
+
 	// Pre-fills the checkout form from the signed-in shopper's saved profile and
 	// reveals the "save details" toggle. For guests it just clears the toggle.
 	async function prefillCheckoutFromProfile() {
@@ -244,10 +317,13 @@
 		// snapshot the cart for checkout.
 		await flushPendingQty();
 		setCheckoutMessage("");
+		resetShippingOptions();
 		await prefillCheckoutFromProfile();
 		modal.classList.add("active");
 		const first = document.getElementById("checkout-first");
 		if (first) first.focus();
+		// If the postal code was prefilled (signed-in shopper), quote shipping now.
+		loadShippingRates();
 	}
 
 	// Validates the delivery details, asks the server to create a Square hosted
@@ -274,6 +350,12 @@
 			setCheckoutMessage("Enter a valid 10-digit Canadian phone number.");
 			return;
 		}
+		if (!selectedShippingCode) {
+			setCheckoutMessage("Please choose a delivery method.");
+			loadShippingRates();
+			return;
+		}
+		payload.shippingServiceCode = selectedShippingCode;
 
 		const auth = getAuthHeader();
 		const saveBox = document.getElementById("checkout-save");
@@ -308,6 +390,13 @@
 		document.querySelectorAll("[data-close-checkout='1']").forEach((el) => {
 			el.addEventListener("click", closeCheckoutModal);
 		});
+		// Re-quote shipping when the postal code changes (debounced on input + on blur).
+		const postal = document.getElementById("checkout-postal-code");
+		if (postal) {
+			let debounce;
+			postal.addEventListener("input", () => { clearTimeout(debounce); debounce = setTimeout(loadShippingRates, 500); });
+			postal.addEventListener("blur", loadShippingRates);
+		}
 	}
 
 	// ---- Live phone formatting -----------------------------------------------
@@ -539,10 +628,18 @@
 		const refunded = Number(order.amount_refunded_cents) > 0
 			? `<div class="order-refunded">${money(order.amount_refunded_cents)} refunded</div>`
 			: "";
+		// Shipping row (only when shipping was charged).
+		const shippingRow = Number(order.shipping_cents) > 0
+			? `<div class="order-tax-row"><span>Shipping${order.shipping_service_name ? ` (${escapeHtml(order.shipping_service_name)})` : ""}</span><span>${money(order.shipping_cents)}</span></div>`
+			: "";
 		// Tax breakdown row (only for orders that actually carry HST; older pre-tax
 		// orders have tax_cents = 0 and just show their single total).
 		const taxRow = Number(order.tax_cents) > 0
 			? `<div class="order-tax-row"><span>HST (${Number(order.hst_percent) || 0}%)</span><span>${money(order.tax_cents)}</span></div>`
+			: "";
+		// Tracking number (live status/timeline is shown on the order page).
+		const trackingRow = order.tracking_pin
+			? `<div class="order-tracking-row"><span>Tracking</span><span class="order-tracking-pin">${escapeHtml(order.tracking_pin)}</span></div>`
 			: "";
 		const completedPill = order.completed_at
 			? `<span class="order-status order-status-completed">completed</span>`
@@ -560,7 +657,9 @@
 				<div class="order-meta">${escapeHtml(created)} · Total ${money(order.total_cents)}</div>
 				${refunded}
 				<ul class="order-lines">${lines}</ul>
+					${shippingRow}
 					${taxRow}
+				${trackingRow}
 				${actionsHtml}
 			</div>`;
 	}

@@ -93,7 +93,8 @@
       "Bash(git commit -q -m ' *)",
       "Bash(timeout 40 npx vercel ls)",
       "Bash(timeout 60 npx vercel inspect https://pamca-hvo3bey3a-antoni-mikhaiels-projects.vercel.app --logs)",
-      "Bash(timeout 60 npx vercel inspect https://pamca-hvo3bey3a-antoni-mikhaiels-projects.vercel.app)"
+      "Bash(timeout 60 npx vercel inspect https://pamca-hvo3bey3a-antoni-mikhaiels-projects.vercel.app)",
+      "Bash(npm --version)"
     ],
     "additionalDirectories": [
       "c:\\c\\Users\\ok\\Desktop\\VS_CODE"

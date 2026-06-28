@@ -1268,6 +1268,27 @@ section:nth-of-type(4) { animation-delay: 0.21s; }
     accent-color: #008080;
 }
 
+/* Checkout delivery-method (Canada Post rates) */
+.checkout-shipping { margin-bottom: 14px; }
+.checkout-shipping > label { display: block; font-weight: 600; font-size: 0.9rem; color: #333; margin-bottom: 8px; }
+.shipping-options { display: flex; flex-direction: column; gap: 8px; }
+.shipping-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 0.92rem;
+}
+.shipping-option:hover { border-color: #20b2aa; }
+.shipping-option input { width: auto; margin: 0; accent-color: #008080; }
+.shipping-option-name { flex: 1; color: #333; }
+.shipping-option-price { font-weight: 700; color: #0a615b; }
+.shipping-loading, .shipping-error { font-size: 0.88rem; color: #888; padding: 6px 2px; }
+.shipping-error { color: #b02a37; }
+
 /* Order cards */
 .order-result { margin-top: 18px; }
 
@@ -1353,6 +1374,16 @@ section:nth-of-type(4) { animation-delay: 0.21s; }
     font-weight: 600;
     color: #555;
 }
+
+.order-tracking-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0 0;
+    font-size: 0.88rem;
+    color: #0a615b;
+}
+.order-tracking-pin { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 600; }
 
 .order-actions-row {
     display: flex;

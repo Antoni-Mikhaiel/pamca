@@ -75,6 +75,23 @@
     .order-msg { margin-top: 14px; padding: 11px; border-radius: 8px; font-size: 0.92rem; display: none; text-align: center; }
     .order-msg.error { display: block; background: #f8d7da; color: #721c24; }
     .order-msg.success { display: block; background: #d4edda; color: #155724; }
+
+    /* Delivery tracking */
+    .order-tracking-title { margin: 0 0 12px; font-size: 1.05rem; }
+    .order-tracking-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .order-tracking-num { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 600; color: #333; }
+    .order-tracking-status { background: #d6f0ec; color: #0a615b; font-weight: 700; font-size: 0.78rem; padding: 3px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .order-tracking-eta { color: #555; font-size: 0.9rem; margin-top: 6px; }
+    .order-tracking-events { list-style: none; margin: 14px 0 0; padding: 0; }
+    .order-tracking-events li { position: relative; padding: 0 0 14px 18px; border-left: 2px solid #e2e2e2; }
+    .order-tracking-events li:last-child { border-left-color: transparent; padding-bottom: 0; }
+    .order-tracking-events li::before { content: ""; position: absolute; left: -6px; top: 3px; width: 10px; height: 10px; border-radius: 50%; background: #20b2aa; }
+    .order-tracking-events li:first-child::before { background: #008080; box-shadow: 0 0 0 3px rgba(0,128,128,0.15); }
+    .ote-desc { font-weight: 600; color: #222; font-size: 0.92rem; }
+    .ote-meta { color: #888; font-size: 0.8rem; margin-top: 2px; }
+    .order-tracking-note, .order-tracking-loading { color: #888; font-size: 0.9rem; margin-top: 10px; }
+    .order-tracking-link { display: inline-block; margin-top: 14px; color: #008080; font-weight: 600; text-decoration: none; }
+    .order-tracking-link:hover { text-decoration: underline; }
   </style>
     <link rel="icon" type="image/png" href="/images/pamca_tab_logo.png">
     <link rel="apple-touch-icon" href="/images/pamca_tab_logo.png">
@@ -104,6 +121,9 @@
       <div id="receipt-lines"></div>
       <div class="receipt-totals" id="receipt-totals"></div>
     </section>
+
+    <!-- Live Canada Post tracking (shown only once a tracking number is set) -->
+    <section class="op-card order-tracking" id="order-tracking" style="display:none;"></section>
 
     <!-- Add items (only when editable) -->
     <section class="op-card" id="edit-card" style="display:none;">

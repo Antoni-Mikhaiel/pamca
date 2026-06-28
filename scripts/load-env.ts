@@ -33,6 +33,11 @@ function loadDotEnvFile(filePath: string): void {
     let value = trimmed.slice(equalsIndex + 1).trim();
     if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);
+    } else {
+      // Strip an unquoted inline comment (whitespace + "#" to end of line), matching
+      // dotenv. Quoted values keep any "#" verbatim.
+      const commentIndex = value.search(/\s#/);
+      if (commentIndex >= 0) value = value.slice(0, commentIndex).trim();
     }
 
     process.env[key] = value;

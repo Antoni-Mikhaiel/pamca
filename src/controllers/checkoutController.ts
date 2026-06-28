@@ -19,8 +19,67 @@ import {
   verifyWebhookSignature,
   SquareLineItem,
 } from "../services/squareService.js";
+import { getProductWeightsGrams } from "../services/productService.js";
+import { getShippingRates, getDefaultItemWeightGrams } from "../services/canadaPostService.js";
+import { CartItem } from "../models/types.js";
 
 const SITE_URL = (process.env.SITE_URL ?? "").replace(/\/$/, "");
+
+/** Canadian postal code, with or without the middle space (e.g. "M4S 3E6"). */
+const POSTAL_RE = /^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/;
+
+/** Total parcel weight (kg) for a cart: per-product weight (or the default) × qty. */
+async function computeCartWeightKg(items: CartItem[]): Promise<number> {
+  const weights = await getProductWeightsGrams(items.map((i) => i.product_id));
+  const fallbackG = getDefaultItemWeightGrams();
+  let grams = 0;
+  for (const item of items) {
+    const perUnit = weights.get(item.product_id) || fallbackG;
+    grams += perUnit * (Number(item.quantity) || 0);
+  }
+  return grams / 1000;
+}
+
+/**
+ * Quotes Canada Post shipping options for the current cart + a destination postal
+ * code. Called from the checkout pop-up before payment so the shopper can pick a
+ * delivery method. Returns `{ data: { rates: [{ serviceCode, serviceName,
+ * priceCents, transitDays }] } }` (cheapest first).
+ */
+export async function handleGetShippingRates(req: ApiRequest, res: ApiResponse): Promise<void> {
+  const cartToken = parseCookies(req).cart_token;
+  if (!cartToken) {
+    res.status(400).json({ success: false, message: "Your cart is empty." });
+    return;
+  }
+
+  const body = readJsonBody<{ postalCode?: string }>(req);
+  const postalCode = String(body.postalCode ?? "").trim();
+  if (!POSTAL_RE.test(postalCode)) {
+    res.status(400).json({ success: false, message: "Enter a valid Canadian postal code." });
+    return;
+  }
+
+  const items = await getCartItems(cartToken);
+  if (items.length === 0) {
+    res.status(400).json({ success: false, message: "Your cart is empty." });
+    return;
+  }
+
+  const weightKg = await computeCartWeightKg(items);
+  const rates = await getShippingRates({ destinationPostalCode: postalCode, weightKg });
+  res.status(200).json({
+    success: true,
+    data: {
+      rates: rates.map((r) => ({
+        serviceCode: r.serviceCode,
+        serviceName: r.serviceName,
+        priceCents: r.baseCents,
+        transitDays: r.transitDays,
+      })),
+    },
+  });
+}
 
 /**
  * Snapshots the cart into a pending order (with the shopper's delivery details and
@@ -69,6 +128,15 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
     }
   }
 
+  // Re-quote shipping server-side for the chosen service so the price can never be
+  // tampered with by the client. If the selected code is no longer offered, fall back
+  // to the cheapest available option rather than blocking the purchase.
+  const requestedServiceCode = String((body.shippingServiceCode as string) ?? "");
+  const weightKg = await computeCartWeightKg(items);
+  const rates = await getShippingRates({ destinationPostalCode: customer.postalCode, weightKg });
+  const chosenRate = rates.find((r) => r.serviceCode === requestedServiceCode) ?? rates[0] ?? null;
+  const shippingCents = chosenRate ? chosenRate.baseCents : 0;
+
   const currency = getSquareCurrency();
   const order = await createPendingOrder({
     cartToken,
@@ -76,6 +144,9 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
     currency,
     customer,
     userId: authUser?.id ?? null,
+    shippingCents,
+    shippingServiceCode: chosenRate?.serviceCode ?? null,
+    shippingServiceName: chosenRate?.serviceName ?? null,
   });
 
   const lineItems: SquareLineItem[] = items.map((item) => ({
@@ -84,6 +155,15 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
     amountCents: Math.round(Number(item.unit_price) * 100),
     note: item.variation_label,
   }));
+
+  // Shipping as its own line (when charged) so Square collects subtotal + shipping + tax.
+  if (order.shippingCents > 0) {
+    lineItems.push({
+      name: chosenRate?.serviceName ? `Shipping (${chosenRate.serviceName})` : "Shipping",
+      quantity: 1,
+      amountCents: order.shippingCents,
+    });
+  }
 
   // Charge the HST as its own line so the amount Square collects equals the order's
   // stored total_cents (subtotal + tax). Without this the customer would only pay

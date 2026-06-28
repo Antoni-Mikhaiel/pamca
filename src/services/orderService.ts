@@ -8,6 +8,7 @@ export interface CreatedOrder {
   id: string;
   purchaseId: string;
   subtotalCents: number;
+  shippingCents: number;
   taxCents: number;
   hstPercent: number;
   totalCents: number;
@@ -35,8 +36,12 @@ export async function createPendingOrder(params: {
   currency: string;
   customer: CustomerDetails;
   userId?: string | null;
+  shippingCents?: number;
+  shippingServiceCode?: string | null;
+  shippingServiceName?: string | null;
 }): Promise<CreatedOrder> {
   const { cartToken, items, currency, customer, userId } = params;
+  const shippingCents = Math.max(0, Math.round(params.shippingCents ?? 0));
 
   const lineRows = items.map((item) => {
     const unitCents = toCents(item.unit_price);
@@ -51,11 +56,12 @@ export async function createPendingOrder(params: {
     };
   });
   const subtotalCents = lineRows.reduce((sum, r) => sum + r.line_total_cents, 0);
-  
-  // Get current HST percent and calculate tax
+
+  // Get current HST percent and calculate tax. Shipping is a taxable supply, so HST
+  // applies to (subtotal + shipping); the total is subtotal + shipping + tax.
   const hstPercent = await getHSTPercent();
-  const taxCents = calculateTaxCents(subtotalCents, hstPercent);
-  const totalCents = subtotalCents + taxCents;
+  const taxCents = calculateTaxCents(subtotalCents + shippingCents, hstPercent);
+  const totalCents = subtotalCents + shippingCents + taxCents;
 
   // Insert with a fresh purchase id, retrying on the (rare) unique-index clash.
   let created: { id: string; purchase_id: string } | null = null;
@@ -68,6 +74,9 @@ export async function createPendingOrder(params: {
         status: "pending",
         currency,
         subtotal_cents: subtotalCents,
+        shipping_cents: shippingCents,
+        shipping_service_code: params.shippingServiceCode ?? null,
+        shipping_service_name: params.shippingServiceName ?? null,
         tax_cents: taxCents,
         total_cents: totalCents,
         hst_percent: hstPercent,
@@ -99,7 +108,7 @@ export async function createPendingOrder(params: {
     .insert(lineRows.map((r) => ({ ...r, order_id: created!.id })));
   if (itemsError) throw itemsError;
 
-  return { id: created.id, purchaseId: created.purchase_id, subtotalCents, taxCents, hstPercent, totalCents, currency };
+  return { id: created.id, purchaseId: created.purchase_id, subtotalCents, shippingCents, taxCents, hstPercent, totalCents, currency };
 }
 
 /** Records the Square identifiers once the payment link has been created. */
@@ -234,6 +243,7 @@ export const REFUND_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 const ORDER_SELECT =
   "id, purchase_id, status, currency, subtotal_cents, tax_cents, total_cents, hst_percent, " +
+  "shipping_cents, shipping_service_name, tracking_pin, " +
   "customer_first_name, customer_last_name, " +
   "customer_email, customer_phone, customer_street_number, customer_street_name, customer_city, customer_province, customer_postal_code, created_at, uneditable, completed_at, refunded_at, amount_refunded_cents, " +
   "order_items(id, product_id, product_name, variation_label, unit_price_cents, quantity, line_total_cents)";
@@ -278,6 +288,9 @@ function mapOrder(row: Record<string, unknown>): OrderRecord {
     tax_cents: Number(row.tax_cents ?? 0),
     total_cents: Number(row.total_cents ?? 0),
     hst_percent: Number(row.hst_percent ?? 13),
+    shipping_cents: Number(row.shipping_cents ?? 0),
+    shipping_service_name: (row.shipping_service_name as string | null) ?? null,
+    tracking_pin: (row.tracking_pin as string | null) ?? null,
     customer_first_name: (row.customer_first_name as string | null) ?? null,
     customer_last_name: (row.customer_last_name as string | null) ?? null,
     customer_email: (row.customer_email as string | null) ?? null,
@@ -378,6 +391,7 @@ export interface FullOrder {
   tax_cents: number;
   total_cents: number;
   hst_percent: number;
+  shipping_cents: number;
   uneditable: boolean;
   completed_at: string | null;
   refunded_at: string | null;
@@ -389,7 +403,7 @@ export interface FullOrder {
 }
 
 const FULL_ORDER_SELECT =
-  "id, user_id, cart_token, purchase_id, status, currency, subtotal_cents, tax_cents, total_cents, hst_percent, uneditable, completed_at, refunded_at, " +
+  "id, user_id, cart_token, purchase_id, status, currency, subtotal_cents, tax_cents, total_cents, hst_percent, shipping_cents, uneditable, completed_at, refunded_at, " +
   "amount_refunded_cents, payments, created_at, customer_first_name, customer_last_name, customer_email, " +
   "customer_phone, customer_street_number, customer_street_name, customer_city, customer_province, customer_postal_code, " +
   "order_items(id, product_id, variation_id, product_name, variation_label, unit_price_cents, quantity, line_total_cents)";
@@ -415,6 +429,7 @@ export async function getFullOrder(orderId: string): Promise<FullOrder | null> {
     tax_cents: Number(row.tax_cents ?? 0),
     total_cents: Number(row.total_cents ?? 0),
     hst_percent: Number(row.hst_percent ?? 13),
+    shipping_cents: Number(row.shipping_cents ?? 0),
     uneditable: Boolean(row.uneditable),
     completed_at: (row.completed_at as string | null) ?? null,
     refunded_at: (row.refunded_at as string | null) ?? null,
@@ -469,6 +484,21 @@ export async function setOrderCompleted(orderId: string, value: boolean): Promis
     .from("orders")
     .update({ completed_at: value ? new Date().toISOString() : null })
     .eq("id", orderId);
+  if (error) throw error;
+  return getOrderRecordById(orderId);
+}
+
+/**
+ * Admin "set tracking" — records the Canada Post tracking number (PIN) for an order
+ * and stamps `shipped_at` the first time one is set. Passing an empty string clears
+ * it. Returns the updated display record. The caller verifies admin rights.
+ */
+export async function setOrderTracking(orderId: string, pin: string): Promise<OrderRecord | null> {
+  const clean = String(pin || "").replace(/\s/g, "");
+  const update: Record<string, unknown> = { tracking_pin: clean || null };
+  if (clean) update.shipped_at = new Date().toISOString();
+  else update.shipped_at = null;
+  const { error } = await supabase.from("orders").update(update).eq("id", orderId);
   if (error) throw error;
   return getOrderRecordById(orderId);
 }

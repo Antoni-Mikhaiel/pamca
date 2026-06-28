@@ -3,7 +3,7 @@ import { AdminProductInput, Product, ProductOptionGroup, ProductVariation } from
 import { asVariants, buildCombinationKeys, totalVariantStock } from "../lib/variants.js";
 
 const PRODUCT_COLUMNS =
-  "id, slug, name, description, image_url, price_regular, price_sale, is_on_sale, cost_price, redirect_path, " +
+  "id, slug, name, description, image_url, price_regular, price_sale, is_on_sale, cost_price, weight_grams, redirect_path, " +
   "status, images, sale_percent, sale_start, sale_end, stock, key_features, option_groups, variants";
 
 function asStringArray(value: unknown): string[] {
@@ -92,6 +92,7 @@ function mapRow(row: Record<string, unknown>): Product {
     price_sale: row.price_sale == null ? null : Number(row.price_sale),
     is_on_sale: Boolean(row.is_on_sale),
     cost_price: Number(row.cost_price ?? 0),
+    weight_grams: Math.max(0, Math.round(Number(row.weight_grams ?? 0))),
     redirect_path: String(row.redirect_path ?? ""),
     status: String(row.status ?? "active"),
     images: asStringArray(row.images),
@@ -157,6 +158,7 @@ function toAdminShape(p: Product): AdminProductInput & { id: number } {
     saleEnd: p.sale_end ?? "",
     stock: p.stock,
     cost: p.cost_price,
+    weight: p.weight_grams,
     description: p.description,
     keyFeatures: p.key_features,
     optionGroups: p.option_groups,
@@ -213,6 +215,7 @@ function buildRow(input: AdminProductInput) {
     price_sale: pct > 0 ? Number((price * (1 - pct / 100)).toFixed(2)) : null,
     is_on_sale: pct > 0,
     cost_price: Math.max(0, Number(input.cost) || 0),
+    weight_grams: Math.max(0, Math.round(Number(input.weight) || 0)),
     stock,
     variants,
     key_features: asStringArray(input.keyFeatures),
@@ -245,4 +248,17 @@ export async function upsertProduct(input: AdminProductInput): Promise<AdminProd
 export async function deleteProduct(id: number): Promise<void> {
   const { error } = await supabase.from("products").delete().eq("id", id);
   if (error) throw error;
+}
+
+/** Per-unit shipping weight (grams) for the given product ids, keyed by id. */
+export async function getProductWeightsGrams(ids: number[]): Promise<Map<number, number>> {
+  const unique = [...new Set(ids.filter((id) => Number.isFinite(id)))];
+  const out = new Map<number, number>();
+  if (unique.length === 0) return out;
+  const { data, error } = await supabase.from("products").select("id, weight_grams").in("id", unique);
+  if (error) throw error;
+  for (const row of (data ?? []) as Array<{ id: number; weight_grams: number | null }>) {
+    out.set(Number(row.id), Math.max(0, Math.round(Number(row.weight_grams ?? 0))));
+  }
+  return out;
 }

@@ -74,18 +74,77 @@
 
     const refunded = Number(order.amount_refunded_cents) || 0;
     const taxCents = Number(order.tax_cents) || 0;
+    const shippingCents = Number(order.shipping_cents) || 0;
     let rows = "";
-    // Break out subtotal + HST only when tax was actually applied (older orders
-    // placed before HST have tax_cents = 0 and just show the single total).
-    if (taxCents > 0) {
+    // Break out subtotal + shipping + HST when any was applied (older orders placed
+    // before these have tax_cents = shipping_cents = 0 and just show the single total).
+    if (taxCents > 0 || shippingCents > 0) {
       rows += `<div class="receipt-total-row"><span>Subtotal</span><span>${money(order.subtotal_cents)}</span></div>`;
-      rows += `<div class="receipt-total-row"><span>HST (${order.hst_percent}%)</span><span>${money(taxCents)}</span></div>`;
+      if (shippingCents > 0) {
+        const svc = order.shipping_service_name ? ` (${escapeHtml(order.shipping_service_name)})` : "";
+        rows += `<div class="receipt-total-row"><span>Shipping${svc}</span><span>${money(shippingCents)}</span></div>`;
+      }
+      if (taxCents > 0) {
+        rows += `<div class="receipt-total-row"><span>HST (${order.hst_percent}%)</span><span>${money(taxCents)}</span></div>`;
+      }
     }
     rows += `<div class="receipt-total-row grand"><span>Total paid</span><span>${money(order.total_cents)}</span></div>`;
     if (refunded > 0) {
       rows += `<div class="receipt-total-row refund"><span>Refunded</span><span>−${money(refunded)}</span></div>`;
     }
     totals.innerHTML = rows;
+  }
+
+  // ---- Live delivery tracking (Canada Post) ----
+  function formatTrackDate(d) {
+    const s = String(d || "");
+    if (/^\d{8}$/.test(s)) return s.slice(0, 4) + "-" + s.slice(4, 6) + "-" + s.slice(6, 8);
+    return s;
+  }
+
+  function renderTracking(t) {
+    const host = document.getElementById("order-tracking");
+    if (!host) return;
+    if (!t) { host.style.display = "none"; host.innerHTML = ""; return; }
+    host.style.display = "";
+    const link = "https://www.canadapost-postescanada.ca/track-reperage/en#/search?searchFor=" + encodeURIComponent(t.pin);
+    let inner = `<h3 class="order-tracking-title">Delivery tracking</h3>`;
+    inner += `<div class="order-tracking-head"><span class="order-tracking-num">${escapeHtml(t.pin)}</span>`;
+    if (t.status) inner += `<span class="order-tracking-status">${escapeHtml(t.status)}</span>`;
+    inner += `</div>`;
+    if (t.expectedDelivery) inner += `<div class="order-tracking-eta">Expected delivery: ${escapeHtml(t.expectedDelivery)}</div>`;
+    if (t.events && t.events.length) {
+      inner += `<ol class="order-tracking-events">` + t.events.map((e) => {
+        const when = [formatTrackDate(e.date), e.time].filter(Boolean).join(" ");
+        const meta = [when, e.location].filter(Boolean).join(" · ");
+        return `<li><div class="ote-desc">${escapeHtml(e.description || "")}</div><div class="ote-meta">${escapeHtml(meta)}</div></li>`;
+      }).join("") + `</ol>`;
+    } else if (t.error) {
+      inner += `<div class="order-tracking-note">Tracking details aren't available yet.</div>`;
+    } else {
+      inner += `<div class="order-tracking-note">No tracking scans yet — check back soon.</div>`;
+    }
+    inner += `<a class="order-tracking-link" href="${link}" target="_blank" rel="noopener">Track on Canada Post →</a>`;
+    host.innerHTML = inner;
+  }
+
+  async function loadTracking() {
+    const host = document.getElementById("order-tracking");
+    if (!host || !ctx) return;
+    host.style.display = "";
+    host.innerHTML = `<div class="order-tracking-loading">Loading tracking…</div>`;
+    try {
+      const res = await fetch("/api/orders/tracking", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: Object.assign({ "Content-Type": "application/json" }, ctx.headers),
+        body: JSON.stringify(ctx.creds),
+      });
+      const json = await res.json().catch(() => ({}));
+      renderTracking(json && json.data ? json.data.tracking : null);
+    } catch (_) {
+      renderTracking(null);
+    }
   }
 
   // ---- Stock resolution (mirrors the server: per-combination stock from variants) ----
@@ -311,6 +370,8 @@
     const completed = document.getElementById("order-completed");
     if (completed) completed.style.display = order.completed_at ? "" : "none";
     renderReceipt();
+    if (order.tracking_pin) loadTracking();
+    else { const ht = document.getElementById("order-tracking"); if (ht) ht.style.display = "none"; }
     applyState();
   }
 

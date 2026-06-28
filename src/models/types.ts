@@ -40,6 +40,8 @@ export interface Product {
   is_on_sale: boolean;
   /** Unit cost (COGS) for the admin Dashboard's profit metric; 0 when unset. */
   cost_price: number;
+  /** Shipping weight per unit in grams; 0 = unset → checkout uses the default fallback. */
+  weight_grams: number;
   redirect_path: string;
   // Rich fields managed by the admin console (see supabase-schema.sql).
   status: string;
@@ -69,6 +71,8 @@ export interface AdminProductInput {
   stock: number;
   /** Unit cost (COGS) for profit reporting; 0 when unset. */
   cost: number;
+  /** Shipping weight per unit in grams; 0 when unset. */
+  weight: number;
   description: string;
   keyFeatures: string[];
   optionGroups: ProductOptionGroup[];
@@ -143,6 +147,12 @@ export interface OrderRecord {
   tax_cents: number;
   total_cents: number;
   hst_percent: number;
+  /** Pre-tax Canada Post shipping charged to the customer (cents); 0 when none. */
+  shipping_cents: number;
+  /** Human-readable Canada Post service name (e.g. "Expedited Parcel"); null when none. */
+  shipping_service_name: string | null;
+  /** Canada Post tracking number entered by admin; null until the order ships. */
+  tracking_pin: string | null;
   customer_first_name: string | null;
   customer_last_name: string | null;
   customer_email: string | null;

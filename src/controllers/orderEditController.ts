@@ -3,6 +3,11 @@ import { getAuthUser, readJsonBody } from "../lib/adminAuth.js";
 import { normalizePhone } from "../lib/customer.js";
 import { FullOrder, getFullOrder, getOrderRecordById, lookupOrder } from "../services/orderService.js";
 import { buildEditPlan, commitEdit, refundOrderFull, OrderEditRequest } from "../services/orderEditService.js";
+import { getTracking, TrackingInfo } from "../services/canadaPostService.js";
+
+/** Live tracking is cached briefly per PIN to avoid hammering Canada Post on reloads. */
+const trackingCache = new Map<string, { at: number; info: TrackingInfo }>();
+const TRACKING_TTL_MS = 5 * 60 * 1000;
 
 /**
  * Resolves the order the caller is allowed to act on: a signed-in owner (Bearer
@@ -39,6 +44,50 @@ export async function handleGetOrder(req: ApiRequest, res: ApiResponse): Promise
   }
   const record = await getOrderRecordById(order.id);
   res.status(200).json({ success: true, data: { order: record } });
+}
+
+/**
+ * POST /api/orders/tracking — live Canada Post tracking for one order. Same
+ * owner/guest authorization as the other order endpoints. Returns
+ * `{ data: { tracking: null } }` when no tracking number has been set yet, or
+ * `{ data: { tracking: { pin, status, expectedDelivery, events, error? } } }`.
+ * A failed lookup (e.g. before the first scan) returns the number with an `error`
+ * note rather than a 500, so the page can still show the tracking number.
+ */
+export async function handleOrderTracking(req: ApiRequest, res: ApiResponse): Promise<void> {
+  const body = readJsonBody<Record<string, unknown>>(req);
+  const order = await resolveAccessibleOrder(req, body);
+  if (!order) {
+    res.status(403).json({ success: false, message: "You don't have access to this order." });
+    return;
+  }
+
+  const record = await getOrderRecordById(order.id);
+  const pin = record?.tracking_pin ?? "";
+  if (!pin) {
+    res.status(200).json({ success: true, data: { tracking: null } });
+    return;
+  }
+
+  try {
+    const cached = trackingCache.get(pin);
+    const info =
+      cached && Date.now() - cached.at < TRACKING_TTL_MS
+        ? cached.info
+        : await getTracking(pin);
+    if (!cached || Date.now() - cached.at >= TRACKING_TTL_MS) {
+      trackingCache.set(pin, { at: Date.now(), info });
+    }
+    res.status(200).json({
+      success: true,
+      data: { tracking: { pin: info.pin, status: info.status, expectedDelivery: info.expectedDelivery, events: info.events } },
+    });
+  } catch (error) {
+    res.status(200).json({
+      success: true,
+      data: { tracking: { pin, status: "", expectedDelivery: null, events: [], error: error instanceof Error ? error.message : "Tracking unavailable" } },
+    });
+  }
 }
 
 /** POST /api/orders/edit/preview — money breakdown + diff for a proposed edit. */

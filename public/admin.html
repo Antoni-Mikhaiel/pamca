@@ -1429,6 +1429,12 @@
     .ao-total { font-weight: 700; color: var(--ink); }
     .ao-refunded { color: var(--ember); font-size: 0.82rem; font-weight: 600; }
     .ao-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .ao-track { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+    .ao-track label { font-weight: 600; font-size: 0.85rem; color: var(--ink-soft); }
+    .ao-track-input { flex: 1; min-width: 180px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 8px; font-size: 0.88rem; }
+    .ao-track-btn { border: 1px solid var(--signal); background: var(--surface); color: var(--signal-deep); border-radius: 8px; padding: 8px 14px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+    .ao-track-btn:hover { background: var(--signal); color: #fff; }
+    .ao-track-btn[disabled] { opacity: 0.5; cursor: default; }
     .ao-lock-btn { border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 8px 14px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
     .ao-lock-btn:hover { border-color: var(--signal); color: var(--signal-deep); }
     .ao-lock-btn[disabled] { opacity: 0.5; cursor: default; }
@@ -1755,6 +1761,10 @@
                   <div class="pm-field pm-cost-field">
                     <label for="pm-cost">Unit cost (CAD) <span style="font-weight:400;color:var(--ink-faint);">— your cost, for profit reporting only</span></label>
                     <input type="number" id="pm-cost" min="0" step="0.01" placeholder="0.00">
+                  </div>
+                  <div class="pm-field">
+                    <label for="pm-weight">Shipping weight (g) <span style="font-weight:400;color:var(--ink-faint);">— per unit, for Canada Post rates</span></label>
+                    <input type="number" id="pm-weight" min="0" step="1" placeholder="0">
                   </div>
                 </div>
                 <div class="pm-row">

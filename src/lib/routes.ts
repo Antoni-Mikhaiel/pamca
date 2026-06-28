@@ -17,15 +17,16 @@ import {
   handleDeleteProduct,
   handleSaveProduct,
 } from "../controllers/adminProductController.js";
-import { handleCreateCheckout, handleWebhook } from "../controllers/checkoutController.js";
+import { handleCreateCheckout, handleWebhook, handleGetShippingRates } from "../controllers/checkoutController.js";
 import { handleGetProfile, handleUpdateProfile, handleLookupOrder } from "../controllers/profileController.js";
 import {
   handleAdminListOrders,
   handleAdminFlagOrder,
   handleAdminCompleteOrder,
+  handleAdminSetTracking,
   handleAdminDashboard,
 } from "../controllers/adminOrderController.js";
-import { handleGetOrder, handleEditPreview, handleEditCommit, handleRefundOrder } from "../controllers/orderEditController.js";
+import { handleGetOrder, handleEditPreview, handleEditCommit, handleRefundOrder, handleOrderTracking } from "../controllers/orderEditController.js";
 
 /**
  * Single source of truth for API routing, shared by the Vercel catch-all
@@ -104,18 +105,21 @@ const routes: Route[] = [
   { method: "POST", pattern: /^\/api\/admin\/upload$/, handler: handleUpload },
   { method: "GET", pattern: /^\/api\/admin\/tax\/hst$/, handler: handleGetHST },
   { method: "POST", pattern: /^\/api\/admin\/tax\/hst$/, handler: handleSetHST },
+  { method: "POST", pattern: /^\/api\/checkout\/rates$/, handler: handleGetShippingRates },
   { method: "POST", pattern: /^\/api\/checkout\/create$/, handler: handleCreateCheckout },
   { method: "POST", pattern: /^\/api\/checkout\/webhook$/, handler: handleWebhook },
   { method: "GET", pattern: /^\/api\/profile$/, handler: handleGetProfile },
   { method: "PUT", pattern: /^\/api\/profile$/, handler: handleUpdateProfile },
   { method: "POST", pattern: /^\/api\/orders\/lookup$/, handler: handleLookupOrder },
   { method: "POST", pattern: /^\/api\/orders\/get$/, handler: handleGetOrder },
+  { method: "POST", pattern: /^\/api\/orders\/tracking$/, handler: handleOrderTracking },
   { method: "POST", pattern: /^\/api\/orders\/edit\/preview$/, handler: handleEditPreview },
   { method: "POST", pattern: /^\/api\/orders\/edit\/commit$/, handler: handleEditCommit },
   { method: "POST", pattern: /^\/api\/orders\/refund$/, handler: handleRefundOrder },
   { method: "GET", pattern: /^\/api\/admin\/orders$/, handler: handleAdminListOrders },
   { method: "POST", pattern: /^\/api\/admin\/orders\/flag$/, handler: handleAdminFlagOrder },
   { method: "POST", pattern: /^\/api\/admin\/orders\/complete$/, handler: handleAdminCompleteOrder },
+  { method: "POST", pattern: /^\/api\/admin\/orders\/tracking$/, handler: handleAdminSetTracking },
   { method: "GET", pattern: /^\/api\/admin\/dashboard$/, handler: handleAdminDashboard },
 ];
 

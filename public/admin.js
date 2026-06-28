@@ -16,6 +16,7 @@
     orders: '/api/admin/orders',
     flagOrder: '/api/admin/orders/flag',
     completeOrder: '/api/admin/orders/complete',
+    trackOrder: '/api/admin/orders/tracking',
     dashboard: '/api/admin/dashboard',
     hst: '/api/admin/tax/hst'
   };
@@ -613,6 +614,7 @@
     d.saleEnd = p.saleEnd || '';
     d.stock = Number.isFinite(+p.stock) ? Math.max(0, Math.round(+p.stock)) : 0;
     d.cost = Number.isFinite(+p.cost) ? Math.max(0, +p.cost) : 0;
+    d.weight = Number.isFinite(+p.weight) ? Math.max(0, Math.round(+p.weight)) : 0;
     d.description = typeof p.description === 'string' ? p.description : '';
     d.keyFeatures = Array.isArray(p.keyFeatures) ? p.keyFeatures.filter(Boolean) : [];
     d.optionGroups = Array.isArray(p.optionGroups) ? p.optionGroups.map(g => {
@@ -1199,6 +1201,7 @@
     document.getElementById('pm-status').value = p ? p.status : 'active';
     document.getElementById('pm-price').value = p ? p.price : '';
     document.getElementById('pm-cost').value = p ? (p.cost || '') : '';
+    document.getElementById('pm-weight').value = p ? (p.weight || '') : '';
     document.getElementById('pm-sale-percent').value = p ? (p.salePercent || '') : '';
     document.getElementById('pm-sale-start').value = p ? p.saleStart : '';
     document.getElementById('pm-sale-end').value = p ? p.saleEnd : '';
@@ -1267,6 +1270,7 @@
       images,
       price: document.getElementById('pm-price').value,
       cost: document.getElementById('pm-cost').value,
+      weight: document.getElementById('pm-weight').value,
       salePercent: document.getElementById('pm-sale-percent').value,
       saleStart: document.getElementById('pm-sale-start').value,
       saleEnd: document.getElementById('pm-sale-end').value,
@@ -1465,10 +1469,20 @@
     const refundedNote = (o.amount_refunded_cents || 0) > 0
       ? `<span class="ao-refunded">${money(o.amount_refunded_cents)} refunded</span>` : '';
 
-    // HST line shown between the items and the Total (only when tax was applied).
+    // Shipping + HST lines shown between the items and the Total (only when applied).
+    const shipRow = (Number(o.shipping_cents) || 0) > 0
+      ? `<div class="ao-tax"><span>Shipping${o.shipping_service_name ? ` (${escAttr(o.shipping_service_name)})` : ''}</span><span>${money(o.shipping_cents)}</span></div>`
+      : '';
     const taxRow = (Number(o.tax_cents) || 0) > 0
       ? `<div class="ao-tax"><span>HST (${Number(o.hst_percent) || 0}%)</span><span>${money(o.tax_cents)}</span></div>`
       : '';
+
+    // Tracking-number control (admin records the Canada Post number at fulfillment).
+    const trackRow = refunded ? '' : `<div class="ao-track">
+        <label>Tracking #</label>
+        <input type="text" class="ao-track-input" data-id="${escAttr(o.id)}" value="${escAttr(o.tracking_pin || '')}" placeholder="Canada Post tracking number" />
+        <button type="button" class="ao-track-btn" data-act="save-tracking" data-id="${escAttr(o.id)}">${o.tracking_pin ? 'Update' : 'Save'}</button>
+      </div>`;
 
     return `<article class="ao-card">
       <div class="ao-top">
@@ -1483,11 +1497,13 @@
         <div class="ao-addr"><span>Address</span><b>${escAttr(address)}</b></div>
       </div>
       <ul class="ao-items">${items}</ul>
+      ${shipRow}
       ${taxRow}
       <div class="ao-foot">
         <span class="ao-total">Total ${money(o.total_cents)} ${refundedNote}</span>
         <span class="ao-actions">${completeHtml}${lockHtml}</span>
       </div>
+      ${trackRow}
     </article>`;
   }
 
@@ -1514,6 +1530,18 @@
       applyUpdatedOrder(orderId, data && data.order);
     }catch(e){
       window.alert('Could not update the order: ' + e.message);
+    }
+  }
+
+  async function saveTracking(orderId, trackingPin, btn){
+    if(btn) btn.disabled = true;
+    try{
+      const data = await apiSend(API.trackOrder, 'POST', { orderId, trackingPin });
+      applyUpdatedOrder(orderId, data && data.order);
+    }catch(e){
+      window.alert('Could not save the tracking number: ' + e.message);
+    }finally{
+      if(btn) btn.disabled = false;
     }
   }
 
@@ -1581,6 +1609,10 @@
       else if(btn.dataset.act === 'unlock') flagOrder(btn.dataset.id, false);
       else if(btn.dataset.act === 'complete') completeOrder(btn.dataset.id, true);
       else if(btn.dataset.act === 'uncomplete') completeOrder(btn.dataset.id, false);
+      else if(btn.dataset.act === 'save-tracking'){
+        const input = host.querySelector(`input.ao-track-input[data-id="${btn.dataset.id}"]`);
+        saveTracking(btn.dataset.id, input ? input.value.trim() : '', btn);
+      }
     });
     const refresh = document.getElementById('admin-order-refresh');
     if(refresh) refresh.addEventListener('click', () => loadOrders());

@@ -74,7 +74,7 @@ export async function handleGetShippingRates(req: ApiRequest, res: ApiResponse):
       rates: rates.map((r) => ({
         serviceCode: r.serviceCode,
         serviceName: r.serviceName,
-        priceCents: r.baseCents,
+        priceCents: r.priceCents,
         transitDays: r.transitDays,
       })),
     },
@@ -135,7 +135,7 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
   const weightKg = await computeCartWeightKg(items);
   const rates = await getShippingRates({ destinationPostalCode: customer.postalCode, weightKg });
   const chosenRate = rates.find((r) => r.serviceCode === requestedServiceCode) ?? rates[0] ?? null;
-  const shippingCents = chosenRate ? chosenRate.baseCents : 0;
+  const shippingCents = chosenRate ? chosenRate.priceCents : 0;
 
   const currency = getSquareCurrency();
   const order = await createPendingOrder({

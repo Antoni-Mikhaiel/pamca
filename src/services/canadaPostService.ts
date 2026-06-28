@@ -80,9 +80,14 @@ function dollarsToCents(value: string): number {
 export interface ShippingRate {
   serviceCode: string;
   serviceName: string;
-  /** Pre-tax price (Canada Post "base"), in cents — what we charge the customer. */
-  baseCents: number;
-  /** Tax-inclusive price (Canada Post "due"), in cents — for reference. */
+  /**
+   * Pre-tax amount charged to the customer, in cents = Canada Post "due" minus its
+   * taxes. This is the merchant's true cost net of the GST/HST it recovers as an
+   * input tax credit (it already includes fuel surcharges and SMB discounts, which
+   * the headline "base" rate does not), so charging it + store HST breaks even.
+   */
+  priceCents: number;
+  /** Tax-inclusive amount actually payable to Canada Post ("due"), for reference. */
   dueCents: number;
   /** Estimated transit time in business days, when Canada Post returns it. */
   transitDays: number | null;
@@ -136,25 +141,33 @@ export async function getShippingRates(params: {
 
   const rates = tagBlocks(xml, "price-quote").map((block) => {
     const details = tagText(block, "price-details");
+    const taxes = tagText(details, "taxes");
+    const taxesCents =
+      dollarsToCents(tagText(taxes, "gst")) +
+      dollarsToCents(tagText(taxes, "pst")) +
+      dollarsToCents(tagText(taxes, "hst"));
+    const dueCents = dollarsToCents(tagText(details, "due"));
     const transit = tagText(block, "expected-transit-time");
     return {
       serviceCode: tagText(block, "service-code"),
       serviceName: tagText(block, "service-name"),
-      baseCents: dollarsToCents(tagText(details, "base")),
-      dueCents: dollarsToCents(tagText(details, "due")),
+      // What we charge: the full amount net of Canada Post's taxes (which we recover
+      // as an ITC) — includes fuel surcharge/discounts, unlike the bare "base".
+      priceCents: Math.max(0, dueCents - taxesCents),
+      dueCents,
       transitDays: transit ? Number(transit) || null : null,
     };
-  }).filter((r) => r.serviceCode && r.baseCents > 0 && !excludedServiceCodes.has(r.serviceCode.toUpperCase()));
+  }).filter((r) => r.serviceCode && r.priceCents > 0 && !excludedServiceCodes.has(r.serviceCode.toUpperCase()));
 
   if (rates.length === 0) return [fallbackRate()];
-  return rates.sort((a, b) => a.baseCents - b.baseCents);
+  return rates.sort((a, b) => a.priceCents - b.priceCents);
 }
 
 function fallbackRate(): ShippingRate {
   return {
     serviceCode: "FALLBACK",
     serviceName: "Standard Shipping",
-    baseCents: fallbackShippingCents,
+    priceCents: fallbackShippingCents,
     dueCents: fallbackShippingCents,
     transitDays: null,
   };

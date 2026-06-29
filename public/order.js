@@ -232,17 +232,22 @@
     const remaining = Math.max(0, stock - alreadyPending);
     qty.max = String(remaining);
     qty.min = remaining > 0 ? "1" : "0";
+    // Frontend-only label: hide the exact count — show orange "Low Stock" under 10 and a
+    // red "Out of stock" when none, otherwise nothing. (Quantity capping is unchanged.)
+    if (hint) {
+      if (stock <= 0) { hint.textContent = "Out of stock"; hint.className = "add-stockhint out-of-stock"; }
+      else if (stock < 10) { hint.textContent = "Low Stock"; hint.className = "add-stockhint low-stock"; }
+      else { hint.textContent = ""; hint.className = "add-stockhint"; }
+    }
     if (remaining <= 0) {
       qty.value = "0";
       qty.disabled = true;
       if (btn) btn.disabled = true;
-      if (hint) hint.textContent = stock <= 0 ? "Out of stock for this selection." : "You've added all " + stock + " available.";
     } else {
       qty.disabled = false;
       if (btn) btn.disabled = false;
       if (Number(qty.value) > remaining) qty.value = String(remaining);
       if (Number(qty.value) < 1) qty.value = "1";
-      if (hint) hint.textContent = remaining + " available" + (alreadyPending ? " (" + alreadyPending + " already added)" : "");
     }
   }
 
@@ -274,7 +279,7 @@
     // Don't exceed available stock across repeated adds of the same product+variant.
     const remaining = Math.max(0, stock - pendingQtyFor(product.slug, variant));
     if (remaining < 1) {
-      setMsg("You've already added all " + stock + " available for this item.");
+      setMsg("You've already added all available stock for this item.");
       return;
     }
     const qty = Math.max(1, Math.min(remaining, parseInt(qtyEl.value, 10) || 1));

@@ -3,5 +3,17 @@
     "allow": [
       "PowerShell(Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { try { Stop-Process -Id $_ -Force } catch {} }; \"ok\")"
     ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"Reminder for this turn: (1) Before starting any work, restate/rewrite the user's request in your own words and show it back to them. (2) If you make any file edits this turn, end your message with a 'Commit message:' recap - a concise one-line git commit subject (plus short body bullets if useful).\""
+          }
+        ]
+      }
+    ]
   }
 }

@@ -1121,8 +1121,8 @@
     const section = document.getElementById('pm-pricing-section');
     if (!section) return;
     section.classList.toggle('is-disabled', hasPricingGroup);
-    // Unit cost is product-level (not per option), so it stays editable in Mode 2.
-    section.querySelectorAll('input:not(#pm-cost)').forEach(input => { input.disabled = hasPricingGroup; });
+    // Shipping weight is product-level (not per option), so it stays editable in Mode 2.
+    section.querySelectorAll('input:not(#pm-weight)').forEach(input => { input.disabled = hasPricingGroup; });
     const note = document.getElementById('pm-pricing-mode-note');
     if (note) note.style.display = hasPricingGroup ? 'block' : 'none';
     updatePricePreview();
@@ -1200,7 +1200,6 @@
     document.getElementById('pm-slug').dataset.edited = p ? '1' : '';
     document.getElementById('pm-status').value = p ? p.status : 'active';
     document.getElementById('pm-price').value = p ? p.price : '';
-    document.getElementById('pm-cost').value = p ? (p.cost || '') : '';
     document.getElementById('pm-weight').value = p ? (p.weight || '') : '';
     document.getElementById('pm-sale-percent').value = p ? (p.salePercent || '') : '';
     document.getElementById('pm-sale-start').value = p ? p.saleStart : '';
@@ -1269,7 +1268,6 @@
       status: document.getElementById('pm-status').value,
       images,
       price: document.getElementById('pm-price').value,
-      cost: document.getElementById('pm-cost').value,
       weight: document.getElementById('pm-weight').value,
       salePercent: document.getElementById('pm-sale-percent').value,
       saleStart: document.getElementById('pm-sale-start').value,

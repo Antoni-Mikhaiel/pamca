@@ -107,6 +107,9 @@ export async function buildEditPlan(order: FullOrder, edit: OrderEditRequest): P
   }
 
   let chargeCents = 0;
+  // Sum additions per resolved product+variant so several add entries for the same
+  // item can't each slip under the stock limit and collectively oversell.
+  const addedByLine = new Map<string, number>();
   for (const add of edit.additions ?? []) {
     const qty = Math.max(0, Math.floor(Number(add.quantity)));
     if (qty <= 0) continue;
@@ -115,9 +118,12 @@ export async function buildEditPlan(order: FullOrder, edit: OrderEditRequest): P
       throw new Error(resolved.reason === "sold_out" ? "An item you added is sold out." : "An item you added no longer exists.");
     }
     const line = resolved.line;
-    if (qty > line.stock) {
+    const lineKey = keyOf(line.productId, line.variationLabel);
+    const cumulativeQty = (addedByLine.get(lineKey) ?? 0) + qty;
+    if (cumulativeQty > line.stock) {
       throw new Error(`Only ${line.stock} of ${line.productName} ${line.variationLabel ? `(${line.variationLabel}) ` : ""}in stock.`);
     }
+    addedByLine.set(lineKey, cumulativeQty);
     const unitCents = Math.round(line.unitPrice * 100);
     chargeCents += unitCents * qty;
     diff.push({

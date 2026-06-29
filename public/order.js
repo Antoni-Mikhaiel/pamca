@@ -171,6 +171,19 @@
     return Array.from(document.querySelectorAll("#add-options select")).map((s) => s.value);
   }
 
+  // The variant label, in the same format stored on each pending addition, so we can
+  // match repeat adds of the same product+variant.
+  function currentVariantLabel() {
+    return selectedAddValues().filter(Boolean).join(" / ");
+  }
+
+  // How many of this product+variant are already staged in `additions`.
+  function pendingQtyFor(slug, variant) {
+    return additions
+      .filter((a) => a.slug === slug && a.variant === variant)
+      .reduce((sum, a) => sum + (Number(a.qty) || 0), 0);
+  }
+
   function currentAddProduct() {
     const sel = document.getElementById("add-product");
     return products.find((p) => p.slug === (sel && sel.value));
@@ -198,19 +211,23 @@
     const btn = document.getElementById("add-btn");
     if (!product || !qty) return;
     const stock = availableStock(product, selectedAddValues());
-    qty.max = String(stock);
-    qty.min = stock > 0 ? "1" : "0";
-    if (stock <= 0) {
+    // Cap by what's *still* addable: subtract anything already staged for this same
+    // product+variant, so repeated adds can't exceed the available stock.
+    const alreadyPending = pendingQtyFor(product.slug, currentVariantLabel());
+    const remaining = Math.max(0, stock - alreadyPending);
+    qty.max = String(remaining);
+    qty.min = remaining > 0 ? "1" : "0";
+    if (remaining <= 0) {
       qty.value = "0";
       qty.disabled = true;
       if (btn) btn.disabled = true;
-      if (hint) hint.textContent = "Out of stock for this selection.";
+      if (hint) hint.textContent = stock <= 0 ? "Out of stock for this selection." : "You've added all " + stock + " available.";
     } else {
       qty.disabled = false;
       if (btn) btn.disabled = false;
-      if (Number(qty.value) > stock) qty.value = String(stock);
+      if (Number(qty.value) > remaining) qty.value = String(remaining);
       if (Number(qty.value) < 1) qty.value = "1";
-      if (hint) hint.textContent = stock + " available";
+      if (hint) hint.textContent = remaining + " available" + (alreadyPending ? " (" + alreadyPending + " already added)" : "");
     }
   }
 
@@ -235,15 +252,26 @@
     const qtyEl = document.getElementById("add-qty");
     if (!product || !qtyEl) return;
     const stock = availableStock(product, selectedAddValues());
-    const qty = Math.max(1, Math.min(stock, parseInt(qtyEl.value, 10) || 1));
-    if (qty < 1) return;
     const options = Array.from(document.querySelectorAll("#add-options select")).map((s) => ({
       label: s.getAttribute("data-group-label"), value: s.value,
     }));
     const variant = options.map((o) => o.value).filter(Boolean).join(" / ");
-    additions.push({ slug: product.slug, name: product.name, variant, options, qty });
+    // Don't exceed available stock across repeated adds of the same product+variant.
+    const remaining = Math.max(0, stock - pendingQtyFor(product.slug, variant));
+    if (remaining < 1) {
+      setMsg("You've already added all " + stock + " available for this item.");
+      return;
+    }
+    const qty = Math.max(1, Math.min(remaining, parseInt(qtyEl.value, 10) || 1));
+    // Merge into the existing pending line for this product+variant rather than adding
+    // a duplicate row (which previously let the combined quantity exceed the stock cap).
+    const existing = additions.find((a) => a.slug === product.slug && a.variant === variant);
+    if (existing) existing.qty += qty;
+    else additions.push({ slug: product.slug, name: product.name, variant, options, qty });
     qtyEl.value = "1";
+    setMsg("");
     renderPendingAdds();
+    syncStockCap();
     queuePreview();
   }
 
@@ -426,7 +454,7 @@
       const btn = e.target.closest(".pa-remove");
       if (!btn) return;
       const i = Number(btn.getAttribute("data-i"));
-      if (i >= 0) { additions.splice(i, 1); renderPendingAdds(); queuePreview(); }
+      if (i >= 0) { additions.splice(i, 1); renderPendingAdds(); syncStockCap(); queuePreview(); }
     });
   }
 

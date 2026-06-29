@@ -10,6 +10,40 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v) => typeof v === "string") : [];
 }
 
+function slugify(s: string): string {
+  return String(s || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Auto-generates a unique URL slug from the product name: the first two words,
+ * bumped to the first three words if another product already uses the two-word
+ * slug, with a numeric suffix as a final fallback. `excludeId` is the product being
+ * updated, so it never collides with itself.
+ */
+async function generateUniqueSlug(name: string, excludeId: number | null): Promise<string> {
+  const words = slugify(name).split("-").filter(Boolean);
+  const base2 = words.slice(0, 2).join("-") || slugify(name) || "product";
+  const base3 = words.slice(0, 3).join("-") || base2;
+
+  const { data, error } = await supabase.from("products").select("id, slug");
+  if (error) throw error;
+  const taken = new Set(
+    ((data ?? []) as Array<{ id: number; slug: string }>)
+      .filter((r) => r.id !== excludeId)
+      .map((r) => r.slug),
+  );
+
+  if (!taken.has(base2)) return base2;
+  if (!taken.has(base3)) return base3;
+  let n = 2;
+  while (taken.has(`${base3}-${n}`)) n++;
+  return `${base3}-${n}`;
+}
+
 /** Clamp a sale percentage to 0–100 with two decimals. */
 export function clampSalePercent(value: unknown): number {
   const n = Number(value);
@@ -225,8 +259,11 @@ function buildRow(input: AdminProductInput) {
 }
 
 export async function upsertProduct(input: AdminProductInput): Promise<AdminProductInput & { id: number }> {
-  const row = buildRow(input);
+  const row: Record<string, unknown> = buildRow(input);
   if (input.id) {
+    // Keep the existing slug/redirect_path on edit so live product URLs stay stable.
+    delete row.slug;
+    delete row.redirect_path;
     const { data, error } = await supabase
       .from("products")
       .update(row)
@@ -236,6 +273,10 @@ export async function upsertProduct(input: AdminProductInput): Promise<AdminProd
     if (error) throw error;
     return toAdminShape(mapRow(data as unknown as Record<string, unknown>));
   }
+  // New product: derive a unique slug from the name (first 2 words, then 3 on clash).
+  const slug = await generateUniqueSlug(input.name, null);
+  row.slug = slug;
+  row.redirect_path = `/${slug}`;
   const { data, error } = await supabase
     .from("products")
     .insert(row)

@@ -1121,8 +1121,7 @@
     const section = document.getElementById('pm-pricing-section');
     if (!section) return;
     section.classList.toggle('is-disabled', hasPricingGroup);
-    // Shipping weight is product-level (not per option), so it stays editable in Mode 2.
-    section.querySelectorAll('input:not(#pm-weight)').forEach(input => { input.disabled = hasPricingGroup; });
+    section.querySelectorAll('input').forEach(input => { input.disabled = hasPricingGroup; });
     const note = document.getElementById('pm-pricing-mode-note');
     if (note) note.style.display = hasPricingGroup ? 'block' : 'none';
     updatePricePreview();
@@ -1196,8 +1195,6 @@
     document.getElementById('pm-foot-msg').textContent = '';
 
     document.getElementById('pm-name').value = p ? p.name : '';
-    document.getElementById('pm-slug').value = p ? p.slug : '';
-    document.getElementById('pm-slug').dataset.edited = p ? '1' : '';
     document.getElementById('pm-status').value = p ? p.status : 'active';
     document.getElementById('pm-price').value = p ? p.price : '';
     document.getElementById('pm-weight').value = p ? (p.weight || '') : '';
@@ -1264,7 +1261,6 @@
     return {
       id: editingProductId || null,
       name,
-      slug: document.getElementById('pm-slug').value.trim() || slugify(name),
       status: document.getElementById('pm-status').value,
       images,
       price: document.getElementById('pm-price').value,
@@ -1351,13 +1347,7 @@
 
     wireImageReorder();
 
-    // slug auto-fill + price preview
-    const nameEl = document.getElementById('pm-name');
-    const slugEl = document.getElementById('pm-slug');
-    slugEl.addEventListener('input', () => { slugEl.dataset.edited = '1'; });
-    nameEl.addEventListener('input', () => {
-      if(!slugEl.dataset.edited) slugEl.value = slugify(nameEl.value);
-    });
+    // price preview (slug is now auto-generated server-side from the product name)
     ['pm-price', 'pm-sale-percent', 'pm-sale-start', 'pm-sale-end'].forEach(id => {
       document.getElementById(id).addEventListener('input', updatePricePreview);
     });

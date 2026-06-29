@@ -4,14 +4,6 @@ import { listProductsForAdmin, upsertProduct, deleteProduct, clampSalePercent } 
 import { AdminProductInput, ProductOptionGroup, ProductVariantStock } from "../models/types.js";
 import { asVariants, buildCombinationKeys } from "../lib/variants.js";
 
-function slugify(s: string): string {
-  return String(s || "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 function sanitizeOptionGroups(value: unknown): ProductOptionGroup[] {
   if (!Array.isArray(value)) return [];
   const groups = value.map((g) => {
@@ -80,7 +72,8 @@ export async function handleSaveProduct(req: ApiRequest, res: ApiResponse): Prom
   const input: AdminProductInput = {
     id: body.id ? Number(body.id) : null,
     name,
-    slug: slugify(String(body.slug ?? "") || name),
+    // The URL slug is auto-generated server-side from the product name (productService).
+    slug: "",
     status: body.status === "draft" ? "draft" : "active",
     images: toStringArray(body.images),
     price: Number(body.price) || 0,

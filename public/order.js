@@ -95,6 +95,21 @@
     totals.innerHTML = rows;
   }
 
+  // ---- Summary sidebar delivery address ----
+  function renderSummaryAddress() {
+    const wrap = document.getElementById("summary-ship");
+    const host = document.getElementById("summary-address");
+    if (!wrap || !host) return;
+    const name = [order.customer_first_name, order.customer_last_name].filter(Boolean).join(" ");
+    const street = [order.customer_street_number, order.customer_street_name].filter(Boolean).join(" ");
+    const region = [order.customer_province, order.customer_postal_code].filter(Boolean).join(" ");
+    const cityRegion = [order.customer_city, region].filter(Boolean).join(", ");
+    const parts = [name, street, cityRegion].filter(Boolean);
+    if (parts.length === 0) { wrap.style.display = "none"; return; }
+    wrap.style.display = "";
+    host.innerHTML = parts.map((p) => escapeHtml(p)).join("<br>");
+  }
+
   // ---- Live delivery tracking (Canada Post) ----
   function formatTrackDate(d) {
     const s = String(d || "");
@@ -397,6 +412,9 @@
     document.getElementById("order-date").textContent = placed ? "Placed " + placed : "";
     const completed = document.getElementById("order-completed");
     if (completed) completed.style.display = order.completed_at ? "" : "none";
+    const totalEl = document.getElementById("summary-total-amount");
+    if (totalEl) totalEl.textContent = money(order.total_cents);
+    renderSummaryAddress();
     renderReceipt();
     if (order.tracking_pin) loadTracking();
     else { const ht = document.getElementById("order-tracking"); if (ht) ht.style.display = "none"; }

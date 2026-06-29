@@ -13,16 +13,35 @@
     html { scroll-behavior: smooth; }
     body { font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; }
 
-    .order-page { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+    .order-page { max-width: 1040px; margin: 0 auto; padding: 40px 20px 80px; }
     .order-back { display: inline-block; color: #008080; font-weight: 600; text-decoration: none; margin-bottom: 18px; }
     .order-back:hover { color: #006666; }
 
     .order-loading, .order-error { padding: 40px; text-align: center; color: #777; }
     .order-error { color: #721c24; }
 
-    .order-headrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
-    .order-title { font-size: 1.6rem; color: #1f2d3d; }
-    .order-sub { color: #888; font-size: 0.9rem; margin-bottom: 22px; }
+    /* Two-column dashboard: sticky summary on the left, content on the right. */
+    .order-grid { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 22px; align-items: start; }
+    .order-summary { position: sticky; top: 20px; }
+    .order-main { min-width: 0; }
+
+    .summary-card { padding: 22px; }
+    .summary-head { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+    .order-title { font-size: 1.5rem; color: #1f2d3d; }
+    .order-sub { color: #888; font-size: 0.9rem; margin-top: 6px; }
+
+    .summary-total { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 18px 0; padding: 16px 0; border-top: 1px solid #f0f0f0; border-bottom: 1px solid #f0f0f0; }
+    .summary-total-label { color: #888; font-size: 0.9rem; }
+    .summary-total-amount { font-size: 1.5rem; font-weight: 700; color: #1f2d3d; }
+
+    .summary-block { margin-bottom: 18px; }
+    .summary-label { display: block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #aaa; margin-bottom: 6px; }
+    .summary-address { font-style: normal; color: #333; font-size: 0.92rem; line-height: 1.5; }
+
+    @media (max-width: 820px) {
+      .order-grid { grid-template-columns: 1fr; }
+      .order-summary { position: static; }
+    }
 
     .op-card { background: #fff; border: 1px solid #e6e6e6; border-radius: 16px; padding: 24px; margin-bottom: 22px; box-shadow: 0 8px 24px rgba(0,0,0,0.04); }
     .op-card h2 { font-size: 1.15rem; color: #333; margin-bottom: 16px; }
@@ -106,58 +125,77 @@
   <div class="order-error" id="order-error" style="display:none;"></div>
 
   <div id="order-body" style="display:none;">
-    <div class="order-headrow">
-      <h1 class="order-title">Order <span id="order-pid"></span></h1>
-      <span class="order-pills">
-        <span class="status-pill" id="order-status"></span>
-        <span class="status-pill completed" id="order-completed" style="display:none;">Completed</span>
-      </span>
-    </div>
-    <div class="order-sub" id="order-date"></div>
-
-    <!-- Receipt -->
-    <section class="op-card">
-      <h2>Receipt</h2>
-      <div id="receipt-lines"></div>
-      <div class="receipt-totals" id="receipt-totals"></div>
-    </section>
-
-    <!-- Live Canada Post tracking (shown only once a tracking number is set) -->
-    <section class="op-card order-tracking" id="order-tracking" style="display:none;"></section>
-
-    <!-- Add items (only when editable) -->
-    <section class="op-card" id="edit-card" style="display:none;">
-      <h2>Add to this order</h2>
-      <div class="add-grid">
-        <label for="add-product">Product</label>
-        <select id="add-product"></select>
-        <div class="add-options" id="add-options"></div>
-        <div class="add-qtyrow">
-          <div class="qty-wrap">
-            <label for="add-qty">Quantity</label>
-            <input type="number" id="add-qty" min="1" value="1" />
-            <div class="add-stockhint" id="add-stockhint"></div>
+    <div class="order-grid">
+      <!-- LEFT: sticky at-a-glance summary -->
+      <aside class="order-summary">
+        <div class="op-card summary-card">
+          <div class="summary-head">
+            <h1 class="order-title">Order <span id="order-pid"></span></h1>
+            <span class="order-pills">
+              <span class="status-pill" id="order-status"></span>
+              <span class="status-pill completed" id="order-completed" style="display:none;">Completed</span>
+            </span>
           </div>
-          <button type="button" class="add-btn" id="add-btn">Add to changes</button>
+          <div class="order-sub" id="order-date"></div>
+
+          <div class="summary-total">
+            <span class="summary-total-label">Total paid</span>
+            <span class="summary-total-amount" id="summary-total-amount"></span>
+          </div>
+
+          <div class="summary-block" id="summary-ship" style="display:none;">
+            <span class="summary-label">Ship to</span>
+            <address class="summary-address" id="summary-address"></address>
+          </div>
+
+          <!-- Refund (shown only inside the 48h window) -->
+          <div class="refund-row" id="refund-card" style="display:none;">
+            <button type="button" class="order-refund-btn" id="order-refund">Refund entire order</button>
+          </div>
         </div>
+      </aside>
+
+      <!-- RIGHT: receipt, tracking, edits -->
+      <div class="order-main">
+        <!-- Receipt -->
+        <section class="op-card">
+          <h2>Receipt</h2>
+          <div id="receipt-lines"></div>
+          <div class="receipt-totals" id="receipt-totals"></div>
+        </section>
+
+        <!-- Live Canada Post tracking (shown only once a tracking number is set) -->
+        <section class="op-card order-tracking" id="order-tracking" style="display:none;"></section>
+
+        <!-- Add items (only when editable) -->
+        <section class="op-card" id="edit-card" style="display:none;">
+          <h2>Add to this order</h2>
+          <div class="add-grid">
+            <label for="add-product">Product</label>
+            <select id="add-product"></select>
+            <div class="add-options" id="add-options"></div>
+            <div class="add-qtyrow">
+              <div class="qty-wrap">
+                <label for="add-qty">Quantity</label>
+                <input type="number" id="add-qty" min="1" value="1" />
+                <div class="add-stockhint" id="add-stockhint"></div>
+              </div>
+              <button type="button" class="add-btn" id="add-btn">Add to changes</button>
+            </div>
+          </div>
+          <ul class="pending-adds" id="pending-adds"></ul>
+          <div class="edit-summary" id="edit-summary" style="display:none;"></div>
+          <button type="button" class="edit-confirm-btn" id="edit-confirm" style="display:none;">Confirm &amp; pay the difference</button>
+        </section>
+
+        <!-- Locked notice (editing closed but refund still available) -->
+        <section class="op-card" id="locked-card" style="display:none;">
+          <div class="locked-note" id="locked-note"></div>
+        </section>
+
+        <div class="order-msg" id="order-msg"></div>
       </div>
-      <ul class="pending-adds" id="pending-adds"></ul>
-      <div class="edit-summary" id="edit-summary" style="display:none;"></div>
-      <button type="button" class="edit-confirm-btn" id="edit-confirm" style="display:none;">Confirm &amp; pay the difference</button>
-    </section>
-
-    <!-- Locked notice (editing closed but refund still available) -->
-    <section class="op-card" id="locked-card" style="display:none;">
-      <div class="locked-note" id="locked-note"></div>
-    </section>
-
-    <!-- Refund -->
-    <section class="op-card refund-row" id="refund-card" style="display:none;">
-      <h2>Need to cancel?</h2>
-      <button type="button" class="order-refund-btn" id="order-refund">Refund entire order</button>
-    </section>
-
-    <div class="order-msg" id="order-msg"></div>
+    </div>
   </div>
 </main>
 

@@ -15,6 +15,12 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const publicDir = path.join(rootDir, "public");
 const port = Number(process.env.PORT ?? "3000");
+const staticAliases: Record<string, string> = {
+  "/about-us": "/pamca_about.html",
+  "/contact-us": "/contact-us.html",
+  "/pharmacy-products": "/pharmacy-products.html",
+  "/minor-ailments-prescribing-solution": "/pamca_minor_ailments.html",
+};
 
 function sendApiError(res: http.ServerResponse, error: unknown): void {
   res.statusCode = 500;
@@ -103,7 +109,7 @@ function getContentType(filePath: string): string {
 }
 
 async function serveStaticFile(res: http.ServerResponse, pathname: string): Promise<boolean> {
-  const normalized = pathname === "/" ? "/index.html" : pathname;
+  const normalized = staticAliases[pathname] ?? (pathname === "/" ? "/index.html" : pathname);
   const candidate = path.resolve(publicDir, `.${normalized}`);
 
   if (!candidate.startsWith(publicDir)) {

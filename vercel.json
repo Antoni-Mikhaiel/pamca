@@ -1,6 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
+    { "source": "/about-us", "destination": "/pamca_about.html" },
+    { "source": "/contact-us", "destination": "/contact-us.html" },
+    { "source": "/pharmacy-products", "destination": "/pharmacy-products.html" },
+    { "source": "/minor-ailments-prescribing-solution", "destination": "/pamca_minor_ailments.html" },
     { "source": "/api/:path*", "destination": "/api/[...path]" }
   ]
 }

@@ -130,7 +130,8 @@ const routes: Route[] = [
  * reply 404.
  */
 export async function dispatch(req: ApiRequest, res: ApiResponse, pathname: string): Promise<boolean> {
-  const method = (req.method ?? "GET").toUpperCase();
+  const requestMethod = (req.method ?? "GET").toUpperCase();
+  const method = requestMethod === "HEAD" ? "GET" : requestMethod;
 
   for (const route of routes) {
     if (route.method !== method) continue;

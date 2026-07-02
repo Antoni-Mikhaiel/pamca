@@ -5,6 +5,12 @@
     { "source": "/contact-us", "destination": "/contact-us.html" },
     { "source": "/pharmacy-products", "destination": "/pharmacy-products.html" },
     { "source": "/minor-ailments-prescribing-solution", "destination": "/pamca_minor_ailments.html" },
+    { "source": "/digital-thermometer", "destination": "/product.html" },
+    { "source": "/thermometer-dual-readings", "destination": "/product.html" },
+    { "source": "/gel-dispenser", "destination": "/product.html" },
+    { "source": "/nfc-counter", "destination": "/product.html" },
+    { "source": "/thermometer-dual", "destination": "/thermometer-dual.html" },
+    { "source": "/thermometer-mono", "destination": "/thermometer-mono.html" },
     { "source": "/api/:path*", "destination": "/api/[...path]" }
   ]
 }

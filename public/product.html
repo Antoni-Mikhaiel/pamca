@@ -154,7 +154,10 @@
   <script>
     (function () {
       const root = document.getElementById('pd-root');
-      const slug = new URLSearchParams(location.search).get('slug');
+      const pathSlug = location.pathname && !location.pathname.endsWith('.html')
+        ? location.pathname.replace(/^\/+|\/+$/g, '')
+        : '';
+      const slug = new URLSearchParams(location.search).get('slug') || pathSlug;
 
       function escapeHtml(s) {
         return String(s == null ? '' : s)

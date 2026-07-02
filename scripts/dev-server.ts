@@ -20,6 +20,12 @@ const staticAliases: Record<string, string> = {
   "/contact-us": "/contact-us.html",
   "/pharmacy-products": "/pharmacy-products.html",
   "/minor-ailments-prescribing-solution": "/pamca_minor_ailments.html",
+  "/digital-thermometer": "/product.html",
+  "/thermometer-dual-readings": "/product.html",
+  "/gel-dispenser": "/product.html",
+  "/nfc-counter": "/product.html",
+  "/thermometer-dual": "/thermometer-dual.html",
+  "/thermometer-mono": "/thermometer-mono.html",
 };
 
 function sendApiError(res: http.ServerResponse, error: unknown): void {

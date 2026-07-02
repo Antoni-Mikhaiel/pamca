@@ -1309,6 +1309,23 @@
 		if (window.__pamcaBootstrapped) return;
 		window.__pamcaBootstrapped = true;
 
+		// Expose shared helpers synchronously, BEFORE the awaited network round-trips
+		// below. Product pages render their own Add-to-Cart button from a localStorage
+		// cache, so it becomes clickable almost immediately; if these were assigned at
+		// the end of bootstrap (after header/footer/refreshCart/auth awaits) a first
+		// click would find window.pamcaAddToCart undefined and hit the
+		// "Could not add to cart. Please try again." fallback until the retry.
+		window.pamca_ajax_url = ajaxUrl;
+		window.pamcaAddToCart = addToCart;
+		window.pamcaOpenCart = openCart;
+		window.pamcaRefreshCart = refreshCart;
+		window.pamcaRenderOrderCard = renderOrderCard;
+		window.pamcaGetAuthHeader = getAuthHeader;
+		window.pamcaConfirmRefund = openRefundConfirm;
+		window.pamcaFormatPhone = attachPhoneFormatter;
+		window.pamcaFormatPostal = attachPostalFormatter;
+		window.pamcaEnhanceSelect = enhanceSelect;
+
 		// Kick off product data immediately (in parallel with header/footer/cart) so it
 		// is ready as early as possible instead of waiting on those network round-trips.
 		const productsReady = hydrateProductsPage();
@@ -1330,18 +1347,6 @@
 		await refreshCart();
 		wireContactForm();
 		await initAuthModal();
-		window.pamca_ajax_url = ajaxUrl;
-		// Expose cart helpers for product pages that render their own markup.
-		window.pamcaAddToCart = addToCart;
-		window.pamcaOpenCart = openCart;
-		window.pamcaRefreshCart = refreshCart;
-		// Shared helpers reused by the profile and order pages.
-		window.pamcaRenderOrderCard = renderOrderCard;
-		window.pamcaGetAuthHeader = getAuthHeader;
-		window.pamcaConfirmRefund = openRefundConfirm;
-		window.pamcaFormatPhone = attachPhoneFormatter;
-		window.pamcaFormatPostal = attachPostalFormatter;
-		window.pamcaEnhanceSelect = enhanceSelect;
 
 		await Promise.allSettled([productsReady, detailsReady]);
 	}

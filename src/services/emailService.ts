@@ -7,6 +7,10 @@ const adminEmail = process.env.CONTACT_TO_EMAIL ?? "sales@pamca.net";
 const fromEmail = process.env.CONTACT_FROM_EMAIL ?? "noreply@pamca.net";
 const fromName = process.env.CONTACT_FROM_NAME ?? "PAMCA";
 
+// CRA GST/HST registration number. Required by law on the customer's receipt, so
+// it is shown on the customer order-confirmation email only.
+const HST_REGISTRATION = "HST # 85016 4724 RT0001";
+
 interface Recipient {
   email: string;
   name?: string;
@@ -183,6 +187,7 @@ export async function sendPurchaseEmails(order: OrderRecord): Promise<void> {
        ${pidBadge(order)}
        <h3 style="margin:18px 0 6px;color:#0a615b;">Your receipt</h3>
        ${itemsTable(order)}
+       <p style="margin:6px 2px 0;text-align:right;color:#888;font-size:12px;">${HST_REGISTRATION}</p>
        <p style="margin:14px 0 0;">Placed: ${escapeHtml(placed)}</p>
        <div style="margin:18px 0;padding:14px 16px;background:#f4f7f7;border-radius:10px;color:#0a615b;font-weight:600;">
          🚚 Your order will be delivered within <strong>5–10 business days</strong>.

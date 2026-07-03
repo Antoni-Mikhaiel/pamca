@@ -1,6 +1,14 @@
 import { CustomerDetails } from "../models/types.js";
 
 /**
+ * Delivery method for an order. "pickup" means the customer collects in-store, so
+ * no shipping address is collected and no shipping is charged; it is recorded on the
+ * order via `shipping_service_code`/`shipping_service_name` below.
+ */
+export const PICKUP_SERVICE_CODE = "PICKUP";
+export const PICKUP_SERVICE_NAME = "Pickup";
+
+/**
  * Normalizes a phone input to `+1` + exactly 10 digits (Canada only). Strips any
  * formatting and a leading country code; returns null when there aren't 10 usable
  * digits. Storing one canonical form lets guest order lookup compare phones exactly.
@@ -21,8 +29,16 @@ export type CustomerValidation =
   | { ok: true; value: CustomerDetails }
   | { ok: false; error: string };
 
-/** Validates + normalizes the checkout/profile customer fields. */
-export function validateCustomerDetails(input: Record<string, unknown>): CustomerValidation {
+/**
+ * Validates + normalizes the checkout/profile customer fields. Pass
+ * `{ requireAddress: false }` for in-store pickup, where only name/email/phone are
+ * collected — the address fields are then normalized to empty strings.
+ */
+export function validateCustomerDetails(
+  input: Record<string, unknown>,
+  options: { requireAddress?: boolean } = {},
+): CustomerValidation {
+  const requireAddress = options.requireAddress ?? true;
   const firstName = String(input.firstName ?? "").trim();
   const lastName = String(input.lastName ?? "").trim();
   const email = String(input.email ?? "").trim().toLowerCase();
@@ -36,11 +52,13 @@ export function validateCustomerDetails(input: Record<string, unknown>): Custome
   if (!firstName) return { ok: false, error: "First name is required." };
   if (!lastName) return { ok: false, error: "Last name is required." };
   if (!isValidEmail(email)) return { ok: false, error: "Enter a valid email address." };
-  if (!streetNumber) return { ok: false, error: "Street number is required." };
-  if (!streetName) return { ok: false, error: "Street name is required." };
-  if (!city) return { ok: false, error: "City is required." };
-  if (!province || province.length !== 2) return { ok: false, error: "Enter a valid province code (2 letters)." };
-  if (!postalCode) return { ok: false, error: "Postal code is required." };
+  if (requireAddress) {
+    if (!streetNumber) return { ok: false, error: "Street number is required." };
+    if (!streetName) return { ok: false, error: "Street name is required." };
+    if (!city) return { ok: false, error: "City is required." };
+    if (!province || province.length !== 2) return { ok: false, error: "Enter a valid province code (2 letters)." };
+    if (!postalCode) return { ok: false, error: "Postal code is required." };
+  }
   if (!phone) return { ok: false, error: "Enter a valid 10-digit Canadian phone number." };
 
   return { ok: true, value: { firstName, lastName, email, streetNumber, streetName, city, province, postalCode, phone } };

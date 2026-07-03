@@ -1,6 +1,6 @@
 import { ApiRequest, ApiResponse, parseCookies, getHeader } from "../lib/http.js";
 import { readJsonBody, getAuthUser } from "../lib/adminAuth.js";
-import { validateCustomerDetails } from "../lib/customer.js";
+import { validateCustomerDetails, PICKUP_SERVICE_CODE, PICKUP_SERVICE_NAME } from "../lib/customer.js";
 import { getCartItems, clearCart } from "../services/cartService.js";
 import {
   createPendingOrder,
@@ -96,7 +96,9 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
   }
 
   const body = readJsonBody<Record<string, unknown>>(req);
-  const validation = validateCustomerDetails(body);
+  // In-store pickup skips the shipping address (nothing is shipped) and any charge.
+  const isPickup = String(body.deliveryMethod ?? "").toLowerCase() === "pickup";
+  const validation = validateCustomerDetails(body, { requireAddress: !isPickup });
   if (!validation.ok) {
     res.status(400).json({ success: false, message: validation.error });
     return;
@@ -128,14 +130,25 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
     }
   }
 
-  // Re-quote shipping server-side for the chosen service so the price can never be
-  // tampered with by the client. If the selected code is no longer offered, fall back
-  // to the cheapest available option rather than blocking the purchase.
-  const requestedServiceCode = String((body.shippingServiceCode as string) ?? "");
-  const weightKg = await computeCartWeightKg(items);
-  const rates = await getShippingRates({ destinationPostalCode: customer.postalCode, weightKg });
-  const chosenRate = rates.find((r) => r.serviceCode === requestedServiceCode) ?? rates[0] ?? null;
-  const shippingCents = chosenRate ? chosenRate.priceCents : 0;
+  // Resolve the delivery method. Pickup is free and address-less; shipping re-quotes
+  // Canada Post server-side for the chosen service so the price can never be tampered
+  // with by the client (falling back to the cheapest option if the selected code is
+  // no longer offered, rather than blocking the purchase).
+  let shippingCents = 0;
+  let shippingServiceCode: string | null = null;
+  let shippingServiceName: string | null = null;
+  if (isPickup) {
+    shippingServiceCode = PICKUP_SERVICE_CODE;
+    shippingServiceName = PICKUP_SERVICE_NAME;
+  } else {
+    const requestedServiceCode = String((body.shippingServiceCode as string) ?? "");
+    const weightKg = await computeCartWeightKg(items);
+    const rates = await getShippingRates({ destinationPostalCode: customer.postalCode, weightKg });
+    const chosenRate = rates.find((r) => r.serviceCode === requestedServiceCode) ?? rates[0] ?? null;
+    shippingCents = chosenRate ? chosenRate.priceCents : 0;
+    shippingServiceCode = chosenRate?.serviceCode ?? null;
+    shippingServiceName = chosenRate?.serviceName ?? null;
+  }
 
   const currency = getSquareCurrency();
   const order = await createPendingOrder({
@@ -145,8 +158,8 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
     customer,
     userId: authUser?.id ?? null,
     shippingCents,
-    shippingServiceCode: chosenRate?.serviceCode ?? null,
-    shippingServiceName: chosenRate?.serviceName ?? null,
+    shippingServiceCode,
+    shippingServiceName,
   });
 
   const lineItems: SquareLineItem[] = items.map((item) => ({
@@ -157,9 +170,10 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
   }));
 
   // Shipping as its own line (when charged) so Square collects subtotal + shipping + tax.
+  // Pickup is free, so this never adds a line for it.
   if (order.shippingCents > 0) {
     lineItems.push({
-      name: chosenRate?.serviceName ? `Shipping (${chosenRate.serviceName})` : "Shipping",
+      name: shippingServiceName ? `Shipping (${shippingServiceName})` : "Shipping",
       quantity: 1,
       amountCents: order.shippingCents,
     });

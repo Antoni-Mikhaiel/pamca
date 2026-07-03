@@ -1,15 +1,24 @@
 import { OrderRecord } from "../models/types.js";
+import { PICKUP_SERVICE_NAME } from "../lib/customer.js";
 
 // Centralized transactional email via Brevo. `sendBrevoEmail` is the single place
 // that talks to Brevo; the contact form and the order/refund notifications all use it.
 const brevoApiKey = process.env.BREVO_API_KEY ?? "";
-const adminEmail = process.env.CONTACT_TO_EMAIL ?? "sales@pamca.net";
+const adminEmail = process.env.CONTACT_TO_EMAIL ?? "antoni.ashraf1@gmail.com";
 const fromEmail = process.env.CONTACT_FROM_EMAIL ?? "noreply@pamca.net";
 const fromName = process.env.CONTACT_FROM_NAME ?? "PAMCA";
 
 // CRA GST/HST registration number. Required by law on the customer's receipt, so
 // it is shown on the customer order-confirmation email only.
 const HST_REGISTRATION = "HST # 85016 4724 RT0001";
+
+// In-store pickup location shown to the customer when they choose pickup at checkout.
+const PICKUP_LOCATION = "1920 Yonge Street, Toronto, ON M4S 3E6";
+
+/** True when the order is an in-store pickup (no address, no shipping charge). */
+function isPickupOrder(order: OrderRecord): boolean {
+  return order.shipping_service_name === PICKUP_SERVICE_NAME;
+}
 
 interface Recipient {
   email: string;
@@ -121,14 +130,17 @@ function itemsTable(order: OrderRecord): string {
 }
 
 function detailsBlock(order: OrderRecord): string {
-  const addressLine = order.customer_street_number && order.customer_street_name
-    ? `${escapeHtml(order.customer_street_number)} ${escapeHtml(order.customer_street_name)}, ${escapeHtml(order.customer_city || "")} ${escapeHtml(order.customer_province || "")} ${escapeHtml(order.customer_postal_code || "")}`
-    : "—";
+  const pickup = isPickupOrder(order);
+  const addressLine = pickup
+    ? "<strong>In-store pickup</strong> — no shipping"
+    : order.customer_street_number && order.customer_street_name
+      ? `${escapeHtml(order.customer_street_number)} ${escapeHtml(order.customer_street_name)}, ${escapeHtml(order.customer_city || "")} ${escapeHtml(order.customer_province || "")} ${escapeHtml(order.customer_postal_code || "")}`
+      : "—";
   return `<table style="font-size:14px;color:#333;line-height:1.6;">
       <tr><td style="color:#888;padding-right:12px;">Name</td><td>${escapeHtml(customerName(order))}</td></tr>
       <tr><td style="color:#888;padding-right:12px;">Email</td><td>${escapeHtml(order.customer_email || "—")}</td></tr>
       <tr><td style="color:#888;padding-right:12px;">Phone</td><td>${escapeHtml(order.customer_phone || "—")}</td></tr>
-      <tr><td style="color:#888;padding-right:12px;">Address</td><td>${addressLine}</td></tr>
+      <tr><td style="color:#888;padding-right:12px;">${pickup ? "Fulfilment" : "Address"}</td><td>${addressLine}</td></tr>
     </table>`;
 }
 
@@ -180,6 +192,15 @@ export async function sendPurchaseEmails(order: OrderRecord): Promise<void> {
 
   // 2) Customer confirmation
   if (order.customer_email) {
+    // Pickup orders carry no shipping charge/address; show a store-pickup notice
+    // instead of the delivery estimate.
+    const deliveryBanner = isPickupOrder(order)
+      ? `<div style="margin:18px 0;padding:14px 16px;background:#f4f7f7;border-radius:10px;color:#0a615b;font-weight:600;">
+           🏪 Your order will be ready for <strong>in-store pickup</strong> at ${escapeHtml(PICKUP_LOCATION)}. We'll let you know as soon as it's ready.
+         </div>`
+      : `<div style="margin:18px 0;padding:14px 16px;background:#f4f7f7;border-radius:10px;color:#0a615b;font-weight:600;">
+           🚚 Your order will be delivered within <strong>5–10 business days</strong>.
+         </div>`;
     const customerHtml = shell(
       "Thank you for your order!",
       `<p style="margin:0 0 8px;">Hi ${escapeHtml(order.customer_first_name || "there")}, your payment was received and your order is confirmed.</p>
@@ -189,10 +210,7 @@ export async function sendPurchaseEmails(order: OrderRecord): Promise<void> {
        ${itemsTable(order)}
        <p style="margin:6px 2px 0;text-align:right;color:#888;font-size:12px;">${HST_REGISTRATION}</p>
        <p style="margin:14px 0 0;">Placed: ${escapeHtml(placed)}</p>
-       <div style="margin:18px 0;padding:14px 16px;background:#f4f7f7;border-radius:10px;color:#0a615b;font-weight:600;">
-         🚚 Your order will be delivered within <strong>5–10 business days</strong>.
-       </div>
-       <p style="margin:0;color:#888;font-size:13px;">Questions? Just reply to this email.</p>`,
+       ${deliveryBanner}`,
     );
     await sendBrevoEmail({
       to: [{ email: order.customer_email, name: customerName(order) }],

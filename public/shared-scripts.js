@@ -205,6 +205,34 @@
 	let shippingRates = [];
 	let selectedShippingCode = null;
 	let shippingReqToken = 0;
+	// "ship" (Canada Post, needs an address) or "pickup" (in-store, no address/charge).
+	let deliveryMethod = "ship";
+
+	function getDeliveryMethod() {
+		const checked = document.querySelector('input[name="delivery-method"]:checked');
+		return checked ? checked.value : "ship";
+	}
+
+	// Reveals the address + shipping sections for "ship" and hides them for "pickup"
+	// (showing the pickup note instead). Called on open and whenever the choice changes.
+	function applyDeliveryMethod() {
+		deliveryMethod = getDeliveryMethod();
+		const isPickup = deliveryMethod === "pickup";
+		const address = document.getElementById("checkout-address");
+		const shipping = document.getElementById("checkout-shipping");
+		const pickupNote = document.getElementById("checkout-pickup-note");
+		if (address) address.style.display = isPickup ? "none" : "";
+		if (pickupNote) pickupNote.style.display = isPickup ? "" : "none";
+		if (isPickup) {
+			shippingRates = [];
+			selectedShippingCode = null;
+			if (shipping) shipping.style.display = "none";
+			const host = document.getElementById("checkout-shipping-options");
+			if (host) host.innerHTML = "";
+		} else {
+			loadShippingRates();
+		}
+	}
 
 	function resetShippingOptions() {
 		shippingRates = [];
@@ -322,8 +350,11 @@
 		modal.classList.add("active");
 		const first = document.getElementById("checkout-first");
 		if (first) first.focus();
-		// If the postal code was prefilled (signed-in shopper), quote shipping now.
-		loadShippingRates();
+		// Default to shipping each time the modal opens, then reveal the matching fields.
+		// (applyDeliveryMethod quotes shipping for the "ship" default.)
+		const shipRadio = document.querySelector('input[name="delivery-method"][value="ship"]');
+		if (shipRadio) shipRadio.checked = true;
+		applyDeliveryMethod();
 	}
 
 	// Validates the delivery details, asks the server to create a Square hosted
@@ -331,35 +362,45 @@
 	async function submitCheckout(e) {
 		e.preventDefault();
 		const submit = document.getElementById("checkout-submit");
+		const isPickup = getDeliveryMethod() === "pickup";
 		const payload = {
 			firstName: fieldValue("checkout-first"),
 			lastName: fieldValue("checkout-last"),
 			email: fieldValue("checkout-email"),
-			streetNumber: fieldValue("checkout-street-number"),
-			streetName: fieldValue("checkout-street-name"),
-			city: fieldValue("checkout-city"),
-			province: fieldValue("checkout-province"),
-			postalCode: fieldValue("checkout-postal-code"),
 			phone: fieldValue("checkout-phone"),
+			deliveryMethod: isPickup ? "pickup" : "ship",
 		};
-		if (!payload.firstName || !payload.lastName || !payload.email || !payload.streetNumber || !payload.streetName || !payload.city || !payload.province || !payload.postalCode) {
-			setCheckoutMessage("Please fill in every field.");
+		if (!payload.firstName || !payload.lastName || !payload.email) {
+			setCheckoutMessage("Please fill in your name and email.");
 			return;
 		}
 		if (payload.phone.replace(/\D/g, "").length !== 10) {
 			setCheckoutMessage("Enter a valid 10-digit Canadian phone number.");
 			return;
 		}
-		if (!selectedShippingCode) {
-			setCheckoutMessage("Please choose a delivery method.");
-			loadShippingRates();
-			return;
+		if (!isPickup) {
+			// Shipping needs a full address + a chosen Canada Post service.
+			payload.streetNumber = fieldValue("checkout-street-number");
+			payload.streetName = fieldValue("checkout-street-name");
+			payload.city = fieldValue("checkout-city");
+			payload.province = fieldValue("checkout-province");
+			payload.postalCode = fieldValue("checkout-postal-code");
+			if (!payload.streetNumber || !payload.streetName || !payload.city || !payload.province || !payload.postalCode) {
+				setCheckoutMessage("Please fill in your full delivery address.");
+				return;
+			}
+			if (!selectedShippingCode) {
+				setCheckoutMessage("Please choose a shipping method.");
+				loadShippingRates();
+				return;
+			}
+			payload.shippingServiceCode = selectedShippingCode;
 		}
-		payload.shippingServiceCode = selectedShippingCode;
 
 		const auth = getAuthHeader();
 		const saveBox = document.getElementById("checkout-save");
-		if (auth && saveBox && saveBox.checked) payload.saveProfile = true;
+		// Only persist the address to the profile for shipping — pickup collects none.
+		if (!isPickup && auth && saveBox && saveBox.checked) payload.saveProfile = true;
 
 		const original = submit ? submit.textContent : "";
 		if (submit) { submit.disabled = true; submit.textContent = "Redirecting…"; }
@@ -389,6 +430,10 @@
 		if (form) form.addEventListener("submit", submitCheckout);
 		document.querySelectorAll("[data-close-checkout='1']").forEach((el) => {
 			el.addEventListener("click", closeCheckoutModal);
+		});
+		// Switch between shipping and in-store pickup.
+		document.querySelectorAll('input[name="delivery-method"]').forEach((radio) => {
+			radio.addEventListener("change", applyDeliveryMethod);
 		});
 		// Re-quote shipping when the postal code changes (debounced on input + on blur).
 		const postal = document.getElementById("checkout-postal-code");

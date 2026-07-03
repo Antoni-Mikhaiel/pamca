@@ -170,6 +170,20 @@
           <label for="checkout-email">Email</label>
           <input type="email" id="checkout-email" name="email" autocomplete="email" required />
         </div>
+        <div class="form-group">
+          <label>How would you like to get your order?</label>
+          <div class="shipping-options" id="checkout-delivery-method" role="radiogroup" aria-label="How would you like to get your order?">
+            <label class="shipping-option">
+              <input type="radio" name="delivery-method" value="ship" checked />
+              <span class="shipping-option-name">Ship to me</span>
+            </label>
+            <label class="shipping-option">
+              <input type="radio" name="delivery-method" value="pickup" />
+              <span class="shipping-option-name">Pick up in store (free)</span>
+            </label>
+          </div>
+        </div>
+        <div id="checkout-address">
         <div class="form-row">
           <div class="form-group">
             <label for="checkout-street-number">Street Number</label>
@@ -209,6 +223,7 @@
             <input type="text" id="checkout-postal-code" name="postalCode" autocomplete="postal-code" placeholder="A1A 1A1" maxlength="7" autocapitalize="characters" spellcheck="false" required />
           </div>
         </div>
+        </div>
         <div class="form-group">
           <label for="checkout-phone">Phone</label>
           <div class="phone-field">
@@ -218,8 +233,11 @@
           <small class="checkout-hint">Canadian numbers only.</small>
         </div>
         <div class="form-group checkout-shipping" id="checkout-shipping" style="display:none;">
-          <label>Delivery method</label>
-          <div id="checkout-shipping-options" class="shipping-options" role="radiogroup" aria-label="Delivery method"></div>
+          <label>Shipping method</label>
+          <div id="checkout-shipping-options" class="shipping-options" role="radiogroup" aria-label="Shipping method"></div>
+        </div>
+        <div class="form-group" id="checkout-pickup-note" style="display:none;">
+          <div class="pickup-note" style="padding:12px 14px;background:#f4f7f7;border-radius:10px;color:#0a615b;font-size:0.9rem;line-height:1.5;">🏪 Pick up your order at <strong>1920 Yonge Street, Toronto, ON M4S 3E6</strong>. We'll email you when it's ready.</div>
         </div>
         <label class="save-toggle" id="checkout-save-row" style="display:none;">
           <input type="checkbox" id="checkout-save" />

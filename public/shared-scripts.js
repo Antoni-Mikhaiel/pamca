@@ -205,6 +205,9 @@
 	let shippingRates = [];
 	let selectedShippingCode = null;
 	let shippingReqToken = 0;
+	// Postal code (normalized) we last requested a quote for, so re-triggers on the
+	// same code (e.g. blurring the field after it already loaded) don't reload the rates.
+	let lastShippingPostal = null;
 	// "ship" (Canada Post, needs an address) or "pickup" (in-store, no address/charge).
 	let deliveryMethod = "ship";
 
@@ -226,6 +229,11 @@
 		if (isPickup) {
 			shippingRates = [];
 			selectedShippingCode = null;
+			// Invalidate any in-flight quote (from typing the postal code) so a late
+			// response can't re-render and re-show the shipping picker. Clear the last
+			// quoted postal so switching back to shipping re-quotes.
+			shippingReqToken++;
+			lastShippingPostal = null;
 			if (shipping) shipping.style.display = "none";
 			const host = document.getElementById("checkout-shipping-options");
 			if (host) host.innerHTML = "";
@@ -237,6 +245,7 @@
 	function resetShippingOptions() {
 		shippingRates = [];
 		selectedShippingCode = null;
+		lastShippingPostal = null;
 		const wrap = document.getElementById("checkout-shipping");
 		const host = document.getElementById("checkout-shipping-options");
 		if (host) host.innerHTML = "";
@@ -267,10 +276,17 @@
 	}
 
 	async function loadShippingRates() {
+		// No shipping quote for in-store pickup — never reveal the shipping picker.
+		if (getDeliveryMethod() === "pickup") return;
 		const postal = fieldValue("checkout-postal-code");
 		const wrap = document.getElementById("checkout-shipping");
 		const host = document.getElementById("checkout-shipping-options");
 		if (!/^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/.test(postal)) { resetShippingOptions(); return; }
+		// Skip if we already quoted (or are quoting) this exact postal code — this is
+		// what stops a blur after typing from reloading the same three options.
+		const normalizedPostal = postal.replace(/\s/g, "").toUpperCase();
+		if (normalizedPostal === lastShippingPostal) return;
+		lastShippingPostal = normalizedPostal;
 		const token = ++shippingReqToken;
 		if (wrap) wrap.style.display = "";
 		if (host) host.innerHTML = `<div class="shipping-loading">Calculating shipping…</div>`;
@@ -287,6 +303,7 @@
 			if (!res.ok || !rates.length) {
 				shippingRates = [];
 				selectedShippingCode = null;
+				lastShippingPostal = null; // let the shopper retry the same code
 				if (host) host.innerHTML = `<div class="shipping-error">${escapeHtml((json && json.message) || "Couldn't get shipping rates — please check your postal code.")}</div>`;
 				return;
 			}
@@ -295,6 +312,7 @@
 			renderShippingOptions();
 		} catch (_) {
 			if (token !== shippingReqToken) return;
+			lastShippingPostal = null; // let the shopper retry the same code
 			if (host) host.innerHTML = `<div class="shipping-error">Couldn't get shipping rates — please try again.</div>`;
 		}
 	}

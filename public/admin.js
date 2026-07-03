@@ -1587,6 +1587,175 @@
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Invoice sheet — a spreadsheet-style view of every order (one row per order),
+  // with each order's items listed as "qty × name — $unit ea", plus HST and
+  // shipping, and a CSV export that opens in Excel.
+  // ---------------------------------------------------------------------------
+  function invItemUnitCents(it){
+    // The stored singular price; fall back to line total ÷ quantity for older rows.
+    if(it.unit_price_cents != null) return Number(it.unit_price_cents) || 0;
+    const q = Number(it.quantity) || 0;
+    return q ? Math.round((Number(it.line_total_cents) || 0) / q) : 0;
+  }
+  function invItemLabel(it){
+    const variant = it.variation_label ? ` (${it.variation_label})` : '';
+    return `${it.product_name || 'Item'}${variant}`;
+  }
+
+  // Local YYYY-MM-DD (matches the <input type="date"> value format).
+  function ymd(d){
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  // Current From/To bounds (ms) from the date inputs; the "To" day is inclusive.
+  // An empty field means unbounded on that side.
+  function invoiceDateBounds(){
+    const fromEl = document.getElementById('invoice-from');
+    const toEl = document.getElementById('invoice-to');
+    const from = fromEl && fromEl.value ? new Date(fromEl.value + 'T00:00:00').getTime() : -Infinity;
+    const to = toEl && toEl.value ? new Date(toEl.value + 'T23:59:59.999').getTime() : Infinity;
+    return { from, to };
+  }
+
+  // On first open, default From to the earliest order and To to today, so the full
+  // history shows and the admin narrows the range from there. Only fills empty fields
+  // so a chosen range survives closing/reopening the modal.
+  function setDefaultInvoiceDatesIfEmpty(){
+    const fromEl = document.getElementById('invoice-from');
+    const toEl = document.getElementById('invoice-to');
+    const today = new Date();
+    let earliest = today;
+    ordersCache.forEach(o => {
+      const d = new Date(o.created_at);
+      if(!isNaN(d.getTime()) && d < earliest) earliest = d;
+    });
+    if(fromEl && !fromEl.value) fromEl.value = ymd(earliest);
+    if(toEl && !toEl.value) toEl.value = ymd(today);
+  }
+
+  // Flattens ordersCache into invoice rows within the selected date range (money kept
+  // in cents; formatted on render/export).
+  function invoiceRows(){
+    const { from, to } = invoiceDateBounds();
+    return ordersCache.filter(o => {
+      const t = new Date(o.created_at).getTime();
+      return !Number.isFinite(t) || (t >= from && t <= to);
+    }).map(o => ({
+      id: o.purchase_id || o.id || '—',
+      date: o.created_at ? new Date(o.created_at).toLocaleDateString() : '',
+      customer: `${o.customer_first_name || ''} ${o.customer_last_name || ''}`.trim() || '—',
+      items: (o.items || []).map(it => ({
+        qty: Number(it.quantity) || 0,
+        label: invItemLabel(it),
+        unitCents: invItemUnitCents(it),
+      })),
+      subtotalCents: Number(o.subtotal_cents) || 0,
+      hstPercent: Number(o.hst_percent) || 0,
+      taxCents: Number(o.tax_cents) || 0,
+      shippingCents: Number(o.shipping_cents) || 0,
+      shippingName: o.shipping_service_name || '',
+      totalCents: Number(o.total_cents) || 0,
+    }));
+  }
+
+  function renderInvoice(){
+    const table = document.getElementById('invoice-table');
+    const countEl = document.getElementById('invoice-count');
+    if(!table) return;
+    const rows = invoiceRows();
+    if(countEl) countEl.textContent = `${rows.length} order${rows.length === 1 ? '' : 's'}`;
+
+    const head = `<thead><tr>
+        <th>Order ID</th><th>Date</th><th>Customer</th>
+        <th>Items — qty × unit price</th>
+        <th>Subtotal</th><th>HST</th><th>Shipping</th><th>Total</th>
+      </tr></thead>`;
+
+    if(!rows.length){
+      const msg = ordersCache.length ? 'No orders in the selected date range.' : 'No orders yet.';
+      table.innerHTML = head + `<tbody><tr><td colspan="8" class="inv-empty">${msg}</td></tr></tbody>`;
+      return;
+    }
+
+    const body = rows.map(r => {
+      const itemsHtml = r.items.length
+        ? r.items.map(it =>
+            `<span class="inv-item"><span class="inv-q">${it.qty} ×</span> ${escAttr(it.label)}` +
+            ` <span class="inv-unit">— ${fmtMoney(it.unitCents / 100)} ea</span></span>`
+          ).join('')
+        : '—';
+      const hstHtml = `${fmtMoney(r.taxCents / 100)} <span class="inv-unit">(${r.hstPercent}%)</span>`;
+      const shipHtml = r.shippingName
+        ? `${fmtMoney(r.shippingCents / 100)} <span class="inv-unit">(${escAttr(r.shippingName)})</span>`
+        : fmtMoney(r.shippingCents / 100);
+      return `<tr>
+          <td>${escAttr(r.id)}</td>
+          <td>${escAttr(r.date)}</td>
+          <td>${escAttr(r.customer)}</td>
+          <td class="inv-items">${itemsHtml}</td>
+          <td class="inv-num">${fmtMoney(r.subtotalCents / 100)}</td>
+          <td class="inv-num">${hstHtml}</td>
+          <td class="inv-num">${shipHtml}</td>
+          <td class="inv-num">${fmtMoney(r.totalCents / 100)}</td>
+        </tr>`;
+    }).join('');
+
+    table.innerHTML = head + `<tbody>${body}</tbody>`;
+  }
+
+  // Wraps a value as a CSV field (quotes doubled, always quoted so embedded commas
+  // and the multi-line Items cell survive).
+  function csvCell(v){
+    return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  }
+
+  function exportInvoiceCsv(){
+    const rows = invoiceRows();
+    const header = ['Order ID', 'Date', 'Customer', 'Items', 'Subtotal', 'HST %', 'HST', 'Shipping', 'Shipping method', 'Total'];
+    const lines = [header.map(csvCell).join(',')];
+    rows.forEach(r => {
+      const itemsText = r.items.length
+        ? r.items.map(it => `${it.qty} x ${it.label} @ ${fmtMoney(it.unitCents / 100)} ea`).join('\n')
+        : '';
+      lines.push([
+        r.id, r.date, r.customer, itemsText,
+        fmtMoney(r.subtotalCents / 100), `${r.hstPercent}%`, fmtMoney(r.taxCents / 100),
+        fmtMoney(r.shippingCents / 100), r.shippingName, fmtMoney(r.totalCents / 100),
+      ].map(csvCell).join(','));
+    });
+    // BOM so Excel reads UTF-8 (accents, the ° in product names) correctly.
+    const csv = '﻿' + lines.join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const fromEl = document.getElementById('invoice-from');
+    const toEl = document.getElementById('invoice-to');
+    const range = `${(fromEl && fromEl.value) || 'all'}_to_${(toEl && toEl.value) || 'all'}`;
+    a.download = `pamca-orders-invoice-${range}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function openInvoice(){
+    // Make sure we have data even if the panel hasn't been refreshed yet.
+    if(!ordersCache.length) await loadOrders();
+    setDefaultInvoiceDatesIfEmpty();
+    renderInvoice();
+    const m = document.getElementById('invoice-modal');
+    if(m) m.classList.add('is-open');
+    // Lock background scroll so the wheel only scrolls the invoice, not the page behind.
+    document.body.classList.add('modal-open');
+  }
+  function closeInvoice(){
+    const m = document.getElementById('invoice-modal');
+    if(m) m.classList.remove('is-open');
+    document.body.classList.remove('modal-open');
+  }
+
   function wireOrderControls(){
     const host = document.getElementById('admin-orders-list');
     if(!host) return;
@@ -1606,6 +1775,25 @@
     if(refresh) refresh.addEventListener('click', () => loadOrders());
     const search = document.getElementById('admin-order-search');
     if(search) search.addEventListener('input', () => { orderSearch = search.value; renderOrders(); });
+
+    // Invoice sheet modal (open / export / close).
+    const invoiceBtn = document.getElementById('admin-order-invoice');
+    if(invoiceBtn) invoiceBtn.addEventListener('click', openInvoice);
+    const invClose = document.getElementById('invoice-close');
+    if(invClose) invClose.addEventListener('click', closeInvoice);
+    const invExport = document.getElementById('invoice-export');
+    if(invExport) invExport.addEventListener('click', exportInvoiceCsv);
+    ['invoice-from', 'invoice-to'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.addEventListener('change', renderInvoice);
+    });
+    const invModal = document.getElementById('invoice-modal');
+    if(invModal){
+      invModal.addEventListener('click', (e) => { if(e.target === invModal) closeInvoice(); });
+      document.addEventListener('keydown', (e) => {
+        if(e.key === 'Escape' && invModal.classList.contains('is-open')) closeInvoice();
+      });
+    }
   }
 
   // ---------------------------------------------------------------------------

@@ -1210,8 +1210,13 @@ section:nth-of-type(4) { animation-delay: 0.21s; }
     max-width: 520px;
     max-height: 92vh;
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 26px 30px;
 }
+
+/* While the delivery-details modal is open, freeze the page behind it so the wheel
+   only scrolls the modal's own content, never the page underneath. */
+body.modal-open { overflow: hidden; }
 .checkout-card .auth-purchase-sub { margin-bottom: 16px; }
 .checkout-card .form-group { margin-bottom: 14px; }
 

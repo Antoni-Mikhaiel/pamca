@@ -196,6 +196,7 @@
 	function closeCheckoutModal() {
 		const modal = document.getElementById("checkout-modal");
 		if (modal) modal.classList.remove("active");
+		document.body.classList.remove("modal-open");
 	}
 
 	// ---- Delivery method (Canada Post rates) ---------------------------------
@@ -366,6 +367,8 @@
 		resetShippingOptions();
 		await prefillCheckoutFromProfile();
 		modal.classList.add("active");
+		// Lock background scroll so the wheel only scrolls the modal, not the page behind.
+		document.body.classList.add("modal-open");
 		const first = document.getElementById("checkout-first");
 		if (first) first.focus();
 		// Default to shipping each time the modal opens, then reveal the matching fields.

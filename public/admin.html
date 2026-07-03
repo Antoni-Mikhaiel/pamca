@@ -1053,7 +1053,35 @@
     }
     .pm-close:hover { background: rgba(207, 70, 38, 0.08); color: var(--ember); }
 
-    .pm-dialog-body { padding: 22px 24px; overflow-y: auto; display: grid; gap: 22px; }
+    .pm-dialog-body { padding: 22px 24px; overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 22px; }
+
+    /* While a modal is open, freeze the page behind it so the wheel only scrolls
+       the modal's own content, never the admin page underneath. */
+    body.modal-open { overflow: hidden; }
+
+    /* ---- Orders invoice modal ---- */
+    .inv-dialog { width: min(1240px, 97vw); }
+    .inv-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .inv-range { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .inv-range-field { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--ink-soft); }
+    .inv-range-field input[type="date"] { padding: 6px 9px; border: 1px solid var(--line-strong); border-radius: 8px; font: inherit; color: var(--ink); background: var(--paper); }
+    .inv-scroll { overflow: auto; overscroll-behavior: contain; max-height: 68vh; border: 1px solid var(--line); border-radius: 12px; }
+    table.inv-table { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
+    .inv-table th, .inv-table td { border: 1px solid var(--line); padding: 8px 11px; text-align: left; vertical-align: top; }
+    .inv-table thead th {
+      position: sticky; top: 0; z-index: 1;
+      background: var(--surface);
+      font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--signal-deep); white-space: nowrap;
+    }
+    .inv-table tbody tr:nth-child(even) { background: rgba(18, 32, 57, 0.025); }
+    .inv-table td.inv-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .inv-table td.inv-items { min-width: 300px; }
+    .inv-items .inv-item { display: block; padding: 1px 0; }
+    .inv-items .inv-item + .inv-item { border-top: 1px dashed var(--line); margin-top: 3px; padding-top: 4px; }
+    .inv-items .inv-q { font-weight: 700; color: var(--signal-deep); }
+    .inv-items .inv-unit { color: var(--ink-soft); }
+    .inv-empty { padding: 22px; text-align: center; color: var(--ink-soft); }
 
     .pm-section {
       background: var(--surface);
@@ -1639,6 +1667,7 @@
           <div class="pm-toolbar">
             <input type="search" class="pm-search" id="admin-order-search" placeholder="Search by name, email, phone, or Purchase ID…" aria-label="Search orders">
             <span class="pm-count" id="admin-order-count">0 orders</span>
+            <button class="button" type="button" id="admin-order-invoice">Invoice</button>
             <button class="button" type="button" id="admin-order-refresh">Refresh</button>
           </div>
 
@@ -1700,6 +1729,32 @@
             <!-- product cards rendered by admin.js -->
           </div>
         </section>
+
+        <!-- Orders invoice modal — spreadsheet view of every order + Excel export -->
+        <div class="pm-modal" id="invoice-modal" role="dialog" aria-modal="true" aria-labelledby="invoice-title">
+          <div class="pm-dialog inv-dialog">
+            <div class="pm-dialog-head">
+              <div>
+                <div class="pm-eyebrow">Orders</div>
+                <h3 id="invoice-title">Invoice sheet</h3>
+              </div>
+              <button type="button" class="pm-close" id="invoice-close" aria-label="Close invoice">×</button>
+            </div>
+            <div class="pm-dialog-body">
+              <div class="inv-toolbar">
+                <div class="inv-range">
+                  <label class="inv-range-field">From <input type="date" id="invoice-from" aria-label="From date"></label>
+                  <label class="inv-range-field">To <input type="date" id="invoice-to" aria-label="To date"></label>
+                  <span class="pm-count" id="invoice-count">0 orders</span>
+                </div>
+                <button class="button" type="button" id="invoice-export">Export to Excel</button>
+              </div>
+              <div class="inv-scroll">
+                <table class="inv-table" id="invoice-table"><!-- rendered by admin.js --></table>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- Pharmacy Products editor modal -->
         <div class="pm-modal" id="product-modal" role="dialog" aria-modal="true" aria-labelledby="pm-dialog-title">

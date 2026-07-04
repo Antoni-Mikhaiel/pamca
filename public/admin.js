@@ -1634,11 +1634,18 @@
     if(toEl && !toEl.value) toEl.value = ymd(today);
   }
 
-  // Flattens ordersCache into invoice rows within the selected date range (money kept
-  // in cents; formatted on render/export).
+  // Refunded orders (fully refunded, or any partial refund) are excluded from the
+  // invoice — same "refunded" definition the order cards use for the REFUNDED badge.
+  function invIsRefunded(o){
+    return String(o.status || '').toLowerCase() === 'refunded' || (Number(o.amount_refunded_cents) || 0) > 0;
+  }
+
+  // Flattens ordersCache into invoice rows within the selected date range, excluding
+  // refunded orders (money kept in cents; formatted on render/export).
   function invoiceRows(){
     const { from, to } = invoiceDateBounds();
     return ordersCache.filter(o => {
+      if(invIsRefunded(o)) return false;
       const t = new Date(o.created_at).getTime();
       return !Number.isFinite(t) || (t >= from && t <= to);
     }).map(o => ({

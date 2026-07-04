@@ -1682,7 +1682,7 @@
       const itemsHtml = r.items.length
         ? r.items.map(it =>
             `<span class="inv-item"><span class="inv-q">${it.qty} ×</span> ${escAttr(it.label)}` +
-            ` <span class="inv-unit">— ${fmtMoney(it.unitCents / 100)} ea</span></span>`
+            ` <span class="inv-unit">— ${fmtMoney(it.unitCents / 100)} each</span></span>`
           ).join('')
         : '—';
       const hstHtml = `${fmtMoney(r.taxCents / 100)} <span class="inv-unit">(${r.hstPercent}%)</span>`;
@@ -1716,7 +1716,7 @@
     const lines = [header.map(csvCell).join(',')];
     rows.forEach(r => {
       const itemsText = r.items.length
-        ? r.items.map(it => `${it.qty} x ${it.label} @ ${fmtMoney(it.unitCents / 100)} ea`).join('\n')
+        ? r.items.map(it => `${it.qty} x ${it.label} @ ${fmtMoney(it.unitCents / 100)} each`).join('\n')
         : '';
       lines.push([
         r.id, r.date, r.customer, itemsText,

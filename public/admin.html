@@ -1077,6 +1077,9 @@
     .inv-table tbody tr:nth-child(even) { background: rgba(18, 32, 57, 0.025); }
     .inv-table td.inv-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .inv-table td.inv-items { min-width: 300px; }
+    .inv-table td.inv-ship { min-width: 210px; }
+    .inv-ship .inv-item { display: block; padding: 1px 0; }
+    .inv-ship .inv-item + .inv-item { border-top: 1px dashed var(--line); margin-top: 3px; padding-top: 4px; }
     .inv-items .inv-item { display: block; padding: 1px 0; }
     .inv-items .inv-item + .inv-item { border-top: 1px dashed var(--line); margin-top: 3px; padding-top: 4px; }
     .inv-items .inv-q { font-weight: 700; color: var(--signal-deep); }
@@ -1453,6 +1456,7 @@
     .ao-items { list-style: none; margin: 8px 0 0; padding: 10px 0 0; border-top: 1px solid var(--line); }
     .ao-items li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: 0.9rem; color: var(--ink); }
     .ao-tax { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 0.9rem; font-weight: 600; color: var(--ink-soft); }
+    .ao-ship-line { display: flex; justify-content: space-between; gap: 12px; margin-top: 2px; font-size: 0.8rem; color: var(--ink-faint); }
     .ao-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
     .ao-total { font-weight: 700; color: var(--ink); }
     .ao-refunded { color: var(--ember); font-size: 0.82rem; font-weight: 600; }
@@ -1786,6 +1790,19 @@
                       <option value="active">Active (visible)</option>
                       <option value="draft">Draft (hidden)</option>
                     </select>
+                  </div>
+                </div>
+                <div class="pm-row">
+                  <div class="pm-field">
+                    <label for="pm-shipment-method">Shipment method</label>
+                    <select id="pm-shipment-method">
+                      <option value="canada_post">Canada Post (weight-based rate)</option>
+                      <option value="third_party">Third Party Courier (flat price)</option>
+                    </select>
+                  </div>
+                  <div class="pm-field" id="pm-flat-price-field" style="display:none;">
+                    <label for="pm-flat-price">Flat shipping price ($) <span style="font-weight:400;color:var(--ink-faint);">— charged once per order for this item</span></label>
+                    <input type="number" id="pm-flat-price" min="0" step="0.01" placeholder="0.00">
                   </div>
                 </div>
               </div>

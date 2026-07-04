@@ -42,6 +42,10 @@ export interface Product {
   cost_price: number;
   /** Shipping weight per unit in grams; 0 = unset → checkout uses the default fallback. */
   weight_grams: number;
+  /** How this product ships: 'canada_post' (weight-based rate) or 'third_party' (flat price). */
+  shipment_method: string;
+  /** Flat shipping price (dollars) charged once for this product when shipment_method is 'third_party'. */
+  third_party_shipping_price: number;
   redirect_path: string;
   // Rich fields managed by the admin console (see supabase-schema.sql).
   status: string;
@@ -73,6 +77,10 @@ export interface AdminProductInput {
   cost: number;
   /** Shipping weight per unit in grams; 0 when unset. */
   weight: number;
+  /** 'canada_post' or 'third_party'. */
+  shipmentMethod: string;
+  /** Flat shipping price (dollars) for 'third_party' items; 0 otherwise. */
+  thirdPartyShippingPrice: number;
   description: string;
   keyFeatures: string[];
   optionGroups: ProductOptionGroup[];
@@ -127,6 +135,18 @@ export interface UserProfile extends CustomerDetails {
   loginEmail: string;
 }
 
+/**
+ * One line in an order's shipping breakdown. Canada Post items are collapsed into a
+ * single 'canada_post' line (Canada Post bills per parcel by combined weight); each
+ * third-party-courier product contributes its own flat 'third_party' line.
+ */
+export interface ShippingLine {
+  method: "canada_post" | "third_party";
+  /** Display label: the Canada Post service name, or the product name for third-party. */
+  label: string;
+  cents: number;
+}
+
 export interface OrderItemRecord {
   /** order_items row id — present on persisted items, used to target edits. */
   id?: string;
@@ -151,6 +171,8 @@ export interface OrderRecord {
   shipping_cents: number;
   /** Human-readable Canada Post service name (e.g. "Expedited Parcel"); null when none. */
   shipping_service_name: string | null;
+  /** Per-line shipping breakdown (one combined Canada Post line + a line per third-party item). */
+  shipping_breakdown: ShippingLine[];
   /** Canada Post tracking number entered by admin; null until the order ships. */
   tracking_pin: string | null;
   customer_first_name: string | null;

@@ -83,6 +83,8 @@ export async function handleSaveProduct(req: ApiRequest, res: ApiResponse): Prom
     stock: Number(body.stock) || 0,
     cost: Math.max(0, Number(body.cost) || 0),
     weight: Math.max(0, Number(body.weight) || 0),
+    shipmentMethod: body.shipmentMethod === "third_party" ? "third_party" : "canada_post",
+    thirdPartyShippingPrice: Math.max(0, Number(body.thirdPartyShippingPrice) || 0),
     description: String(body.description ?? ""),
     keyFeatures: toStringArray(body.keyFeatures),
     optionGroups: sanitizeOptionGroups(body.optionGroups),

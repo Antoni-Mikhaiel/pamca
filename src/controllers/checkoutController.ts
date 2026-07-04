@@ -19,26 +19,13 @@ import {
   verifyWebhookSignature,
   SquareLineItem,
 } from "../services/squareService.js";
-import { getProductWeightsGrams } from "../services/productService.js";
-import { getShippingRates, getDefaultItemWeightGrams } from "../services/canadaPostService.js";
-import { CartItem } from "../models/types.js";
+import { quoteCartShipping, resolveCartShipping } from "../services/shippingService.js";
+import { ShippingLine } from "../models/types.js";
 
 const SITE_URL = (process.env.SITE_URL ?? "").replace(/\/$/, "");
 
 /** Canadian postal code, with or without the middle space (e.g. "M4S 3E6"). */
 const POSTAL_RE = /^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/;
-
-/** Total parcel weight (kg) for a cart: per-product weight (or the default) × qty. */
-async function computeCartWeightKg(items: CartItem[]): Promise<number> {
-  const weights = await getProductWeightsGrams(items.map((i) => i.product_id));
-  const fallbackG = getDefaultItemWeightGrams();
-  let grams = 0;
-  for (const item of items) {
-    const perUnit = weights.get(item.product_id) || fallbackG;
-    grams += perUnit * (Number(item.quantity) || 0);
-  }
-  return grams / 1000;
-}
 
 /**
  * Quotes Canada Post shipping options for the current cart + a destination postal
@@ -66,17 +53,20 @@ export async function handleGetShippingRates(req: ApiRequest, res: ApiResponse):
     return;
   }
 
-  const weightKg = await computeCartWeightKg(items);
-  const rates = await getShippingRates({ destinationPostalCode: postalCode, weightKg });
+  // Canada Post service options for the CP items + the fixed third-party flat lines.
+  const quote = await quoteCartShipping(items, postalCode);
   res.status(200).json({
     success: true,
     data: {
-      rates: rates.map((r) => ({
+      rates: quote.canadaPostRates.map((r) => ({
         serviceCode: r.serviceCode,
         serviceName: r.serviceName,
         priceCents: r.priceCents,
         transitDays: r.transitDays,
       })),
+      thirdParty: quote.thirdPartyLines.map((l) => ({ label: l.label, cents: l.cents })),
+      thirdPartyCents: quote.thirdPartyCents,
+      hasCanadaPost: quote.hasCanadaPost,
     },
   });
 }
@@ -130,24 +120,26 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
     }
   }
 
-  // Resolve the delivery method. Pickup is free and address-less; shipping re-quotes
-  // Canada Post server-side for the chosen service so the price can never be tampered
-  // with by the client (falling back to the cheapest option if the selected code is
-  // no longer offered, rather than blocking the purchase).
+  // Resolve the delivery method. Pickup is free and address-less. Shipping is the
+  // combined Canada Post rate for the CP items (re-quoted server-side for the chosen
+  // service, so the price can't be tampered with) plus each third-party item's flat
+  // price; the per-line breakdown is stored so every receipt can show it.
   let shippingCents = 0;
   let shippingServiceCode: string | null = null;
   let shippingServiceName: string | null = null;
+  let shippingBreakdown: ShippingLine[] = [];
   if (isPickup) {
     shippingServiceCode = PICKUP_SERVICE_CODE;
     shippingServiceName = PICKUP_SERVICE_NAME;
   } else {
     const requestedServiceCode = String((body.shippingServiceCode as string) ?? "");
-    const weightKg = await computeCartWeightKg(items);
-    const rates = await getShippingRates({ destinationPostalCode: customer.postalCode, weightKg });
-    const chosenRate = rates.find((r) => r.serviceCode === requestedServiceCode) ?? rates[0] ?? null;
-    shippingCents = chosenRate ? chosenRate.priceCents : 0;
-    shippingServiceCode = chosenRate?.serviceCode ?? null;
-    shippingServiceName = chosenRate?.serviceName ?? null;
+    const resolved = await resolveCartShipping(items, customer.postalCode, requestedServiceCode);
+    shippingCents = resolved.totalCents;
+    shippingBreakdown = resolved.breakdown;
+    shippingServiceCode = resolved.cpServiceCode;
+    // The single shipping_service_name column: the Canada Post service, or a generic
+    // courier label when the order ships third-party only.
+    shippingServiceName = resolved.cpServiceName ?? (resolved.breakdown.length ? "Third-Party Courier" : null);
   }
 
   const currency = getSquareCurrency();
@@ -160,6 +152,7 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
     shippingCents,
     shippingServiceCode,
     shippingServiceName,
+    shippingBreakdown,
   });
 
   const lineItems: SquareLineItem[] = items.map((item) => ({
@@ -169,13 +162,14 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
     note: item.variation_label,
   }));
 
-  // Shipping as its own line (when charged) so Square collects subtotal + shipping + tax.
-  // Pickup is free, so this never adds a line for it.
-  if (order.shippingCents > 0) {
+  // Shipping breakdown as its own Square lines (Canada Post combined + each third-party
+  // item) so Square collects subtotal + shipping + tax. Pickup has an empty breakdown.
+  for (const line of shippingBreakdown) {
+    if (line.cents <= 0) continue;
     lineItems.push({
-      name: shippingServiceName ? `Shipping (${shippingServiceName})` : "Shipping",
+      name: line.method === "third_party" ? `Shipping — ${line.label}` : `Shipping (${line.label})`,
       quantity: 1,
-      amountCents: order.shippingCents,
+      amountCents: line.cents,
     });
   }
 

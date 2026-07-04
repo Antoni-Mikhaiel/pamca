@@ -1291,6 +1291,9 @@ body.modal-open { overflow: hidden; }
 .shipping-option input { width: auto; margin: 0; accent-color: #008080; }
 .shipping-option-name { flex: 1; color: #333; }
 .shipping-option-price { font-weight: 700; color: #0a615b; }
+/* Third-party courier fees: shown, not chosen (always applied), so no hover/cursor. */
+.shipping-option-fixed { cursor: default; background: #f6faf9; border-style: dashed; }
+.shipping-option-fixed:hover { border-color: #ddd; }
 .shipping-loading, .shipping-error { font-size: 0.88rem; color: #888; padding: 6px 2px; }
 .shipping-error { color: #b02a37; }
 
@@ -1378,6 +1381,15 @@ body.modal-open { overflow: hidden; }
     font-size: 0.9rem;
     font-weight: 600;
     color: #555;
+}
+/* Muted per-method sub-line under the Shipping total (Canada Post / third-party). */
+.order-ship-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 2px 0 0;
+    font-size: 0.8rem;
+    color: #888;
 }
 
 .order-tracking-row {

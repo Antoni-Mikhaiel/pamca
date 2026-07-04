@@ -27,6 +27,10 @@ alter table products add column if not exists cost_price numeric(10,2) not null 
 -- Shipping weight per unit (grams), used to compute the Canada Post parcel weight at
 -- checkout. 0 = unset → the checkout falls back to CANADA_POST_DEFAULT_ITEM_WEIGHT_G.
 alter table products add column if not exists weight_grams integer not null default 0;
+-- How the product ships: 'canada_post' (weight-based Canada Post rate, the default) or
+-- 'third_party' (a flat courier price the admin sets below, charged once per line).
+alter table products add column if not exists shipment_method text not null default 'canada_post';
+alter table products add column if not exists third_party_shipping_price numeric(10,2) not null default 0;
 alter table products add column if not exists key_features jsonb not null default '[]'::jsonb;
 alter table products add column if not exists option_groups jsonb not null default '[]'::jsonb;
 -- Per-combination inventory for multi-dropdown products. Each entry is
@@ -217,6 +221,10 @@ alter table orders add column if not exists hst_percent numeric(5,2) not null de
 alter table orders add column if not exists shipping_cents integer not null default 0;
 alter table orders add column if not exists shipping_service_code text;
 alter table orders add column if not exists shipping_service_name text;
+-- Per-line shipping breakdown snapshot: [{ "method": "canada_post"|"third_party",
+-- "label": "Expedited Parcel"|"<product name>", "cents": N }]. One combined Canada Post
+-- line plus one line per third-party-courier product; the sum equals shipping_cents.
+alter table orders add column if not exists shipping_breakdown jsonb not null default '[]'::jsonb;
 -- Canada Post tracking number (PIN) entered by admin at fulfillment; powers live
 -- tracking on the order/profile pages. shipped_at stamps when it was first set.
 alter table orders add column if not exists tracking_pin text;

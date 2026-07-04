@@ -85,6 +85,36 @@ function customerName(order: OrderRecord): string {
   return `${order.customer_first_name ?? ""} ${order.customer_last_name ?? ""}`.trim() || "Customer";
 }
 
+/** Human method name for a shipping-breakdown line. */
+function shippingMethodName(method: string): string {
+  return method === "third_party" ? "Third-Party Courier" : "Canada Post";
+}
+
+/**
+ * Shipping row(s) for the receipt footer. When the order has a per-line breakdown it
+ * renders a "Shipping" total plus one muted sub-row per line (Canada Post combined +
+ * each third-party item); otherwise it falls back to a single shipping row.
+ */
+function shippingFootRows(order: OrderRecord): string {
+  const breakdown = order.shipping_breakdown || [];
+  if (breakdown.length) {
+    const total = breakdown.reduce((s, l) => s + (Number(l.cents) || 0), 0);
+    const header = `<tr><td colspan="3" style="padding:10px 10px 2px;text-align:right;font-weight:700;">Shipping</td>
+        <td style="padding:10px 10px 2px;text-align:right;font-weight:700;">${money(total)}</td></tr>`;
+    const lines = breakdown
+      .map(
+        (l) => `<tr><td colspan="3" style="padding:0 10px 2px;text-align:right;color:#888;font-size:12px;">${shippingMethodName(l.method)} — ${escapeHtml(l.label)}</td>
+        <td style="padding:0 10px 2px;text-align:right;color:#888;font-size:12px;">${money(l.cents)}</td></tr>`,
+      )
+      .join("");
+    return header + lines;
+  }
+  return Number(order.shipping_cents) > 0
+    ? `<tr><td colspan="3" style="padding:10px;text-align:right;font-weight:700;">Shipping${order.shipping_service_name ? ` (${escapeHtml(order.shipping_service_name)})` : ""}</td>
+        <td style="padding:10px;text-align:right;font-weight:700;">${money(order.shipping_cents)}</td></tr>`
+    : "";
+}
+
 /** Items table used in every order email (receipt). */
 function itemsTable(order: OrderRecord): string {
   const rows = (order.items || [])
@@ -118,8 +148,7 @@ function itemsTable(order: OrderRecord): string {
       <tfoot>
         <tr><td colspan="3" style="padding:10px;text-align:right;font-weight:700;">Subtotal</td>
         <td style="padding:10px;text-align:right;font-weight:700;">${money(order.subtotal_cents)}</td></tr>
-        ${Number(order.shipping_cents) > 0 ? `<tr><td colspan="3" style="padding:10px;text-align:right;font-weight:700;">Shipping${order.shipping_service_name ? ` (${order.shipping_service_name})` : ""}</td>
-        <td style="padding:10px;text-align:right;font-weight:700;">${money(order.shipping_cents)}</td></tr>` : ""}
+        ${shippingFootRows(order)}
         <tr><td colspan="3" style="padding:10px;text-align:right;font-weight:700;">HST (${order.hst_percent}%)</td>
         <td style="padding:10px;text-align:right;font-weight:700;">${money(order.tax_cents)}</td></tr>
         <tr><td colspan="3" style="padding:10px;text-align:right;font-weight:700;">Total</td>

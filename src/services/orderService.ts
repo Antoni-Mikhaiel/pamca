@@ -1,8 +1,21 @@
 import { randomInt } from "node:crypto";
 import { supabase } from "../lib/supabase.js";
-import { CartItem, CustomerDetails, OrderRecord } from "../models/types.js";
+import { CartItem, CustomerDetails, OrderRecord, ShippingLine } from "../models/types.js";
 import { asVariants } from "../lib/variants.js";
 import { getHSTPercent, calculateTaxCents } from "./taxService.js";
+
+/** Parses a stored shipping_breakdown JSON value into typed ShippingLine[]. */
+function asShippingBreakdown(value: unknown): ShippingLine[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((raw) => {
+    const l = (raw ?? {}) as { method?: unknown; label?: unknown; cents?: unknown };
+    return {
+      method: l.method === "third_party" ? "third_party" : "canada_post",
+      label: String(l.label ?? ""),
+      cents: Math.max(0, Math.round(Number(l.cents ?? 0))),
+    };
+  });
+}
 
 export interface CreatedOrder {
   id: string;
@@ -39,6 +52,7 @@ export async function createPendingOrder(params: {
   shippingCents?: number;
   shippingServiceCode?: string | null;
   shippingServiceName?: string | null;
+  shippingBreakdown?: ShippingLine[];
 }): Promise<CreatedOrder> {
   const { cartToken, items, currency, customer, userId } = params;
   const shippingCents = Math.max(0, Math.round(params.shippingCents ?? 0));
@@ -77,6 +91,7 @@ export async function createPendingOrder(params: {
         shipping_cents: shippingCents,
         shipping_service_code: params.shippingServiceCode ?? null,
         shipping_service_name: params.shippingServiceName ?? null,
+        shipping_breakdown: params.shippingBreakdown ?? [],
         tax_cents: taxCents,
         total_cents: totalCents,
         hst_percent: hstPercent,
@@ -243,7 +258,7 @@ export const REFUND_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 const ORDER_SELECT =
   "id, purchase_id, status, currency, subtotal_cents, tax_cents, total_cents, hst_percent, " +
-  "shipping_cents, shipping_service_name, tracking_pin, " +
+  "shipping_cents, shipping_service_name, shipping_breakdown, tracking_pin, " +
   "customer_first_name, customer_last_name, " +
   "customer_email, customer_phone, customer_street_number, customer_street_name, customer_city, customer_province, customer_postal_code, created_at, uneditable, completed_at, refunded_at, amount_refunded_cents, " +
   "order_items(id, product_id, product_name, variation_label, unit_price_cents, quantity, line_total_cents)";
@@ -290,6 +305,7 @@ function mapOrder(row: Record<string, unknown>): OrderRecord {
     hst_percent: Number(row.hst_percent ?? 13),
     shipping_cents: Number(row.shipping_cents ?? 0),
     shipping_service_name: (row.shipping_service_name as string | null) ?? null,
+    shipping_breakdown: asShippingBreakdown(row.shipping_breakdown),
     tracking_pin: (row.tracking_pin as string | null) ?? null,
     customer_first_name: (row.customer_first_name as string | null) ?? null,
     customer_last_name: (row.customer_last_name as string | null) ?? null,

@@ -615,6 +615,8 @@
     d.stock = Number.isFinite(+p.stock) ? Math.max(0, Math.round(+p.stock)) : 0;
     d.cost = Number.isFinite(+p.cost) ? Math.max(0, +p.cost) : 0;
     d.weight = Number.isFinite(+p.weight) ? Math.max(0, Math.round(+p.weight)) : 0;
+    d.shipmentMethod = p.shipmentMethod === 'third_party' ? 'third_party' : 'canada_post';
+    d.thirdPartyShippingPrice = Number.isFinite(+p.thirdPartyShippingPrice) ? Math.max(0, +p.thirdPartyShippingPrice) : 0;
     d.description = typeof p.description === 'string' ? p.description : '';
     d.keyFeatures = Array.isArray(p.keyFeatures) ? p.keyFeatures.filter(Boolean) : [];
     d.optionGroups = Array.isArray(p.optionGroups) ? p.optionGroups.map(g => {
@@ -1198,6 +1200,9 @@
     document.getElementById('pm-status').value = p ? p.status : 'active';
     document.getElementById('pm-price').value = p ? p.price : '';
     document.getElementById('pm-weight').value = p ? (p.weight || '') : '';
+    document.getElementById('pm-shipment-method').value = p && p.shipmentMethod === 'third_party' ? 'third_party' : 'canada_post';
+    document.getElementById('pm-flat-price').value = p && p.thirdPartyShippingPrice ? p.thirdPartyShippingPrice : '';
+    syncShipmentMethod();
     document.getElementById('pm-sale-percent').value = p ? (p.salePercent || '') : '';
     document.getElementById('pm-sale-start').value = p ? p.saleStart : '';
     document.getElementById('pm-sale-end').value = p ? p.saleEnd : '';
@@ -1234,6 +1239,13 @@
     editingProductId = null;
   }
 
+  // Show the flat-price field only for Third Party Courier; Canada Post uses weight.
+  function syncShipmentMethod(){
+    const sel = document.getElementById('pm-shipment-method');
+    const field = document.getElementById('pm-flat-price-field');
+    if(sel && field) field.style.display = sel.value === 'third_party' ? '' : 'none';
+  }
+
   function collectProductForm(){
     const images = Array.from(document.querySelectorAll('#pm-images .pm-img-row'))
       .map(row => (row.dataset.url || '').trim()).filter(Boolean);
@@ -1265,6 +1277,8 @@
       images,
       price: document.getElementById('pm-price').value,
       weight: document.getElementById('pm-weight').value,
+      shipmentMethod: document.getElementById('pm-shipment-method').value === 'third_party' ? 'third_party' : 'canada_post',
+      thirdPartyShippingPrice: document.getElementById('pm-flat-price').value,
       salePercent: document.getElementById('pm-sale-percent').value,
       saleStart: document.getElementById('pm-sale-start').value,
       saleEnd: document.getElementById('pm-sale-end').value,
@@ -1339,6 +1353,9 @@
     document.addEventListener('keydown', (e) => {
       if(e.key === 'Escape' && modal.classList.contains('is-open')) closeProductEditor();
     });
+
+    // Toggle the flat-price field when the shipment method changes.
+    document.getElementById('pm-shipment-method').addEventListener('change', syncShipmentMethod);
 
     // repeater add buttons
     document.getElementById('pm-add-image').addEventListener('click', () => addImageRow(''));
@@ -1458,9 +1475,16 @@
       ? `<span class="ao-refunded">${money(o.amount_refunded_cents)} refunded</span>` : '';
 
     // Shipping + HST lines shown between the items and the Total (only when applied).
-    const shipRow = (Number(o.shipping_cents) || 0) > 0
-      ? `<div class="ao-tax"><span>Shipping${o.shipping_service_name ? ` (${escAttr(o.shipping_service_name)})` : ''}</span><span>${money(o.shipping_cents)}</span></div>`
-      : '';
+    // When the order has a per-line breakdown, show a Shipping total plus a muted
+    // sub-line per method (Canada Post combined + each third-party item).
+    const shipMethodName = (m) => m === 'third_party' ? 'Third-Party Courier' : 'Canada Post';
+    const shipBreakdown = Array.isArray(o.shipping_breakdown) ? o.shipping_breakdown : [];
+    const shipRow = shipBreakdown.length
+      ? `<div class="ao-tax"><span>Shipping</span><span>${money(o.shipping_cents)}</span></div>` +
+        shipBreakdown.map(l => `<div class="ao-ship-line"><span>${shipMethodName(l.method)} — ${escAttr(l.label)}</span><span>${money(l.cents)}</span></div>`).join('')
+      : ((Number(o.shipping_cents) || 0) > 0
+          ? `<div class="ao-tax"><span>Shipping${o.shipping_service_name ? ` (${escAttr(o.shipping_service_name)})` : ''}</span><span>${money(o.shipping_cents)}</span></div>`
+          : '');
     const taxRow = (Number(o.tax_cents) || 0) > 0
       ? `<div class="ao-tax"><span>HST (${Number(o.hst_percent) || 0}%)</span><span>${money(o.tax_cents)}</span></div>`
       : '';
@@ -1662,9 +1686,16 @@
       taxCents: Number(o.tax_cents) || 0,
       shippingCents: Number(o.shipping_cents) || 0,
       shippingName: o.shipping_service_name || '',
+      shipping: (Array.isArray(o.shipping_breakdown) ? o.shipping_breakdown : []).map(l => ({
+        method: l.method === 'third_party' ? 'third_party' : 'canada_post',
+        label: String(l.label || ''),
+        cents: Number(l.cents) || 0,
+      })),
       totalCents: Number(o.total_cents) || 0,
     }));
   }
+
+  function invShipMethod(m){ return m === 'third_party' ? 'Third-Party Courier' : 'Canada Post'; }
 
   function renderInvoice(){
     const table = document.getElementById('invoice-table');
@@ -1693,9 +1724,14 @@
           ).join('')
         : '—';
       const hstHtml = `${fmtMoney(r.taxCents / 100)} <span class="inv-unit">(${r.hstPercent}%)</span>`;
-      const shipHtml = r.shippingName
-        ? `${fmtMoney(r.shippingCents / 100)} <span class="inv-unit">(${escAttr(r.shippingName)})</span>`
-        : fmtMoney(r.shippingCents / 100);
+      const shipHtml = r.shipping.length
+        ? r.shipping.map(l =>
+            `<span class="inv-item"><span class="inv-q">${escAttr(invShipMethod(l.method))}</span> — ${escAttr(l.label)}` +
+            ` <span class="inv-unit">${fmtMoney(l.cents / 100)}</span></span>`
+          ).join('')
+        : (r.shippingName
+            ? `${fmtMoney(r.shippingCents / 100)} <span class="inv-unit">(${escAttr(r.shippingName)})</span>`
+            : fmtMoney(r.shippingCents / 100));
       return `<tr>
           <td>${escAttr(r.id)}</td>
           <td>${escAttr(r.date)}</td>
@@ -1703,7 +1739,7 @@
           <td class="inv-items">${itemsHtml}</td>
           <td class="inv-num">${fmtMoney(r.subtotalCents / 100)}</td>
           <td class="inv-num">${hstHtml}</td>
-          <td class="inv-num">${shipHtml}</td>
+          <td class="inv-ship">${shipHtml}</td>
           <td class="inv-num">${fmtMoney(r.totalCents / 100)}</td>
         </tr>`;
     }).join('');
@@ -1719,16 +1755,19 @@
 
   function exportInvoiceCsv(){
     const rows = invoiceRows();
-    const header = ['Order ID', 'Date', 'Customer', 'Items', 'Subtotal', 'HST %', 'HST', 'Shipping', 'Shipping method', 'Total'];
+    const header = ['Order ID', 'Date', 'Customer', 'Items', 'Subtotal', 'HST %', 'HST', 'Shipping total', 'Shipping breakdown', 'Total'];
     const lines = [header.map(csvCell).join(',')];
     rows.forEach(r => {
       const itemsText = r.items.length
         ? r.items.map(it => `${it.qty} x ${it.label} @ ${fmtMoney(it.unitCents / 100)} each`).join('\n')
         : '';
+      const shipText = r.shipping.length
+        ? r.shipping.map(l => `${invShipMethod(l.method)} — ${l.label}: ${fmtMoney(l.cents / 100)}`).join('\n')
+        : r.shippingName;
       lines.push([
         r.id, r.date, r.customer, itemsText,
         fmtMoney(r.subtotalCents / 100), `${r.hstPercent}%`, fmtMoney(r.taxCents / 100),
-        fmtMoney(r.shippingCents / 100), r.shippingName, fmtMoney(r.totalCents / 100),
+        fmtMoney(r.shippingCents / 100), shipText, fmtMoney(r.totalCents / 100),
       ].map(csvCell).join(','));
     });
     // BOM so Excel reads UTF-8 (accents, the ° in product names) correctly.

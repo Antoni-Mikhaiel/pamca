@@ -3,8 +3,14 @@ import { AdminProductInput, Product, ProductOptionGroup, ProductVariation } from
 import { asVariants, buildCombinationKeys, totalVariantStock } from "../lib/variants.js";
 
 const PRODUCT_COLUMNS =
-  "id, slug, name, description, image_url, price_regular, price_sale, is_on_sale, cost_price, weight_grams, redirect_path, " +
+  "id, slug, name, description, image_url, price_regular, price_sale, is_on_sale, cost_price, weight_grams, " +
+  "shipment_method, third_party_shipping_price, redirect_path, " +
   "status, images, sale_percent, sale_start, sale_end, stock, key_features, option_groups, variants";
+
+/** Normalizes a stored/entered shipment method to one of the two supported values. */
+export function normalizeShipmentMethod(value: unknown): "canada_post" | "third_party" {
+  return String(value ?? "").toLowerCase() === "third_party" ? "third_party" : "canada_post";
+}
 
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v) => typeof v === "string") : [];
@@ -127,6 +133,8 @@ function mapRow(row: Record<string, unknown>): Product {
     is_on_sale: Boolean(row.is_on_sale),
     cost_price: Number(row.cost_price ?? 0),
     weight_grams: Math.max(0, Math.round(Number(row.weight_grams ?? 0))),
+    shipment_method: normalizeShipmentMethod(row.shipment_method),
+    third_party_shipping_price: Math.max(0, Number(row.third_party_shipping_price ?? 0)),
     redirect_path: String(row.redirect_path ?? ""),
     status: String(row.status ?? "active"),
     images: asStringArray(row.images),
@@ -193,6 +201,8 @@ function toAdminShape(p: Product): AdminProductInput & { id: number } {
     stock: p.stock,
     cost: p.cost_price,
     weight: p.weight_grams,
+    shipmentMethod: p.shipment_method,
+    thirdPartyShippingPrice: p.third_party_shipping_price,
     description: p.description,
     keyFeatures: p.key_features,
     optionGroups: p.option_groups,
@@ -250,6 +260,12 @@ function buildRow(input: AdminProductInput) {
     is_on_sale: pct > 0,
     cost_price: Math.max(0, Number(input.cost) || 0),
     weight_grams: Math.max(0, Math.round(Number(input.weight) || 0)),
+    shipment_method: normalizeShipmentMethod(input.shipmentMethod),
+    // Only third-party items carry a flat price; Canada Post items store 0.
+    third_party_shipping_price:
+      normalizeShipmentMethod(input.shipmentMethod) === "third_party"
+        ? Math.max(0, Number(input.thirdPartyShippingPrice) || 0)
+        : 0,
     stock,
     variants,
     key_features: asStringArray(input.keyFeatures),
@@ -293,13 +309,42 @@ export async function deleteProduct(id: number): Promise<void> {
 
 /** Per-unit shipping weight (grams) for the given product ids, keyed by id. */
 export async function getProductWeightsGrams(ids: number[]): Promise<Map<number, number>> {
-  const unique = [...new Set(ids.filter((id) => Number.isFinite(id)))];
+  const info = await getProductShippingInfo(ids);
   const out = new Map<number, number>();
+  for (const [id, v] of info) out.set(id, v.weightGrams);
+  return out;
+}
+
+export interface ProductShippingInfo {
+  method: "canada_post" | "third_party";
+  /** Flat third-party price in dollars (0 for Canada Post items). */
+  flatPrice: number;
+  /** Per-unit shipping weight in grams (Canada Post rating). */
+  weightGrams: number;
+}
+
+/** Shipping method + flat price + weight for the given product ids, keyed by id. */
+export async function getProductShippingInfo(ids: number[]): Promise<Map<number, ProductShippingInfo>> {
+  const unique = [...new Set(ids.filter((id) => Number.isFinite(id)))];
+  const out = new Map<number, ProductShippingInfo>();
   if (unique.length === 0) return out;
-  const { data, error } = await supabase.from("products").select("id, weight_grams").in("id", unique);
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, weight_grams, shipment_method, third_party_shipping_price")
+    .in("id", unique);
   if (error) throw error;
-  for (const row of (data ?? []) as Array<{ id: number; weight_grams: number | null }>) {
-    out.set(Number(row.id), Math.max(0, Math.round(Number(row.weight_grams ?? 0))));
+  for (const row of (data ?? []) as Array<{
+    id: number;
+    weight_grams: number | null;
+    shipment_method: string | null;
+    third_party_shipping_price: number | null;
+  }>) {
+    const method = normalizeShipmentMethod(row.shipment_method);
+    out.set(Number(row.id), {
+      method,
+      flatPrice: method === "third_party" ? Math.max(0, Number(row.third_party_shipping_price ?? 0)) : 0,
+      weightGrams: Math.max(0, Math.round(Number(row.weight_grams ?? 0))),
+    });
   }
   return out;
 }

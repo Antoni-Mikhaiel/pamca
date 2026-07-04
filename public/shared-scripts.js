@@ -209,6 +209,10 @@
 	// Postal code (normalized) we last requested a quote for, so re-triggers on the
 	// same code (e.g. blurring the field after it already loaded) don't reload the rates.
 	let lastShippingPostal = null;
+	// Third-party-courier flat lines for the cart, and whether the cart has any Canada
+	// Post items (i.e. a Canada Post service must be chosen).
+	let thirdPartyLines = [];
+	let hasCanadaPostItems = false;
 	// "ship" (Canada Post, needs an address) or "pickup" (in-store, no address/charge).
 	let deliveryMethod = "ship";
 
@@ -235,6 +239,8 @@
 			// quoted postal so switching back to shipping re-quotes.
 			shippingReqToken++;
 			lastShippingPostal = null;
+			thirdPartyLines = [];
+			hasCanadaPostItems = false;
 			if (shipping) shipping.style.display = "none";
 			const host = document.getElementById("checkout-shipping-options");
 			if (host) host.innerHTML = "";
@@ -247,6 +253,8 @@
 		shippingRates = [];
 		selectedShippingCode = null;
 		lastShippingPostal = null;
+		thirdPartyLines = [];
+		hasCanadaPostItems = false;
 		const wrap = document.getElementById("checkout-shipping");
 		const host = document.getElementById("checkout-shipping-options");
 		if (host) host.innerHTML = "";
@@ -257,7 +265,8 @@
 		const wrap = document.getElementById("checkout-shipping");
 		const host = document.getElementById("checkout-shipping-options");
 		if (!wrap || !host) return;
-		host.innerHTML = shippingRates
+		// Canada Post service choices (radios) for the Canada Post items…
+		let html = shippingRates
 			.map((r) => {
 				const price = Number(r.priceCents) > 0 ? formatMoney(Number(r.priceCents) / 100) : "Free";
 				const days = Number(r.transitDays) || 0;
@@ -270,6 +279,16 @@
 				</label>`;
 			})
 			.join("");
+		// …plus the fixed third-party-courier flat fees (not selectable — always applied).
+		if (thirdPartyLines.length) {
+			html += thirdPartyLines
+				.map((l) => `<div class="shipping-option shipping-option-fixed">
+					<span class="shipping-option-name">Third-Party Courier — ${escapeHtml(l.label)}</span>
+					<span class="shipping-option-price">${escapeHtml(formatMoney((Number(l.cents) || 0) / 100))}</span>
+				</div>`)
+				.join("");
+		}
+		host.innerHTML = html;
 		wrap.style.display = "";
 		host.querySelectorAll("input[name='checkout-shipping-method']").forEach((input) => {
 			input.addEventListener("change", () => { selectedShippingCode = input.value; });
@@ -300,16 +319,24 @@
 			});
 			const json = await res.json().catch(() => ({}));
 			if (token !== shippingReqToken) return; // a newer request superseded this one
-			const rates = (json && json.data && json.data.rates) || [];
-			if (!res.ok || !rates.length) {
+			const data = (json && json.data) || {};
+			const rates = data.rates || [];
+			const thirdParty = data.thirdParty || [];
+			// A cart with only third-party items has no Canada Post rates but still has
+			// courier fees to show — that's valid, not an error.
+			if (!res.ok || (!rates.length && !thirdParty.length)) {
 				shippingRates = [];
 				selectedShippingCode = null;
+				thirdPartyLines = [];
+				hasCanadaPostItems = false;
 				lastShippingPostal = null; // let the shopper retry the same code
 				if (host) host.innerHTML = `<div class="shipping-error">${escapeHtml((json && json.message) || "Couldn't get shipping rates — please check your postal code.")}</div>`;
 				return;
 			}
 			shippingRates = rates;
-			selectedShippingCode = rates[0].serviceCode; // default to the cheapest option
+			thirdPartyLines = thirdParty;
+			hasCanadaPostItems = !!data.hasCanadaPost && rates.length > 0;
+			selectedShippingCode = rates.length ? rates[0].serviceCode : null; // default to the cheapest CP option
 			renderShippingOptions();
 		} catch (_) {
 			if (token !== shippingReqToken) return;
@@ -410,12 +437,14 @@
 				setCheckoutMessage("Please fill in your full delivery address.");
 				return;
 			}
-			if (!selectedShippingCode) {
+			// A Canada Post service must be chosen only when the cart has Canada Post
+			// items; an all-third-party cart has fixed courier fees and no choice.
+			if (hasCanadaPostItems && !selectedShippingCode) {
 				setCheckoutMessage("Please choose a shipping method.");
 				loadShippingRates();
 				return;
 			}
-			payload.shippingServiceCode = selectedShippingCode;
+			if (selectedShippingCode) payload.shippingServiceCode = selectedShippingCode;
 		}
 
 		const auth = getAuthHeader();
@@ -694,10 +723,16 @@
 		const refunded = Number(order.amount_refunded_cents) > 0
 			? `<div class="order-refunded">${money(order.amount_refunded_cents)} refunded</div>`
 			: "";
-		// Shipping row (only when shipping was charged).
-		const shippingRow = Number(order.shipping_cents) > 0
-			? `<div class="order-tax-row"><span>Shipping${order.shipping_service_name ? ` (${escapeHtml(order.shipping_service_name)})` : ""}</span><span>${money(order.shipping_cents)}</span></div>`
-			: "";
+		// Shipping row(s): a per-line breakdown when present (Canada Post combined +
+		// each third-party item), else a single row when shipping was charged.
+		const shipMethodName = (m) => (m === "third_party" ? "Third-Party Courier" : "Canada Post");
+		const shipBreakdown = Array.isArray(order.shipping_breakdown) ? order.shipping_breakdown : [];
+		const shippingRow = shipBreakdown.length
+			? `<div class="order-tax-row"><span>Shipping</span><span>${money(order.shipping_cents)}</span></div>` +
+				shipBreakdown.map((l) => `<div class="order-ship-line"><span>${shipMethodName(l.method)} — ${escapeHtml(l.label)}</span><span>${money(l.cents)}</span></div>`).join("")
+			: (Number(order.shipping_cents) > 0
+				? `<div class="order-tax-row"><span>Shipping${order.shipping_service_name ? ` (${escapeHtml(order.shipping_service_name)})` : ""}</span><span>${money(order.shipping_cents)}</span></div>`
+				: "");
 		// Tax breakdown row (only for orders that actually carry HST; older pre-tax
 		// orders have tax_cents = 0 and just show their single total).
 		const taxRow = Number(order.tax_cents) > 0

@@ -21,7 +21,7 @@ import {
   isSquareConfigured,
   SquareLineItem,
 } from "./squareService.js";
-import { sendRefundAdminEmail } from "./emailService.js";
+import { sendRefundAdminEmail, sendOrderEditedEmails } from "./emailService.js";
 import { calculateTaxCents } from "./taxService.js";
 
 const SITE_URL = (process.env.SITE_URL ?? "").replace(/\/$/, "");
@@ -281,6 +281,15 @@ export async function commitEdit(order: FullOrder, edit: OrderEditRequest): Prom
 
   await applyItemsAndStock(order, plan.newItems);
   await updateOrderTotal(order.id, plan.newTotalCents, plan.newSubtotalCents, plan.newTaxCents);
+
+  // Email the owner + customer the updated order (best-effort).
+  try {
+    const record = await getOrderRecordById(order.id);
+    if (record) await sendOrderEditedEmails(record);
+  } catch (err) {
+    console.error(`[order-edit] update email failed for order ${order.id}:`, err);
+  }
+
   return { applied: true, refundedCents };
 }
 
@@ -331,6 +340,15 @@ export async function applyEditBySquareOrderId(squareOrderId: string, squarePaym
     newSubtotalCents,
     newTaxCents,
   );
+
+  // Email the owner + customer the updated order (best-effort).
+  try {
+    const record = await getOrderRecordById(order.id);
+    if (record) await sendOrderEditedEmails(record);
+  } catch (err) {
+    console.error(`[order-edit] update email failed for order ${order.id}:`, err);
+  }
+
   return true;
 }
 

@@ -221,15 +221,13 @@ export async function sendPurchaseEmails(order: OrderRecord): Promise<void> {
 
   // 2) Customer confirmation
   if (order.customer_email) {
-    // Pickup orders carry no shipping charge/address; show a store-pickup notice
-    // instead of the delivery estimate.
+    // Pickup orders show a store-pickup notice (with the address); shipped orders show
+    // no delivery-time banner.
     const deliveryBanner = isPickupOrder(order)
       ? `<div style="margin:18px 0;padding:14px 16px;background:#f4f7f7;border-radius:10px;color:#0a615b;font-weight:600;">
            🏪 Your order will be ready for <strong>in-store pickup</strong> at ${escapeHtml(PICKUP_LOCATION)}. We'll let you know as soon as it's ready.
          </div>`
-      : `<div style="margin:18px 0;padding:14px 16px;background:#f4f7f7;border-radius:10px;color:#0a615b;font-weight:600;">
-           🚚 Your order will be delivered within <strong>5–10 business days</strong>.
-         </div>`;
+      : "";
     const customerHtml = shell(
       "Thank you for your order!",
       `<p style="margin:0 0 8px;">Hi ${escapeHtml(order.customer_first_name || "there")}, your payment was received and your order is confirmed.</p>
@@ -246,6 +244,60 @@ export async function sendPurchaseEmails(order: OrderRecord): Promise<void> {
       subject: `Your PAMCA order is confirmed — Purchase ID ${order.purchase_id ?? ""}`,
       html: customerHtml,
     });
+  }
+}
+
+/**
+ * Sends the two "order updated" emails after an edit is applied: the owner gets the
+ * buyer's details + the full revised order; the customer gets a confirmation with their
+ * revised receipt. Both reflect what the order looks like *now*. Best-effort and
+ * independent — one failing send never blocks the other.
+ */
+export async function sendOrderEditedEmails(order: OrderRecord): Promise<void> {
+  const placed = formatDate(order.created_at);
+
+  // 1) Owner / admin copy — the full order as it stands after the edit.
+  const adminHtml = shell(
+    `Order updated #${order.purchase_id ?? ""}`,
+    `<p style="margin:0 0 14px;">This order was <strong>updated</strong>. Here's what it looks like now.</p>
+     ${pidBadge(order)}
+     <h3 style="margin:18px 0 6px;color:#0a615b;">Customer</h3>
+     ${detailsBlock(order)}
+     <h3 style="margin:18px 0 6px;color:#0a615b;">Updated order</h3>
+     ${itemsTable(order)}`,
+  );
+  try {
+    await sendBrevoEmail({
+      to: [{ email: adminEmail }],
+      subject: `Order updated #${order.purchase_id ?? ""} — ${customerName(order)} — ${money(order.total_cents)}`,
+      html: adminHtml,
+      ...(order.customer_email ? { replyTo: { email: order.customer_email, name: customerName(order) } } : {}),
+    });
+  } catch (err) {
+    console.error(`[email] owner order-updated notification failed for #${order.purchase_id ?? ""}:`, err);
+  }
+
+  // 2) Customer confirmation — their revised receipt.
+  if (order.customer_email) {
+    const customerHtml = shell(
+      "Your order has been updated",
+      `<p style="margin:0 0 8px;">Hi ${escapeHtml(order.customer_first_name || "there")}, your order has been updated. Here's your revised receipt.</p>
+       <p style="margin:0 0 14px;">Keep your Purchase ID — you can use it (with your phone number) to view or manage your order anytime.</p>
+       ${pidBadge(order)}
+       <h3 style="margin:18px 0 6px;color:#0a615b;">Your updated receipt</h3>
+       ${itemsTable(order)}
+       <p style="margin:6px 2px 0;text-align:right;color:#888;font-size:12px;">${HST_REGISTRATION}</p>
+       <p style="margin:14px 0 0;">Placed: ${escapeHtml(placed)}</p>`,
+    );
+    try {
+      await sendBrevoEmail({
+        to: [{ email: order.customer_email, name: customerName(order) }],
+        subject: `Your PAMCA order was updated — Purchase ID ${order.purchase_id ?? ""}`,
+        html: customerHtml,
+      });
+    } catch (err) {
+      console.error(`[email] customer order-updated confirmation failed for #${order.purchase_id ?? ""}:`, err);
+    }
   }
 }
 

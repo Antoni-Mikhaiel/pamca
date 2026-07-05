@@ -24,6 +24,7 @@ import {
   handleAdminFlagOrder,
   handleAdminCompleteOrder,
   handleAdminSetTracking,
+  handleAdminCreateLabel,
   handleAdminDashboard,
 } from "../controllers/adminOrderController.js";
 import { handleGetOrder, handleEditPreview, handleEditCommit, handleRefundOrder, handleOrderTracking } from "../controllers/orderEditController.js";
@@ -120,6 +121,7 @@ const routes: Route[] = [
   { method: "POST", pattern: /^\/api\/admin\/orders\/flag$/, handler: handleAdminFlagOrder },
   { method: "POST", pattern: /^\/api\/admin\/orders\/complete$/, handler: handleAdminCompleteOrder },
   { method: "POST", pattern: /^\/api\/admin\/orders\/tracking$/, handler: handleAdminSetTracking },
+  { method: "POST", pattern: /^\/api\/admin\/orders\/label$/, handler: handleAdminCreateLabel },
   { method: "GET", pattern: /^\/api\/admin\/dashboard$/, handler: handleAdminDashboard },
 ];
 

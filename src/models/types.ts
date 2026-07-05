@@ -169,6 +169,8 @@ export interface OrderRecord {
   hst_percent: number;
   /** Pre-tax Canada Post shipping charged to the customer (cents); 0 when none. */
   shipping_cents: number;
+  /** Canada Post service code (e.g. "DOM.EP"); null for pickup / third-party-only. */
+  shipping_service_code: string | null;
   /** Human-readable Canada Post service name (e.g. "Expedited Parcel"); null when none. */
   shipping_service_name: string | null;
   /** Per-line shipping breakdown (one combined Canada Post line + a line per third-party item). */

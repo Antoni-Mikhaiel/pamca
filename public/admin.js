@@ -17,6 +17,7 @@
     flagOrder: '/api/admin/orders/flag',
     completeOrder: '/api/admin/orders/complete',
     trackOrder: '/api/admin/orders/tracking',
+    createLabel: '/api/admin/orders/label',
     dashboard: '/api/admin/dashboard',
     hst: '/api/admin/tax/hst'
   };
@@ -1490,10 +1491,17 @@
       : '';
 
     // Tracking-number control (admin records the Canada Post number at fulfillment).
+    // "Create CP label" is offered for orders with a Canada Post service and no PIN yet
+    // — it buys the label and fills the tracking number automatically.
+    const canLabel = !o.tracking_pin && /^DOM\./i.test(String(o.shipping_service_code || ''));
+    const labelBtn = canLabel
+      ? `<button type="button" class="ao-track-btn ao-label-btn" data-act="create-label" data-id="${escAttr(o.id)}">Create CP label</button>`
+      : '';
     const trackRow = refunded ? '' : `<div class="ao-track">
         <label>Tracking #</label>
         <input type="text" class="ao-track-input" data-id="${escAttr(o.id)}" value="${escAttr(o.tracking_pin || '')}" placeholder="Canada Post tracking number" />
         <button type="button" class="ao-track-btn" data-act="save-tracking" data-id="${escAttr(o.id)}">${o.tracking_pin ? 'Update' : 'Save'}</button>
+        ${labelBtn}
       </div>`;
 
     return `<article class="ao-card">
@@ -1554,6 +1562,39 @@
       window.alert('Could not save the tracking number: ' + e.message);
     }finally{
       if(btn) btn.disabled = false;
+    }
+  }
+
+  // Triggers a browser download of a base64 PDF (the Canada Post label).
+  function downloadBase64Pdf(b64, filename){
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // Buys a Canada Post label for the order, saves the tracking number, and downloads
+  // the label PDF. Confirms first because it charges the Canada Post account.
+  async function createLabel(orderId, btn){
+    if(!window.confirm('Create a Canada Post label for this order? This buys postage and charges the Canada Post account.')) return;
+    const original = btn ? btn.textContent : '';
+    if(btn){ btn.disabled = true; btn.textContent = 'Creating…'; }
+    try{
+      const data = await apiSend(API.createLabel, 'POST', { orderId });
+      applyUpdatedOrder(orderId, data && data.order);
+      if(data && data.labelBase64){
+        downloadBase64Pdf(data.labelBase64, `canada-post-label-${orderId}.pdf`);
+      }else{
+        window.alert('Label created (tracking ' + ((data && data.trackingPin) || '') + '), but the PDF could not be downloaded. You can reprint it from the Canada Post site.');
+      }
+    }catch(e){
+      window.alert('Could not create the label: ' + e.message);
+    }finally{
+      if(btn){ btn.disabled = false; btn.textContent = original || 'Create CP label'; }
     }
   }
 
@@ -1816,6 +1857,7 @@
         const input = host.querySelector(`input.ao-track-input[data-id="${btn.dataset.id}"]`);
         saveTracking(btn.dataset.id, input ? input.value.trim() : '', btn);
       }
+      else if(btn.dataset.act === 'create-label') createLabel(btn.dataset.id, btn);
     });
     const refresh = document.getElementById('admin-order-refresh');
     if(refresh) refresh.addEventListener('click', () => loadOrders());

@@ -258,7 +258,7 @@ export const REFUND_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 const ORDER_SELECT =
   "id, purchase_id, status, currency, subtotal_cents, tax_cents, total_cents, hst_percent, " +
-  "shipping_cents, shipping_service_name, shipping_breakdown, tracking_pin, " +
+  "shipping_cents, shipping_service_code, shipping_service_name, shipping_breakdown, tracking_pin, " +
   "customer_first_name, customer_last_name, " +
   "customer_email, customer_phone, customer_street_number, customer_street_name, customer_city, customer_province, customer_postal_code, created_at, uneditable, completed_at, refunded_at, amount_refunded_cents, " +
   "order_items(id, product_id, product_name, variation_label, unit_price_cents, quantity, line_total_cents)";
@@ -304,6 +304,7 @@ function mapOrder(row: Record<string, unknown>): OrderRecord {
     total_cents: Number(row.total_cents ?? 0),
     hst_percent: Number(row.hst_percent ?? 13),
     shipping_cents: Number(row.shipping_cents ?? 0),
+    shipping_service_code: (row.shipping_service_code as string | null) ?? null,
     shipping_service_name: (row.shipping_service_name as string | null) ?? null,
     shipping_breakdown: asShippingBreakdown(row.shipping_breakdown),
     tracking_pin: (row.tracking_pin as string | null) ?? null,

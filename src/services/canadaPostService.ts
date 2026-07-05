@@ -32,6 +32,16 @@ const baseUrl =
     : "https://soa-gw.canadapost.ca";
 
 const RATE_NS = "http://www.canadapost.ca/ws/ship/rate-v4";
+const NCSHIPMENT_NS = "http://www.canadapost.ca/ws/ncshipment-v4";
+
+// Sender (return) address printed on the label and used as the ship-from. Defaults to
+// the pharmacy; every field is overridable via env. Postal code reuses the rating origin.
+const senderCompany = process.env.CANADA_POST_SENDER_COMPANY ?? "Pharmacy Automated Mechanisms";
+const senderName = process.env.CANADA_POST_SENDER_NAME ?? senderCompany;
+const senderPhone = process.env.CANADA_POST_SENDER_PHONE ?? "416-322-3444";
+const senderStreet = process.env.CANADA_POST_SENDER_ADDRESS ?? "1920 Yonge Street";
+const senderCity = process.env.CANADA_POST_SENDER_CITY ?? "Toronto";
+const senderProvince = (process.env.CANADA_POST_SENDER_PROVINCE ?? "ON").toUpperCase();
 
 /** True once the credentials + account details needed for live rating are present. */
 export function isCanadaPostConfigured(): boolean {
@@ -232,4 +242,124 @@ export async function getTracking(pin: string): Promise<TrackingInfo> {
     expectedDelivery: expected,
     events,
   };
+}
+
+/** Extracts the href of the first `<link rel="{rel}" href="…">` in the XML. */
+function linkHref(xml: string, rel: string): string {
+  const links = xml.match(/<link\b[^>]*>/gi) || [];
+  for (const l of links) {
+    if (new RegExp(`rel="${rel}"`, "i").test(l)) {
+      const h = l.match(/href="([^"]+)"/i);
+      if (h) return h[1];
+    }
+  }
+  return "";
+}
+
+export interface ShipmentDestination {
+  name: string;
+  addressLine1: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  phone?: string;
+}
+
+export interface CreatedShipment {
+  trackingPin: string;
+  shipmentId: string;
+  /** Canada Post artifact URL for the label PDF (requires auth to fetch). */
+  labelHref: string;
+}
+
+/**
+ * Creates a Non-Contract (pay-per-label) Canada Post shipment and returns the tracking
+ * PIN + label artifact link. Non-contract shipping is billed to the account's saved
+ * credit card and needs no end-of-day manifest. Throws when Canada Post isn't configured
+ * or the request is rejected.
+ */
+export async function createNonContractShipment(params: {
+  serviceCode: string;
+  weightKg: number;
+  destination: ShipmentDestination;
+  /** Reference printed on the label (e.g. the purchase id). */
+  reference?: string;
+}): Promise<CreatedShipment> {
+  if (!isCanadaPostConfigured()) throw new Error("Canada Post is not configured.");
+  const weightKg = Math.max(0.1, Math.round((params.weightKg || 0) * 1000) / 1000);
+  const dest = normalizePostal(params.destination.postalCode);
+  if (!dest) throw new Error("The order has no valid destination postal code.");
+
+  const requestXml =
+    `<?xml version="1.0" encoding="UTF-8"?>` +
+    `<non-contract-shipment xmlns="${NCSHIPMENT_NS}">` +
+    `<requested-shipping-point>${escapeXml(originPostalCode)}</requested-shipping-point>` +
+    `<delivery-spec>` +
+    `<service-code>${escapeXml(params.serviceCode)}</service-code>` +
+    `<sender>` +
+    `<company>${escapeXml(senderCompany)}</company>` +
+    `<contact-phone>${escapeXml(senderPhone)}</contact-phone>` +
+    `<address-details>` +
+    `<address-line-1>${escapeXml(senderStreet)}</address-line-1>` +
+    `<city>${escapeXml(senderCity)}</city>` +
+    `<prov-state>${escapeXml(senderProvince)}</prov-state>` +
+    `<postal-zip-code>${escapeXml(originPostalCode)}</postal-zip-code>` +
+    `</address-details>` +
+    `</sender>` +
+    `<destination>` +
+    `<name>${escapeXml(params.destination.name)}</name>` +
+    (params.destination.phone ? `<client-voice-number>${escapeXml(params.destination.phone)}</client-voice-number>` : "") +
+    `<address-details>` +
+    `<address-line-1>${escapeXml(params.destination.addressLine1)}</address-line-1>` +
+    `<city>${escapeXml(params.destination.city)}</city>` +
+    `<prov-state>${escapeXml(params.destination.province)}</prov-state>` +
+    `<country-code>CA</country-code>` +
+    `<postal-zip-code>${escapeXml(dest)}</postal-zip-code>` +
+    `</address-details>` +
+    `</destination>` +
+    `<parcel-characteristics><weight>${weightKg}</weight></parcel-characteristics>` +
+    `<preferences>` +
+    `<show-packing-instructions>true</show-packing-instructions>` +
+    `<show-postage-rate>false</show-postage-rate>` +
+    `<show-insured-value>false</show-insured-value>` +
+    `</preferences>` +
+    (params.reference ? `<references><customer-ref-1>${escapeXml(params.reference)}</customer-ref-1></references>` : "") +
+    `</delivery-spec>` +
+    `</non-contract-shipment>`;
+
+  const response = await fetch(`${baseUrl}/rs/${encodeURIComponent(customerNumber)}/ncshipment`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/vnd.cpc.ncshipment-v4+xml",
+      Accept: "application/vnd.cpc.ncshipment-v4+xml",
+      Authorization: authHeader(),
+      "Accept-language": "en-CA",
+    },
+    body: requestXml,
+  });
+  const xml = await response.text();
+  if (!response.ok) {
+    const message = tagText(xml, "message") || `Canada Post label creation failed (${response.status})`;
+    throw new Error(message);
+  }
+
+  const trackingPin = tagText(xml, "tracking-pin");
+  if (!trackingPin) throw new Error("Canada Post did not return a tracking number.");
+  return {
+    trackingPin,
+    shipmentId: tagText(xml, "shipment-id"),
+    labelHref: linkHref(xml, "label"),
+  };
+}
+
+/** Fetches a Canada Post label artifact (PDF) and returns it base64-encoded. */
+export async function fetchLabelPdfBase64(href: string): Promise<string> {
+  if (!href) throw new Error("No label link was returned.");
+  const response = await fetch(href, {
+    method: "GET",
+    headers: { Accept: "application/pdf", Authorization: authHeader() },
+  });
+  if (!response.ok) throw new Error(`Could not download the label (${response.status}).`);
+  const buf = Buffer.from(await response.arrayBuffer());
+  return buf.toString("base64");
 }

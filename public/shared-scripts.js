@@ -284,10 +284,14 @@
 				</label>`;
 			})
 			.join("");
-		// Caption naming the items the chosen Canada Post service covers, so the shopper
-		// isn't confused about which items ship by Canada Post vs third-party courier.
+		// Canada Post item card(s) — same card style as the third-party lines below, so
+		// the shopper clearly sees which items the selected Canada Post service covers.
 		if (shippingRates.length && canadaPostItemNames.length) {
-			html += `<div class="shipping-cp-note">Canada Post covers: ${canadaPostItemNames.map(escapeHtml).join(", ")}</div>`;
+			html += canadaPostItemNames
+				.map((name) => `<div class="shipping-option shipping-option-fixed">
+					<span class="shipping-option-name">Canada Post — ${escapeHtml(name)}</span>
+				</div>`)
+				.join("");
 		}
 		// …plus the fixed third-party-courier flat fees (not selectable — always applied).
 		if (thirdPartyLines.length) {

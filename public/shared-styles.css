@@ -1294,8 +1294,6 @@ body.modal-open { overflow: hidden; }
 /* Third-party courier fees: shown, not chosen (always applied), so no hover/cursor. */
 .shipping-option-fixed { cursor: default; background: #f6faf9; border-style: dashed; }
 .shipping-option-fixed:hover { border-color: #ddd; }
-/* Caption listing the items covered by the selected Canada Post service. */
-.shipping-cp-note { font-size: 0.8rem; color: #666; padding: 2px 2px 2px; line-height: 1.4; }
 .shipping-loading, .shipping-error { font-size: 0.88rem; color: #888; padding: 6px 2px; }
 .shipping-error { color: #b02a37; }
 

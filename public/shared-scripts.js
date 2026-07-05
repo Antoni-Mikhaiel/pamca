@@ -213,6 +213,9 @@
 	// Post items (i.e. a Canada Post service must be chosen).
 	let thirdPartyLines = [];
 	let hasCanadaPostItems = false;
+	// Names of the items shipping by Canada Post — shown so the shopper knows which
+	// items the selected Canada Post service covers.
+	let canadaPostItemNames = [];
 	// "ship" (Canada Post, needs an address) or "pickup" (in-store, no address/charge).
 	let deliveryMethod = "ship";
 
@@ -241,6 +244,7 @@
 			lastShippingPostal = null;
 			thirdPartyLines = [];
 			hasCanadaPostItems = false;
+			canadaPostItemNames = [];
 			if (shipping) shipping.style.display = "none";
 			const host = document.getElementById("checkout-shipping-options");
 			if (host) host.innerHTML = "";
@@ -255,6 +259,7 @@
 		lastShippingPostal = null;
 		thirdPartyLines = [];
 		hasCanadaPostItems = false;
+		canadaPostItemNames = [];
 		const wrap = document.getElementById("checkout-shipping");
 		const host = document.getElementById("checkout-shipping-options");
 		if (host) host.innerHTML = "";
@@ -279,6 +284,11 @@
 				</label>`;
 			})
 			.join("");
+		// Caption naming the items the chosen Canada Post service covers, so the shopper
+		// isn't confused about which items ship by Canada Post vs third-party courier.
+		if (shippingRates.length && canadaPostItemNames.length) {
+			html += `<div class="shipping-cp-note">Canada Post covers: ${canadaPostItemNames.map(escapeHtml).join(", ")}</div>`;
+		}
 		// …plus the fixed third-party-courier flat fees (not selectable — always applied).
 		if (thirdPartyLines.length) {
 			html += thirdPartyLines
@@ -329,12 +339,14 @@
 				selectedShippingCode = null;
 				thirdPartyLines = [];
 				hasCanadaPostItems = false;
+				canadaPostItemNames = [];
 				lastShippingPostal = null; // let the shopper retry the same code
 				if (host) host.innerHTML = `<div class="shipping-error">${escapeHtml((json && json.message) || "Couldn't get shipping rates — please check your postal code.")}</div>`;
 				return;
 			}
 			shippingRates = rates;
 			thirdPartyLines = thirdParty;
+			canadaPostItemNames = data.canadaPostItems || [];
 			hasCanadaPostItems = !!data.hasCanadaPost && rates.length > 0;
 			selectedShippingCode = rates.length ? rates[0].serviceCode : null; // default to the cheapest CP option
 			renderShippingOptions();

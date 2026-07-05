@@ -64,6 +64,7 @@ export async function handleGetShippingRates(req: ApiRequest, res: ApiResponse):
         priceCents: r.priceCents,
         transitDays: r.transitDays,
       })),
+      canadaPostItems: quote.canadaPostItems,
       thirdParty: quote.thirdPartyLines.map((l) => ({ label: l.label, cents: l.cents })),
       thirdPartyCents: quote.thirdPartyCents,
       hasCanadaPost: quote.hasCanadaPost,

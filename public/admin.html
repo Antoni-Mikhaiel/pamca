@@ -1117,8 +1117,13 @@
       text-transform: uppercase;
       color: var(--ink-soft);
     }
-    .pm-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .pm-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    /* align-items:end bottom-aligns the fields so their inputs line up even when one
+       field's label wraps to two lines (e.g. the flat-price hint); the grid gap spaces
+       the fields (horizontally when two columns, vertically when stacked on mobile). */
+    .pm-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: end; margin-bottom: 14px; }
+    .pm-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: end; margin-bottom: 14px; }
+    .pm-row:last-child, .pm-row-3:last-child { margin-bottom: 0; }
+    .pm-row > .pm-field, .pm-row-3 > .pm-field { margin-bottom: 0; }
 
     .pm-dialog-body input,
     .pm-dialog-body textarea,

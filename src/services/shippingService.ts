@@ -35,9 +35,16 @@ function thirdPartyLines(items: CartItem[], info: Map<number, ProductShippingInf
   }));
 }
 
+/** Display name for a cart line (product name + variation label when present). */
+function cartItemLabel(i: CartItem): string {
+  return i.variation_label ? `${i.product_name} (${i.variation_label})` : i.product_name;
+}
+
 export interface CartShippingQuote {
   /** Canada Post service options for the CP portion (empty when there are no CP items). */
   canadaPostRates: ShippingRate[];
+  /** Names of the items that ship by Canada Post (all covered by the chosen CP service). */
+  canadaPostItems: string[];
   /** One flat line per third-party item. */
   thirdPartyLines: ShippingLine[];
   /** True when the cart has Canada Post items — i.e. a Canada Post service must be chosen. */
@@ -62,6 +69,7 @@ export async function quoteCartShipping(items: CartItem[], postalCode: string): 
 
   return {
     canadaPostRates,
+    canadaPostItems: canadaPost.map(cartItemLabel),
     thirdPartyLines: tpLines,
     hasCanadaPost: canadaPost.length > 0,
     thirdPartyCents: tpLines.reduce((s, l) => s + l.cents, 0),

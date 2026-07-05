@@ -1393,6 +1393,8 @@
     }
     .auth-card input:focus { border-color: var(--signal); background: #fff; box-shadow: 0 0 0 3px rgba(12, 124, 116, 0.14); }
     .auth-card .button { margin-top: 10px; width: 100%; }
+    .auth-card .auth-back { display: block; margin-top: 14px; text-align: center; color: var(--signal-deep); font-size: 0.88rem; text-decoration: none; }
+    .auth-card .auth-back:hover { text-decoration: underline; }
     .auth-msg { margin: 6px 0 0; min-height: 1.2em; font-family: var(--font-mono); font-size: 0.74rem; color: var(--ember); }
 
     /* ---------- Responsive ---------- */
@@ -1588,6 +1590,7 @@
       <input type="password" id="auth-password" autocomplete="current-password" placeholder="••••••••" required>
       <button type="submit" class="button" id="auth-submit">Sign in</button>
       <p class="auth-msg" id="auth-msg"></p>
+      <a class="auth-back" href="/">← Back to home</a>
     </form>
   </div>
 

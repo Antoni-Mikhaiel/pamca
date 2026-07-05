@@ -81,8 +81,19 @@
     if (taxCents > 0 || shippingCents > 0) {
       rows += `<div class="receipt-total-row"><span>Subtotal</span><span>${money(order.subtotal_cents)}</span></div>`;
       if (shippingCents > 0) {
-        const svc = order.shipping_service_name ? ` (${escapeHtml(order.shipping_service_name)})` : "";
-        rows += `<div class="receipt-total-row"><span>Shipping${svc}</span><span>${money(shippingCents)}</span></div>`;
+        // Break the shipping down by method (Canada Post combined + each third-party
+        // item) when a breakdown was stored; else fall back to a single line.
+        const breakdown = Array.isArray(order.shipping_breakdown) ? order.shipping_breakdown : [];
+        if (breakdown.length) {
+          const shipMethodName = (m) => (m === "third_party" ? "Third-Party Courier" : "Canada Post");
+          rows += `<div class="receipt-total-row"><span>Shipping</span><span>${money(shippingCents)}</span></div>`;
+          rows += breakdown.map((l) =>
+            `<div class="receipt-total-row receipt-ship-line"><span>${shipMethodName(l.method)} — ${escapeHtml(l.label)}</span><span>${money(l.cents)}</span></div>`
+          ).join("");
+        } else {
+          const svc = order.shipping_service_name ? ` (${escapeHtml(order.shipping_service_name)})` : "";
+          rows += `<div class="receipt-total-row"><span>Shipping${svc}</span><span>${money(shippingCents)}</span></div>`;
+        }
       }
       if (taxCents > 0) {
         rows += `<div class="receipt-total-row"><span>HST (${order.hst_percent}%)</span><span>${money(taxCents)}</span></div>`;

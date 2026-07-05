@@ -103,7 +103,12 @@ export async function resolveCartShipping(
   if (quote.canadaPostRates.length) {
     const chosen =
       quote.canadaPostRates.find((r) => r.serviceCode === requestedServiceCode) ?? quote.canadaPostRates[0];
-    breakdown.push({ method: "canada_post", label: chosen.serviceName, cents: chosen.priceCents });
+    // Include the covered item names in the label so every receipt/email shows which
+    // items ship by Canada Post (mirroring the third-party lines, which name their item).
+    const label = quote.canadaPostItems.length
+      ? `${chosen.serviceName} — ${quote.canadaPostItems.join(", ")}`
+      : chosen.serviceName;
+    breakdown.push({ method: "canada_post", label, cents: chosen.priceCents });
     cpServiceCode = chosen.serviceCode;
     cpServiceName = chosen.serviceName;
   }

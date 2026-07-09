@@ -4,7 +4,7 @@ import { PICKUP_SERVICE_NAME } from "../lib/customer.js";
 // Centralized transactional email via Brevo. `sendBrevoEmail` is the single place
 // that talks to Brevo; the contact form and the order/refund notifications all use it.
 const brevoApiKey = process.env.BREVO_API_KEY ?? "";
-const adminEmail = process.env.CONTACT_TO_EMAIL ?? "antoni.ashraf1@gmail.com";
+const adminEmail = process.env.CONTACT_TO_EMAIL ?? "sales@pamca.net";
 const fromEmail = process.env.CONTACT_FROM_EMAIL ?? "noreply@pamca.net";
 const fromName = process.env.CONTACT_FROM_NAME ?? "PAMCA";
 

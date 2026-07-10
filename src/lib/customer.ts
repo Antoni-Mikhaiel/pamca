@@ -41,6 +41,8 @@ export function validateCustomerDetails(
   const requireAddress = options.requireAddress ?? true;
   const firstName = String(input.firstName ?? "").trim();
   const lastName = String(input.lastName ?? "").trim();
+  // Optional business/pharmacy name — captured everywhere but never blocks checkout.
+  const pharmacyName = String(input.pharmacyName ?? "").trim();
   const email = String(input.email ?? "").trim().toLowerCase();
   const streetNumber = String(input.streetNumber ?? "").trim();
   const streetName = String(input.streetName ?? "").trim();
@@ -61,5 +63,5 @@ export function validateCustomerDetails(
   }
   if (!phone) return { ok: false, error: "Enter a valid 10-digit Canadian phone number." };
 
-  return { ok: true, value: { firstName, lastName, email, streetNumber, streetName, city, province, postalCode, phone } };
+  return { ok: true, value: { firstName, lastName, pharmacyName, email, streetNumber, streetName, city, province, postalCode, phone } };
 }

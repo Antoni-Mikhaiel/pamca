@@ -98,6 +98,7 @@ export async function createPendingOrder(params: {
         purchase_id: generatePurchaseId(),
         customer_first_name: customer.firstName,
         customer_last_name: customer.lastName,
+        customer_pharmacy_name: customer.pharmacyName,
         customer_email: customer.email,
         customer_phone: customer.phone,
         customer_street_number: customer.streetNumber,
@@ -259,7 +260,7 @@ export const REFUND_WINDOW_MS = 48 * 60 * 60 * 1000;
 const ORDER_SELECT =
   "id, purchase_id, status, currency, subtotal_cents, tax_cents, total_cents, hst_percent, " +
   "shipping_cents, shipping_service_code, shipping_service_name, shipping_breakdown, tracking_pin, " +
-  "customer_first_name, customer_last_name, " +
+  "customer_first_name, customer_last_name, customer_pharmacy_name, " +
   "customer_email, customer_phone, customer_street_number, customer_street_name, customer_city, customer_province, customer_postal_code, created_at, uneditable, completed_at, refunded_at, amount_refunded_cents, " +
   "order_items(id, product_id, product_name, variation_label, unit_price_cents, quantity, line_total_cents)";
 
@@ -310,6 +311,7 @@ function mapOrder(row: Record<string, unknown>): OrderRecord {
     tracking_pin: (row.tracking_pin as string | null) ?? null,
     customer_first_name: (row.customer_first_name as string | null) ?? null,
     customer_last_name: (row.customer_last_name as string | null) ?? null,
+    customer_pharmacy_name: (row.customer_pharmacy_name as string | null) ?? null,
     customer_email: (row.customer_email as string | null) ?? null,
     customer_phone: (row.customer_phone as string | null) ?? null,
     customer_street_number: (row.customer_street_number as string | null) ?? null,
@@ -421,7 +423,7 @@ export interface FullOrder {
 
 const FULL_ORDER_SELECT =
   "id, user_id, cart_token, purchase_id, status, currency, subtotal_cents, tax_cents, total_cents, hst_percent, shipping_cents, uneditable, completed_at, refunded_at, " +
-  "amount_refunded_cents, payments, created_at, customer_first_name, customer_last_name, customer_email, " +
+  "amount_refunded_cents, payments, created_at, customer_first_name, customer_last_name, customer_pharmacy_name, customer_email, " +
   "customer_phone, customer_street_number, customer_street_name, customer_city, customer_province, customer_postal_code, " +
   "order_items(id, product_id, variation_id, product_name, variation_label, unit_price_cents, quantity, line_total_cents)";
 
@@ -460,6 +462,7 @@ export async function getFullOrder(orderId: string): Promise<FullOrder | null> {
     customer: {
       firstName: String(row.customer_first_name ?? ""),
       lastName: String(row.customer_last_name ?? ""),
+      pharmacyName: String(row.customer_pharmacy_name ?? ""),
       email: String(row.customer_email ?? ""),
       phone: String(row.customer_phone ?? ""),
       streetNumber: String(row.customer_street_number ?? ""),

@@ -84,6 +84,7 @@ create index if not exists user_profiles_role_idx on user_profiles(role);
 -- Address is now broken down into separate fields for Canadian Post API integration.
 alter table user_profiles add column if not exists first_name text;
 alter table user_profiles add column if not exists last_name text;
+alter table user_profiles add column if not exists pharmacy_name text;  -- optional business/pharmacy name
 alter table user_profiles add column if not exists contact_email text;
 -- Legacy address field (deprecated — will be migrated to separate fields)
 alter table user_profiles add column if not exists address text;
@@ -187,6 +188,7 @@ alter table orders add column if not exists purchase_id text;
 alter table orders add column if not exists user_id uuid references auth.users(id) on delete set null;
 alter table orders add column if not exists customer_first_name text;
 alter table orders add column if not exists customer_last_name text;
+alter table orders add column if not exists customer_pharmacy_name text;  -- optional business/pharmacy name
 alter table orders add column if not exists customer_phone text;     -- '+1' + 10 digits
 -- Legacy address field (deprecated — will be migrated to separate fields)
 alter table orders add column if not exists customer_address text;

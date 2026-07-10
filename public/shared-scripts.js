@@ -381,6 +381,7 @@
 			if (!p) return;
 			setFieldValue("checkout-first", p.firstName);
 			setFieldValue("checkout-last", p.lastName);
+			setFieldValue("checkout-pharmacy", p.pharmacyName);
 			setFieldValue("checkout-email", p.email);
 			setFieldValue("checkout-street-number", p.streetNumber);
 			setFieldValue("checkout-street-name", p.streetName);
@@ -430,6 +431,7 @@
 		const payload = {
 			firstName: fieldValue("checkout-first"),
 			lastName: fieldValue("checkout-last"),
+			pharmacyName: fieldValue("checkout-pharmacy"),
 			email: fieldValue("checkout-email"),
 			phone: fieldValue("checkout-phone"),
 			deliveryMethod: isPickup ? "pickup" : "ship",

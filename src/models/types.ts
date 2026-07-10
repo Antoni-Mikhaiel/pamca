@@ -114,6 +114,8 @@ export interface CartItem {
 export interface CustomerDetails {
   firstName: string;
   lastName: string;
+  /** Optional business / pharmacy name (customers are pharmacies). Empty string when not given. */
+  pharmacyName: string;
   email: string;
   /** '+1' followed by exactly 10 digits (Canada only). */
   phone: string;
@@ -179,6 +181,7 @@ export interface OrderRecord {
   tracking_pin: string | null;
   customer_first_name: string | null;
   customer_last_name: string | null;
+  customer_pharmacy_name: string | null;
   customer_email: string | null;
   customer_phone: string | null;
   customer_street_number: string | null;

@@ -115,7 +115,7 @@
     const street = [order.customer_street_number, order.customer_street_name].filter(Boolean).join(" ");
     const region = [order.customer_province, order.customer_postal_code].filter(Boolean).join(" ");
     const cityRegion = [order.customer_city, region].filter(Boolean).join(", ");
-    const parts = [name, street, cityRegion].filter(Boolean);
+    const parts = [name, order.customer_pharmacy_name, street, cityRegion].filter(Boolean);
     if (parts.length === 0) { wrap.style.display = "none"; return; }
     wrap.style.display = "";
     host.innerHTML = parts.map((p) => escapeHtml(p)).join("<br>");

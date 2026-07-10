@@ -165,8 +165,12 @@ function detailsBlock(order: OrderRecord): string {
     : order.customer_street_number && order.customer_street_name
       ? `${escapeHtml(order.customer_street_number)} ${escapeHtml(order.customer_street_name)}, ${escapeHtml(order.customer_city || "")} ${escapeHtml(order.customer_province || "")} ${escapeHtml(order.customer_postal_code || "")}`
       : "—";
+  const pharmacyRow = order.customer_pharmacy_name
+    ? `<tr><td style="color:#888;padding-right:12px;">Pharmacy</td><td>${escapeHtml(order.customer_pharmacy_name)}</td></tr>`
+    : "";
   return `<table style="font-size:14px;color:#333;line-height:1.6;">
       <tr><td style="color:#888;padding-right:12px;">Name</td><td>${escapeHtml(customerName(order))}</td></tr>
+      ${pharmacyRow}
       <tr><td style="color:#888;padding-right:12px;">Email</td><td>${escapeHtml(order.customer_email || "—")}</td></tr>
       <tr><td style="color:#888;padding-right:12px;">Phone</td><td>${escapeHtml(order.customer_phone || "—")}</td></tr>
       <tr><td style="color:#888;padding-right:12px;">${pickup ? "Fulfilment" : "Address"}</td><td>${addressLine}</td></tr>
@@ -231,6 +235,7 @@ export async function sendPurchaseEmails(order: OrderRecord): Promise<void> {
     const customerHtml = shell(
       "Thank you for your order!",
       `<p style="margin:0 0 8px;">Hi ${escapeHtml(order.customer_first_name || "there")}, your payment was received and your order is confirmed.</p>
+       ${order.customer_pharmacy_name ? `<p style="margin:0 0 8px;color:#0a615b;font-weight:600;">🏥 ${escapeHtml(order.customer_pharmacy_name)}</p>` : ""}
        <p style="margin:0 0 14px;">Please keep your Purchase ID — you can use it (with your phone number) to view or manage your order anytime.</p>
        ${pidBadge(order)}
        <h3 style="margin:18px 0 6px;color:#0a615b;">Your receipt</h3>
@@ -282,6 +287,7 @@ export async function sendOrderEditedEmails(order: OrderRecord): Promise<void> {
     const customerHtml = shell(
       "Your order has been updated",
       `<p style="margin:0 0 8px;">Hi ${escapeHtml(order.customer_first_name || "there")}, your order has been updated. Here's your revised receipt.</p>
+       ${order.customer_pharmacy_name ? `<p style="margin:0 0 8px;color:#0a615b;font-weight:600;">🏥 ${escapeHtml(order.customer_pharmacy_name)}</p>` : ""}
        <p style="margin:0 0 14px;">Keep your Purchase ID — you can use it (with your phone number) to view or manage your order anytime.</p>
        ${pidBadge(order)}
        <h3 style="margin:18px 0 6px;color:#0a615b;">Your updated receipt</h3>

@@ -1412,7 +1412,7 @@
 
   function orderMatches(o, term){
     if(!term) return true;
-    const hay = [o.purchase_id, o.customer_first_name, o.customer_last_name, o.customer_email, o.customer_phone]
+    const hay = [o.purchase_id, o.customer_first_name, o.customer_last_name, o.customer_pharmacy_name, o.customer_email, o.customer_phone]
       .map(v => String(v || '').toLowerCase()).join(' ');
     return hay.includes(term);
   }
@@ -1511,6 +1511,7 @@
       </div>
       <div class="ao-cred">
         <div><span>Name</span><b>${escAttr(name)}</b></div>
+        ${o.customer_pharmacy_name ? `<div><span>Pharmacy</span><b>${escAttr(o.customer_pharmacy_name)}</b></div>` : ''}
         <div><span>Email</span><b>${escAttr(o.customer_email || '—')}</b></div>
         <div><span>Phone</span><b>${escAttr(o.customer_phone || '—')}</b></div>
         <div><span>Placed</span><b>${escAttr(created)}</b></div>

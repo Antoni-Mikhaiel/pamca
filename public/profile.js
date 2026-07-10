@@ -93,6 +93,7 @@
   function fillProfile(p) {
     setVal("profile-first", p.firstName);
     setVal("profile-last", p.lastName);
+    setVal("profile-pharmacy", p.pharmacyName);
     setVal("profile-email", p.email);
     setVal("profile-street-number", p.streetNumber);
     setVal("profile-street-name", p.streetName);
@@ -207,6 +208,7 @@
     const payload = {
       firstName: getVal("profile-first"),
       lastName: getVal("profile-last"),
+      pharmacyName: getVal("profile-pharmacy"),
       email: getVal("profile-email"),
       streetNumber: getVal("profile-street-number"),
       streetName: getVal("profile-street-name"),

@@ -41,7 +41,7 @@ export function validateCustomerDetails(
   const requireAddress = options.requireAddress ?? true;
   const firstName = String(input.firstName ?? "").trim();
   const lastName = String(input.lastName ?? "").trim();
-  // Optional business/pharmacy name — captured everywhere but never blocks checkout.
+  // Business/pharmacy name — required (customers are pharmacies).
   const pharmacyName = String(input.pharmacyName ?? "").trim();
   const email = String(input.email ?? "").trim().toLowerCase();
   const streetNumber = String(input.streetNumber ?? "").trim();
@@ -53,6 +53,7 @@ export function validateCustomerDetails(
 
   if (!firstName) return { ok: false, error: "First name is required." };
   if (!lastName) return { ok: false, error: "Last name is required." };
+  if (!pharmacyName) return { ok: false, error: "Pharmacy name is required." };
   if (!isValidEmail(email)) return { ok: false, error: "Enter a valid email address." };
   if (requireAddress) {
     if (!streetNumber) return { ok: false, error: "Street number is required." };

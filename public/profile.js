@@ -217,7 +217,7 @@
       postalCode: getVal("profile-postal-code"),
       phone: getVal("profile-phone"),
     };
-    if (!payload.firstName || !payload.lastName || !payload.email || !payload.streetNumber || !payload.streetName || !payload.city || !payload.province || !payload.postalCode) {
+    if (!payload.firstName || !payload.lastName || !payload.pharmacyName || !payload.email || !payload.streetNumber || !payload.streetName || !payload.city || !payload.province || !payload.postalCode) {
       setMessage("Please fill in every field.");
       return;
     }

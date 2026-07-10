@@ -440,6 +440,10 @@
 			setCheckoutMessage("Please fill in your name and email.");
 			return;
 		}
+		if (!payload.pharmacyName) {
+			setCheckoutMessage("Please enter your pharmacy name.");
+			return;
+		}
 		if (payload.phone.replace(/\D/g, "").length !== 10) {
 			setCheckoutMessage("Enter a valid 10-digit Canadian phone number.");
 			return;

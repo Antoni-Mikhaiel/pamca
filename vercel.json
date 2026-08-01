@@ -12,5 +12,8 @@
     { "source": "/thermometer-dual", "destination": "/thermometer-dual.html" },
     { "source": "/thermometer-mono", "destination": "/thermometer-mono.html" },
     { "source": "/api/:path*", "destination": "/api/[...path]" }
+  ],
+  "crons": [
+    { "path": "/api/cron/keepalive", "schedule": "0 9 1 * *" }
   ]
 }

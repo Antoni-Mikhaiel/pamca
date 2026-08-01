@@ -28,6 +28,7 @@ import {
   handleAdminDashboard,
 } from "../controllers/adminOrderController.js";
 import { handleGetOrder, handleEditPreview, handleEditCommit, handleRefundOrder, handleOrderTracking } from "../controllers/orderEditController.js";
+import { handleKeepalive } from "../controllers/keepaliveController.js";
 
 /**
  * Single source of truth for API routing, shared by the Vercel catch-all
@@ -123,6 +124,8 @@ const routes: Route[] = [
   { method: "POST", pattern: /^\/api\/admin\/orders\/tracking$/, handler: handleAdminSetTracking },
   { method: "POST", pattern: /^\/api\/admin\/orders\/label$/, handler: handleAdminCreateLabel },
   { method: "GET", pattern: /^\/api\/admin\/dashboard$/, handler: handleAdminDashboard },
+  // Invoked by the Vercel cron in vercel.json, not by the frontend. Guarded by CRON_SECRET.
+  { method: "GET", pattern: /^\/api\/cron\/keepalive$/, handler: handleKeepalive },
 ];
 
 /**

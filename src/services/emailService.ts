@@ -201,7 +201,8 @@ function pidBadge(order: OrderRecord): string {
  * Sends the two purchase emails: the shop owner (CONTACT_TO_EMAIL) gets the buyer's
  * details + receipt; the customer gets a confirmation with their receipt, the
  * shipping estimate, and — most importantly — their Purchase ID. Best-effort: a
- * missing customer email simply skips that one.
+ * missing customer email simply skips that one, and the two sends are independent
+ * so one failing never blocks the other.
  */
 export async function sendPurchaseEmails(order: OrderRecord): Promise<void> {
   const placed = formatDate(order.created_at);
@@ -216,12 +217,18 @@ export async function sendPurchaseEmails(order: OrderRecord): Promise<void> {
      <h3 style="margin:18px 0 6px;color:#0a615b;">Order</h3>
      ${itemsTable(order)}`,
   );
-  await sendBrevoEmail({
-    to: [{ email: adminEmail }],
-    subject: `New order #${order.purchase_id ?? ""} — ${customerName(order)} — ${money(order.total_cents)}`,
-    html: adminHtml,
-    ...(order.customer_email ? { replyTo: { email: order.customer_email, name: customerName(order) } } : {}),
-  });
+  // Isolated so a failed owner copy never suppresses the customer's confirmation —
+  // the customer email is the one carrying their Purchase ID, so it matters most.
+  try {
+    await sendBrevoEmail({
+      to: [{ email: adminEmail }],
+      subject: `New order #${order.purchase_id ?? ""} — ${customerName(order)} — ${money(order.total_cents)}`,
+      html: adminHtml,
+      ...(order.customer_email ? { replyTo: { email: order.customer_email, name: customerName(order) } } : {}),
+    });
+  } catch (err) {
+    console.error(`[email] owner new-order notification failed for #${order.purchase_id ?? ""}:`, err);
+  }
 
   // 2) Customer confirmation
   if (order.customer_email) {
@@ -244,11 +251,15 @@ export async function sendPurchaseEmails(order: OrderRecord): Promise<void> {
        <p style="margin:14px 0 0;">Placed: ${escapeHtml(placed)}</p>
        ${deliveryBanner}`,
     );
-    await sendBrevoEmail({
-      to: [{ email: order.customer_email, name: customerName(order) }],
-      subject: `Your PAMCA order is confirmed — Purchase ID ${order.purchase_id ?? ""}`,
-      html: customerHtml,
-    });
+    try {
+      await sendBrevoEmail({
+        to: [{ email: order.customer_email, name: customerName(order) }],
+        subject: `Your PAMCA order is confirmed — Purchase ID ${order.purchase_id ?? ""}`,
+        html: customerHtml,
+      });
+    } catch (err) {
+      console.error(`[email] customer order confirmation failed for #${order.purchase_id ?? ""}:`, err);
+    }
   }
 }
 

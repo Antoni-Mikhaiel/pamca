@@ -2,8 +2,9 @@
 const SUPABASE_URL = 'https://gqmzekycqvfxyblhjoqb.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxbXpla3ljcXZmeHlibGhqb3FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2MzEzMjMsImV4cCI6MjA5MzIwNzMyM30.VYqxM3mWtF2iBP-tLeRZsUdKvmp3gvmsMyrH0wEAds0';
 
-// Wait a bit then add functions to window to ensure they're available
-setTimeout(() => {
+// Define the auth helpers immediately so pages and shared-scripts.js can use them
+// as soon as this script runs (consumers still wait on authReady if needed).
+(() => {
   // Store the session in localStorage so it survives a full-page redirect (e.g.
   // returning from Square checkout) and is shared across tabs. Migrate any session
   // left in the old sessionStorage location on first load.
@@ -157,4 +158,4 @@ setTimeout(() => {
   // Signal that auth is ready
   window.authReady = true;
   window.dispatchEvent(new Event('authReady'));
-}, 100);
+})();

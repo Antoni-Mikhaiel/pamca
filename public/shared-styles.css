@@ -1,7 +1,9 @@
 /* Ensure content sits below fixed header */
 body {
     margin: 0; /* remove the default 8px margin (showed as a white edge around the footer) */
-    padding-top: 95px; /* announcement bar (~40px) + navbar (~70px) */
+    /* announcement bar + navbar. --pamca-announce-h is the bar's measured height
+       (set by shared-scripts.js; it wraps to several lines on phones). */
+    padding-top: calc(55px + var(--pamca-announce-h, 40px));
 }
 
 /* Shared layout container used by the injected header (announcement bar) and footer,
@@ -46,7 +48,7 @@ body {
     padding: 16px 0;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     position: fixed;
-    top: 40px;      /* below announcement bar (approx height) */
+    top: var(--pamca-announce-h, 40px); /* directly below the announcement bar */
     left: 0;
     width: 100%;
     z-index: 1001;  /* below announcement bar */
@@ -1190,14 +1192,24 @@ input.quantity-display::-webkit-inner-spin-button {
 }
 
 section {
-    animation: pamcaSectionIn 0.55s ease both;
+    animation: pamcaSectionIn 0.35s ease-out both;
 }
-section:nth-of-type(2) { animation-delay: 0.07s; }
-section:nth-of-type(3) { animation-delay: 0.14s; }
-section:nth-of-type(4) { animation-delay: 0.21s; }
+section:nth-of-type(2) { animation-delay: 0.04s; }
+section:nth-of-type(3) { animation-delay: 0.08s; }
+section:nth-of-type(4) { animation-delay: 0.12s; }
+
+/* Smooth cross-fade between pages (Chrome/Edge/Safari; ignored elsewhere). The
+   announcement bar and navbar get their own names so they stay put instead of
+   fading out and back in on every navigation. */
+@view-transition {
+    navigation: auto;
+}
+.announcement-bar { view-transition-name: pamca-announcement; }
+.navbar { view-transition-name: pamca-navbar; }
 
 @media (prefers-reduced-motion: reduce) {
     section { animation: none; }
+    @view-transition { navigation: none; }
 }
 
 /* ============================================================

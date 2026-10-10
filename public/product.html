@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/shared-styles.css">
+  <link rel="preload" href="/partials/header.html" as="fetch" crossorigin>
+  <link rel="preload" href="/partials/footer.html" as="fetch" crossorigin>
   <title>Product — PAMCA</title>
   <style>
     /* Site-wide base — matches every other page so the injected header/footer
@@ -139,6 +141,7 @@
   </head>
 <body>
   <div id="header-placeholder"></div>
+<script>try{document.getElementById("header-placeholder").innerHTML=localStorage.getItem("pamca_partial:/partials/header.html")||""}catch(e){}</script>
 
   <section class="product-section">
     <div class="pd-wrap">

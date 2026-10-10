@@ -32,15 +32,55 @@
 		}
 	}
 
+	// The header/footer partials are cached in localStorage so repeat page views can
+	// render them instantly (each page paints the cached header inline, right after
+	// #header-placeholder, before this script even loads). A fresh copy is always
+	// fetched in the background and stored for the next page view.
+	const PARTIAL_CACHE_PREFIX = "pamca_partial:";
+	const partialRequests = {};
+
+	function requestPartial(path) {
+		if (!partialRequests[path]) {
+			partialRequests[path] = fetch(path, { credentials: "same-origin" })
+				.then((res) => (res.ok ? res.text() : null))
+				.then((html) => {
+					if (html != null) {
+						try { localStorage.setItem(PARTIAL_CACHE_PREFIX + path, html); } catch (_) {}
+					}
+					return html;
+				})
+				.catch(() => null);
+		}
+		return partialRequests[path];
+	}
+
+	// Start both requests now, not at DOMContentLoaded, so they overlap page parsing.
+	requestPartial("/partials/header.html");
+	requestPartial("/partials/footer.html");
+
 	async function loadPartial(selector, path) {
 		const el = document.querySelector(selector);
 		if (!el) return;
-		const res = await fetch(path, { credentials: "same-origin" });
-		if (!res.ok) return;
-		el.innerHTML = await res.text();
+		// Already painted from the cache by the page's inline snippet.
+		if (el.childElementCount) return;
+		let html = null;
+		try { html = localStorage.getItem(PARTIAL_CACHE_PREFIX + path); } catch (_) {}
+		if (html == null) html = await requestPartial(path);
+		if (html != null) el.innerHTML = html;
+	}
+
+	// The navbar is fixed directly below the announcement bar, whose height varies
+	// (it wraps to several lines on phones), so publish its real height to CSS.
+	function trackAnnouncementHeight() {
+		const bar = document.querySelector(".announcement-bar");
+		if (!bar) return;
+		const update = () => document.documentElement.style.setProperty("--pamca-announce-h", `${bar.offsetHeight}px`);
+		update();
+		if (window.ResizeObserver) new ResizeObserver(update).observe(bar);
 	}
 
 	function initNavbar() {
+		trackAnnouncementHeight();
 		const mobileMenu = document.getElementById("mobile-menu");
 		const navMenu = document.getElementById("nav-menu");
 		const navClose = document.getElementById("nav-close");
@@ -1425,6 +1465,28 @@
 		}
 	}
 
+	// Prefetch same-site pages when a link is hovered/pressed so navigation feels
+	// instant (Chromium only; other browsers ignore it). API and admin URLs excluded.
+	function enableLinkPrefetch() {
+		if (!HTMLScriptElement.supports || !HTMLScriptElement.supports("speculationrules")) return;
+		const rules = document.createElement("script");
+		rules.type = "speculationrules";
+		rules.textContent = JSON.stringify({
+			prefetch: [{
+				source: "document",
+				where: {
+					and: [
+						{ href_matches: "/*" },
+						{ not: { href_matches: "/api/*" } },
+						{ not: { href_matches: "/admin*" } },
+					],
+				},
+				eagerness: "moderate",
+			}],
+		});
+		document.head.appendChild(rules);
+	}
+
 	async function bootstrap() {
 		// Guard against this script being included more than once on a page — a
 		// second run would attach duplicate listeners (e.g. the cart toggle would
@@ -1454,24 +1516,29 @@
 		const productsReady = hydrateProductsPage();
 		const detailsReady = hydrateProductDetails();
 
-		await loadPartial("#header-placeholder", "/partials/header.html");
+		await Promise.all([
+			loadPartial("#header-placeholder", "/partials/header.html"),
+			loadPartial("#footer-placeholder", "/partials/footer.html"),
+		]);
 		// Set the nav button from the cached auth state immediately (before paint) so
 		// it doesn't flash "Profile" before the async check resolves to "Admin".
 		applyNavAuthState(getCachedAuthState());
-		await loadPartial("#footer-placeholder", "/partials/footer.html");
 		// Keep the footer copyright year current without a yearly code change.
 		const footerYear = document.getElementById("footer-year");
 		if (footerYear) footerYear.textContent = String(new Date().getFullYear());
 		initNavbar();
+		enableLinkPrefetch();
 		wireCartInteractions();
 		wireCheckoutModal();
 		wireRefundModal();
 		maybeShowOrderStatus();
-		await refreshCart();
+		// Don't block the login button / contact form on the cart API round-trip
+		// (a cold serverless start can take a second or more).
+		const cartReady = refreshCart().catch(() => {});
 		wireContactForm();
 		await initAuthModal();
 
-		await Promise.allSettled([productsReady, detailsReady]);
+		await Promise.allSettled([cartReady, productsReady, detailsReady]);
 	}
 
 	document.addEventListener("DOMContentLoaded", bootstrap);

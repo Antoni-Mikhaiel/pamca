@@ -18,16 +18,72 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   };
 
   window.getSession = function() {
-    let session = localStorage.getItem('supabase_session');
-    if (!session) {
-      // One-time migration from the previous per-tab storage.
-      session = sessionStorage.getItem('supabase_session');
-      if (session) {
-        localStorage.setItem('supabase_session', session);
-        try { sessionStorage.removeItem('supabase_session'); } catch (_) {}
+    try {
+      let session = localStorage.getItem('supabase_session');
+      if (!session) {
+        // One-time migration from the previous per-tab storage.
+        session = sessionStorage.getItem('supabase_session');
+        if (session) {
+          localStorage.setItem('supabase_session', session);
+          try { sessionStorage.removeItem('supabase_session'); } catch (_) {}
+        }
       }
+      return session ? JSON.parse(session) : null;
+    } catch (_) {
+      // Blocked storage or a corrupted value — behave as signed out.
+      return null;
     }
-    return session ? JSON.parse(session) : null;
+  };
+
+  // Supabase access tokens expire (1 hour by default). Without exchanging the
+  // refresh token for a new one, a signed-in visitor was silently logged out.
+  function tokenExpiryMs(session) {
+    if (Number(session.expires_at)) return Number(session.expires_at) * 1000;
+    try {
+      const payload = session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(atob(payload)).exp * 1000;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  let refreshing = null;
+
+  // Resolves to a session whose access token is valid for at least another minute
+  // (refreshing it first when needed), or null when signed out. Concurrent callers
+  // share one refresh request.
+  window.ensureFreshSession = function() {
+    const session = window.getSession();
+    if (!session || !session.access_token) return Promise.resolve(null);
+    if (tokenExpiryMs(session) - Date.now() > 60000) return Promise.resolve(session);
+    if (!session.refresh_token) {
+      window.setSession(null);
+      return Promise.resolve(null);
+    }
+    if (!refreshing) {
+      refreshing = fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ refresh_token: session.refresh_token })
+      })
+        .then(async (response) => {
+          const data = await response.json().catch(() => ({}));
+          if (response.ok && data.access_token) {
+            window.setSession(data);
+            return data;
+          }
+          // Only a definitive rejection signs the visitor out; any other failure
+          // keeps the session so a later attempt can retry.
+          if (response.status === 400 || response.status === 401) {
+            window.setSession(null);
+            return null;
+          }
+          return session;
+        })
+        .catch(() => session)
+        .finally(() => { refreshing = null; });
+    }
+    return refreshing;
   };
 
   window.signUp = async function(email, password) {
@@ -109,9 +165,14 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
   window.getCurrentUser = async function() {
     try {
-      const session = window.getSession();
+      const session = await window.ensureFreshSession();
       if (!session) {
         return null;
+      }
+      // A fresh token already carries its user — skip the network round trip.
+      // (The API re-validates the token on every privileged request anyway.)
+      if (session.user && session.user.id) {
+        return session.user;
       }
       
       const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
@@ -155,7 +216,16 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     };
   };
 
-  // Signal that auth is ready
-  window.authReady = true;
-  window.dispatchEvent(new Event('authReady'));
+  // Keep the token fresh on long-lived pages (no network unless it is expiring).
+  setInterval(() => { window.ensureFreshSession(); }, 5 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') window.ensureFreshSession();
+  });
+
+  // Signal that auth is ready once any expired token has been refreshed, so the
+  // first API calls on the page carry a valid token.
+  window.ensureFreshSession().finally(() => {
+    window.authReady = true;
+    window.dispatchEvent(new Event('authReady'));
+  });
 })();

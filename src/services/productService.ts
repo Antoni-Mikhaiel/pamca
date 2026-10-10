@@ -148,21 +148,17 @@ function mapRow(row: Record<string, unknown>): Product {
   };
 }
 
+const VARIATION_COLUMNS = "id, product_id, label, value, price_regular, price_sale, is_default";
+
 /** Public product list — active products only, with legacy variations attached. */
 export async function listProducts(): Promise<(Product & { variations: ProductVariation[] })[]> {
-  const { data: products, error: productsError } = await supabase
-    .from("products")
-    .select(PRODUCT_COLUMNS)
-    .eq("status", "active")
-    .order("id", { ascending: true });
+  // Independent reads — run them concurrently rather than back to back.
+  const [{ data: products, error: productsError }, { data: variations, error: variationError }] = await Promise.all([
+    supabase.from("products").select(PRODUCT_COLUMNS).eq("status", "active").order("id", { ascending: true }),
+    supabase.from("product_variations").select(VARIATION_COLUMNS).order("id", { ascending: true }),
+  ]);
 
   if (productsError) throw productsError;
-
-  const { data: variations, error: variationError } = await supabase
-    .from("product_variations")
-    .select("id, product_id, label, value, price_regular, price_sale, is_default")
-    .order("id", { ascending: true });
-
   if (variationError) throw variationError;
 
   const byProduct = new Map<number, ProductVariation[]>();
@@ -178,11 +174,34 @@ export async function listProducts(): Promise<(Product & { variations: ProductVa
   });
 }
 
+/** A single active product by slug (with its legacy variations), or null. */
 export async function getProductBySlug(
   slug: string,
 ): Promise<(Product & { variations: ProductVariation[] }) | null> {
-  const products = await listProducts();
-  return products.find((p) => p.slug === slug) ?? null;
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .eq("slug", slug)
+    .eq("status", "active")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const product = mapRow(data as unknown as Record<string, unknown>);
+
+  const { data: variations, error: variationError } = await supabase
+    .from("product_variations")
+    .select(VARIATION_COLUMNS)
+    .eq("product_id", product.id)
+    .order("id", { ascending: true });
+  if (variationError) throw variationError;
+
+  return { ...product, variations: (variations ?? []) as ProductVariation[] };
+}
+
+/** Strips internal-only fields (wholesale cost) before a product is sent to shoppers. */
+export function toPublicProduct<T extends Product>(product: T): Omit<T, "cost_price"> {
+  const { cost_price: _cost, ...rest } = product;
+  return rest;
 }
 
 // ----------------------------- Admin CRUD -----------------------------

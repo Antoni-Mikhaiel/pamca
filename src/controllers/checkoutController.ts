@@ -1,4 +1,4 @@
-import { ApiRequest, ApiResponse, parseCookies, getHeader } from "../lib/http.js";
+import { ApiRequest, ApiResponse, readCartToken, getHeader } from "../lib/http.js";
 import { readJsonBody, getAuthUser } from "../lib/adminAuth.js";
 import { validateCustomerDetails, PICKUP_SERVICE_CODE, PICKUP_SERVICE_NAME } from "../lib/customer.js";
 import { getCartItems, clearCart } from "../services/cartService.js";
@@ -34,7 +34,7 @@ const POSTAL_RE = /^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/;
  * priceCents, transitDays }] } }` (cheapest first).
  */
 export async function handleGetShippingRates(req: ApiRequest, res: ApiResponse): Promise<void> {
-  const cartToken = parseCookies(req).cart_token;
+  const cartToken = readCartToken(req);
   if (!cartToken) {
     res.status(400).json({ success: false, message: "Your cart is empty." });
     return;
@@ -80,7 +80,7 @@ export async function handleGetShippingRates(req: ApiRequest, res: ApiResponse):
  * (if they opted in) their saved profile is updated.
  */
 export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): Promise<void> {
-  const cartToken = parseCookies(req).cart_token;
+  const cartToken = readCartToken(req);
   if (!cartToken) {
     res.status(400).json({ success: false, message: "Your cart is empty." });
     return;
@@ -96,7 +96,8 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
   }
   const customer = validation.value;
 
-  const items = await getCartItems(cartToken);
+  // Independent reads — the cart and the (optional) signed-in shopper.
+  const [items, authUser] = await Promise.all([getCartItems(cartToken), getAuthUser(req)]);
   if (items.length === 0) {
     res.status(400).json({ success: false, message: "Your cart is empty." });
     return;
@@ -112,7 +113,6 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
 
   // Optional: a signed-in shopper links the order to their account and may save
   // these details as their new defaults.
-  const authUser = await getAuthUser(req);
   if (authUser && body.saveProfile === true) {
     try {
       await updateProfile(authUser.id, authUser.email, customer);

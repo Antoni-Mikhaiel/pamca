@@ -10,6 +10,8 @@ export async function handleGetContent(req: ApiRequest, res: ApiResponse): Promi
     return;
   }
   const value = await getContent(key);
+  // Same for every visitor — let the CDN serve it briefly (admin reads cache-bust).
+  res.setHeader("Cache-Control", "public, max-age=0, s-maxage=60, stale-while-revalidate=300");
   res.status(200).json({ success: true, data: value });
 }
 

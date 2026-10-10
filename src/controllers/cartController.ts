@@ -10,9 +10,8 @@ import { getHSTPercent, calculateTaxCents } from "../services/taxService.js";
  * HST rate is the admin-configured one; `total_html` is tax-inclusive so the cart's
  * displayed total matches what Square will charge.
  */
-async function buildCartPayload(items: CartItem[]) {
+function buildCartPayload(items: CartItem[], hstPercent: number) {
   const { count, total } = computeCartTotals(items);
-  const hstPercent = await getHSTPercent();
   const subtotalCents = Math.round(total * 100);
   const taxCents = calculateTaxCents(subtotalCents, hstPercent);
   const totalCents = subtotalCents + taxCents;
@@ -24,6 +23,12 @@ async function buildCartPayload(items: CartItem[]) {
     tax_html: toCurrency(taxCents / 100),
     total_html: toCurrency(totalCents / 100),
   };
+}
+
+/** Loads the cart lines and the HST rate concurrently (independent reads). */
+async function loadCart(cartToken: string): Promise<{ items: CartItem[]; payload: ReturnType<typeof buildCartPayload> }> {
+  const [items, hstPercent] = await Promise.all([getCartItems(cartToken), getHSTPercent()]);
+  return { items, payload: buildCartPayload(items, hstPercent) };
 }
 
 export async function handleAddToCart(req: ApiRequest, res: ApiResponse): Promise<void> {
@@ -63,11 +68,11 @@ export async function handleAddToCart(req: ApiRequest, res: ApiResponse): Promis
     return;
   }
 
-  const items = await getCartItems(cartToken);
+  const { payload } = await loadCart(cartToken);
 
   res.status(200).json({
     success: true,
-    data: await buildCartPayload(items),
+    data: payload,
   });
 }
 
@@ -85,12 +90,12 @@ export async function handleUpdateCartQty(req: ApiRequest, res: ApiResponse): Pr
 
   const result = await updateCartQuantity({ cartToken, itemId: cartItemKey, quantity });
 
-  const items = await getCartItems(cartToken);
+  const { payload } = await loadCart(cartToken);
 
   res.status(200).json({
     success: true,
     data: {
-      ...(await buildCartPayload(items)),
+      ...payload,
       clamped: result.clamped,
       available: result.stock,
     },
@@ -105,7 +110,7 @@ export async function handleUpdateCartItem(req: ApiRequest, res: ApiResponse): P
   const quantity = Number.parseInt(body.quantity ?? "0", 10);
 
   if (!cartItemKey || Number.isNaN(quantity) || quantity < 1) {
-    res.status(400).json({ success: false, data: { message: "Missing data", debug: body } });
+    res.status(400).json({ success: false, data: { message: "Missing data" } });
     return;
   }
 
@@ -142,22 +147,22 @@ export async function handleRemoveCartItem(req: ApiRequest, res: ApiResponse): P
     return;
   }
 
-  const items = await getCartItems(cartToken);
+  const { payload } = await loadCart(cartToken);
 
   res.status(200).json({
     success: true,
-    data: await buildCartPayload(items),
+    data: payload,
   });
 }
 
 export async function handleGetCart(req: ApiRequest, res: ApiResponse): Promise<void> {
   const cartToken = ensureCartToken(req, res);
-  const items = await getCartItems(cartToken);
+  const { items, payload } = await loadCart(cartToken);
 
   res.status(200).json({
     success: true,
     data: {
-      ...(await buildCartPayload(items)),
+      ...payload,
       items,
     },
   });

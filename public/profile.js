@@ -256,7 +256,7 @@
     if (cachedLoggedIn()) showSkeleton();
     else showGate();
 
-    if (!window.getSession) {
+    if (!window.authReady) {
       await new Promise((resolve) => {
         if (window.authReady) resolve();
         else window.addEventListener("authReady", resolve, { once: true });

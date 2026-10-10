@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import { supabase } from "../lib/supabase.js";
+import { supabase, selectAllRows } from "../lib/supabase.js";
 import { CartItem, CustomerDetails, OrderRecord, ShippingLine } from "../models/types.js";
 import { asVariants } from "../lib/variants.js";
 import { getHSTPercent, calculateTaxCents } from "./taxService.js";
@@ -166,7 +166,11 @@ export async function markOrderPaidBySquareOrderId(
   // refunded order back to "paid" (clobbering the refund + resending emails).
   if (row.status !== "pending") return null;
 
-  const { error: updateError } = await supabase
+  // Conditional on still being pending: Square sends payment.created and
+  // payment.updated almost simultaneously, and both can pass the check above. Only
+  // the delivery whose update actually flips the row wins, so confirmation emails
+  // and cart clearing happen exactly once.
+  const { data: claimed, error: updateError } = await supabase
     .from("orders")
     .update({
       status: "paid",
@@ -174,8 +178,11 @@ export async function markOrderPaidBySquareOrderId(
       // Record the charge so refunds can be issued against it later.
       payments: [{ square_payment_id: squarePaymentId, amount_cents: Number(row.total_cents) || 0, refunded_cents: 0 }],
     })
-    .eq("id", row.id);
+    .eq("id", row.id)
+    .eq("status", "pending")
+    .select("id");
   if (updateError) throw updateError;
+  if (!claimed || claimed.length === 0) return null;
 
   return { orderId: row.id, cartToken: row.cart_token };
 }
@@ -367,12 +374,18 @@ export async function lookupOrder(purchaseId: string, normalizedPhone: string): 
 
 /** Every order (admin view), newest first. */
 export async function listAllOrders(): Promise<OrderRecord[]> {
-  const { data, error } = await supabase
-    .from("orders")
-    .select(ORDER_SELECT)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return ((data ?? []) as unknown as Record<string, unknown>[]).map(mapOrder);
+  // Abandoned (never-paid) checkouts are excluded here rather than fetched and
+  // discarded, and the read is paged past PostgREST's 1000-row cap.
+  const rows = await selectAllRows<Record<string, unknown>>((from, to) =>
+    supabase
+      .from("orders")
+      .select(ORDER_SELECT)
+      .neq("status", "pending")
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, to),
+  );
+  return rows.map(mapOrder);
 }
 
 /** A single order in the client-facing shape (with computed editable/refundable). */

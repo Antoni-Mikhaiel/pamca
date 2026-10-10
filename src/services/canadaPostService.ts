@@ -32,6 +32,11 @@ const baseUrl =
     : "https://soa-gw.canadapost.ca";
 
 const RATE_NS = "http://www.canadapost.ca/ws/ship/rate-v4";
+
+const CANADA_POST_TIMEOUT_MS = 8000;
+const RATE_CACHE_TTL_MS = 10 * 60 * 1000;
+const RATE_CACHE_MAX = 200;
+const rateCache = new Map<string, { at: number; rates: ShippingRate[] }>();
 const NCSHIPMENT_NS = "http://www.canadapost.ca/ws/ncshipment-v4";
 
 // Sender (return) address printed on the label and used as the ship-from. Defaults to
@@ -118,6 +123,12 @@ export async function getShippingRates(params: {
 
   if (!isCanadaPostConfigured() || !dest) return [fallbackRate()];
 
+  // Checkout quotes the same postal code + weight twice (the rates pop-up, then the
+  // tamper-proof re-quote at payment), so a short-lived cache skips the second call.
+  const cacheKey = `${dest}|${weightKg}`;
+  const cached = rateCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < RATE_CACHE_TTL_MS) return cached.rates;
+
   const requestXml =
     `<?xml version="1.0" encoding="UTF-8"?>` +
     `<mailing-scenario xmlns="${RATE_NS}">` +
@@ -138,6 +149,8 @@ export async function getShippingRates(params: {
         "Accept-language": "en-CA",
       },
       body: requestXml,
+      // A hung Canada Post call would otherwise stall checkout; fall back instead.
+      signal: AbortSignal.timeout(CANADA_POST_TIMEOUT_MS),
     });
     xml = await response.text();
     if (!response.ok) {
@@ -170,7 +183,10 @@ export async function getShippingRates(params: {
   }).filter((r) => r.serviceCode && r.priceCents > 0 && !excludedServiceCodes.has(r.serviceCode.toUpperCase()));
 
   if (rates.length === 0) return [fallbackRate()];
-  return rates.sort((a, b) => a.priceCents - b.priceCents);
+  rates.sort((a, b) => a.priceCents - b.priceCents);
+  if (rateCache.size >= RATE_CACHE_MAX) rateCache.delete(rateCache.keys().next().value as string);
+  rateCache.set(cacheKey, { at: Date.now(), rates });
+  return rates;
 }
 
 function fallbackRate(): ShippingRate {
@@ -216,6 +232,7 @@ export async function getTracking(pin: string): Promise<TrackingInfo> {
       Authorization: authHeader(),
       "Accept-language": "en-CA",
     },
+    signal: AbortSignal.timeout(CANADA_POST_TIMEOUT_MS),
   });
   const xml = await response.text();
   if (!response.ok) {

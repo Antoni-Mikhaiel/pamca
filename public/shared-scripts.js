@@ -993,8 +993,11 @@
 					security: "stateless",
 				});
 
+				// The remove response already carries the updated cart — paint it
+				// directly instead of a second /api/cart/get round trip.
 				if (res?.success) {
-					await refreshCart();
+					if (res.data) applyCartData(res.data);
+					else await refreshCart();
 				}
 				return;
 			}
@@ -1062,20 +1065,25 @@
 		if (!grid) return;
 
 		// 1) Paint instantly from the last-known list so there is no late "pop".
+		let cachedRaw = null;
 		try {
-			const cached = JSON.parse(localStorage.getItem(PRODUCTS_CACHE_KEY) || "null");
+			cachedRaw = localStorage.getItem(PRODUCTS_CACHE_KEY);
+			const cached = JSON.parse(cachedRaw || "null");
 			if (Array.isArray(cached) && cached.length) renderProducts(grid, cached);
 		} catch (_) {}
 
-		// 2) Revalidate from the API and refresh the cache.
+		// 2) Revalidate from the API and refresh the cache. Skip the repaint when
+		// nothing changed, so the grid (and its images) isn't rebuilt for nothing.
 		try {
 			const response = await fetch("/api/products", { credentials: "same-origin" });
 			if (!response.ok) return;
 			const payload = await response.json();
 			const products = payload?.data;
 			if (Array.isArray(products)) {
+				const raw = JSON.stringify(products);
+				if (raw === cachedRaw) return;
 				renderProducts(grid, products);
-				try { localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(products)); } catch (_) {}
+				try { localStorage.setItem(PRODUCTS_CACHE_KEY, raw); } catch (_) {}
 			}
 		} catch (_) {}
 	}
@@ -1107,7 +1115,7 @@
 		const variationId = document.getElementById("variation_id");
 		if (select && Array.isArray(product.variations) && product.variations.length > 0) {
 			select.innerHTML = product.variations
-				.map((v) => `<option value="${v.value}" data-id="${v.id}" data-price="$${Number((v.price_sale ?? v.price_regular)).toFixed(2)}">${v.label}</option>`)
+				.map((v) => `<option value="${escapeHtml(v.value)}" data-id="${escapeHtml(v.id)}" data-price="$${Number((v.price_sale ?? v.price_regular)).toFixed(2)}">${escapeHtml(v.label)}</option>`)
 				.join("");
 
 			select.addEventListener("change", () => {
@@ -1203,7 +1211,7 @@
 		};
 
 		// Wait for auth to be ready
-		if (!window.signUp || !window.signIn || !window.getCurrentUser) {
+		if (!window.authReady) {
 			await new Promise(resolve => {
 				if (window.authReady) {
 					resolve();
@@ -1439,7 +1447,7 @@
 
 	async function updateAuthUI() {
 		// Wait for auth to be ready
-		if (!window.getCurrentUser) {
+		if (!window.authReady) {
 			await new Promise(resolve => {
 				if (window.authReady) {
 					resolve();

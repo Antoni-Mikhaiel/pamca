@@ -30,7 +30,14 @@ export function parseCookies(req: ApiRequest): Record<string, string> {
   return raw.split(";").reduce<Record<string, string>>((acc, part) => {
     const [k, ...rest] = part.trim().split("=");
     if (!k) return acc;
-    acc[k] = decodeURIComponent(rest.join("="));
+    // A malformed %-sequence in any cookie (often set by an unrelated script on the
+    // domain) must not throw and 500 every API request.
+    const value = rest.join("=");
+    try {
+      acc[k] = decodeURIComponent(value);
+    } catch {
+      acc[k] = value;
+    }
     return acc;
   }, {});
 }
@@ -68,9 +75,18 @@ function parseBodyString(raw: string, contentType: string): Record<string, strin
   return result;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The visitor's cart token from the cookie, or null when absent/not a UUID
+ *  (the column is a uuid, so a tampered value would otherwise 500 every query). */
+export function readCartToken(req: ApiRequest): string | null {
+  const token = parseCookies(req).cart_token;
+  return token && UUID_RE.test(token) ? token : null;
+}
+
 export function ensureCartToken(req: ApiRequest, res: ApiResponse): string {
-  const cookies = parseCookies(req);
-  if (cookies.cart_token) return cookies.cart_token;
+  const existing = readCartToken(req);
+  if (existing) return existing;
 
   const token = randomUUID();
   const cookie = `cart_token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`;

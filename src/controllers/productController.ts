@@ -1,9 +1,15 @@
 import { ApiRequest, ApiResponse } from "../lib/http.js";
-import { getProductBySlug, listProducts } from "../services/productService.js";
+import { getProductBySlug, listProducts, toPublicProduct } from "../services/productService.js";
+
+// Public catalog reads are identical for every visitor, so let Vercel's CDN serve
+// them for a minute (and stale for 5 more while it refreshes). Stock is still
+// enforced server-side at add-to-cart, so a briefly stale listing can't oversell.
+const PUBLIC_CACHE = "public, max-age=0, s-maxage=60, stale-while-revalidate=300";
 
 export async function handleListProducts(_req: ApiRequest, res: ApiResponse): Promise<void> {
   const products = await listProducts();
-  res.status(200).json({ success: true, data: products });
+  res.setHeader("Cache-Control", PUBLIC_CACHE);
+  res.status(200).json({ success: true, data: products.map(toPublicProduct) });
 }
 
 export async function handleGetProduct(req: ApiRequest, res: ApiResponse): Promise<void> {
@@ -19,5 +25,6 @@ export async function handleGetProduct(req: ApiRequest, res: ApiResponse): Promi
     return;
   }
 
-  res.status(200).json({ success: true, data: product });
+  res.setHeader("Cache-Control", PUBLIC_CACHE);
+  res.status(200).json({ success: true, data: toPublicProduct(product) });
 }

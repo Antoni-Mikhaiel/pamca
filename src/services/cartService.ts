@@ -229,25 +229,22 @@ export async function updateCartQuantity(params: {
  * product's `variants`; products without dropdowns use the base stock.
  */
 async function getItemStock(itemId: string, cartToken: string): Promise<number | null> {
-  const { data: item, error: itemError } = await supabase
+  // One round trip: the cart line plus its product via the cart_items.product_id FK.
+  const { data: item, error } = await supabase
     .from("cart_items")
-    .select("product_id, variation_label")
+    .select("variation_label, products(stock, option_groups, variants)")
     .eq("id", itemId)
     .eq("cart_token", cartToken)
     .maybeSingle();
-  if (itemError) throw itemError;
+  if (error) throw error;
   if (!item) return null;
-  const row = item as { product_id: number; variation_label: string | null };
+  const row = item as unknown as {
+    variation_label: string | null;
+    products: { stock: number; option_groups: unknown; variants: unknown } | null;
+  };
+  const prod = row.products;
+  if (!prod) return null;
 
-  const { data: product, error: productError } = await supabase
-    .from("products")
-    .select("stock, option_groups, variants")
-    .eq("id", row.product_id)
-    .maybeSingle();
-  if (productError) throw productError;
-  if (!product) return null;
-
-  const prod = product as { stock: number; option_groups: unknown; variants: unknown };
   const baseStock = Math.max(0, Math.round(Number(prod.stock) || 0));
   const groups = asOptionGroups(prod.option_groups);
   if (groups.filter((g) => g.options.length > 0).length === 0) return baseStock;

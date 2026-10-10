@@ -523,32 +523,36 @@
             });
         });
 
-        // Highlight active navigation item on scroll
-        window.addEventListener('scroll', function() {
+        // Highlight active navigation item on scroll — at most once per frame, with
+        // the section/link lists looked up once rather than on every scroll event.
+        (function() {
             const sections = document.querySelectorAll('.privacy-section[id]');
             const navLinks = document.querySelectorAll('.privacy-nav .nav-menu a[href^="#"]');
-            
-            let currentSection = '';
-            
-            sections.forEach(section => {
-                const sectionTop = section.offsetTop - 200;
-                const sectionHeight = section.offsetHeight;
-                
-                if (window.scrollY >= sectionTop && window.scrollY < sectionTop + sectionHeight) {
-                    currentSection = section.getAttribute('id');
+            let queued = false;
+
+            function update() {
+                queued = false;
+                let currentSection = '';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop - 200;
+                    if (window.scrollY >= sectionTop && window.scrollY < sectionTop + section.offsetHeight) {
+                        currentSection = section.getAttribute('id');
+                    }
+                });
+                navLinks.forEach(link => {
+                    const active = link.getAttribute('href') === `#${currentSection}`;
+                    link.style.background = active ? '#008080' : '';
+                    link.style.color = active ? 'white' : '#008080';
+                });
+            }
+
+            window.addEventListener('scroll', function() {
+                if (!queued) {
+                    queued = true;
+                    requestAnimationFrame(update);
                 }
-            });
-            
-            navLinks.forEach(link => {
-                link.style.background = '';
-                link.style.color = '#008080';
-                
-                if (link.getAttribute('href') === `#${currentSection}`) {
-                    link.style.background = '#008080';
-                    link.style.color = 'white';
-                }
-            });
-        });
+            }, { passive: true });
+        })();
 
         // Smooth scrolling for back button
         document.querySelector('.back-button').addEventListener('click', function(e) {

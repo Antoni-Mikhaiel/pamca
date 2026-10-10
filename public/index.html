@@ -359,7 +359,7 @@
                     <a href="#services" class="oval-btn">Our Services ↓</a>
                 </div>
                 <div class="hero-right">
-                    <img src="https://ptcbtestprep.com/wp-content/uploads/2019/09/pharmacy-prescriptions.jpg" alt="Pharmacy Prescriptions" class="hero-image" loading="eager">
+                    <img src="https://ptcbtestprep.com/wp-content/uploads/2019/09/pharmacy-prescriptions.jpg" alt="Pharmacy Prescriptions" class="hero-image" loading="eager" fetchpriority="high">
                 </div>
             </div>
         </div>
@@ -370,7 +370,7 @@
         <div class="container">
             <div class="info-content">
                 <div>
-                    <img src="https://tpfcu.com/wp-content/uploads/2023/10/quarters-stacked-on-a-table-and-a-jar-with-a-growing-sprout.jpg" alt="Affordable Solution" class="info-image" loading="eager">
+                    <img src="/images/save.jpg" alt="Affordable Solution" class="info-image" loading="lazy" decoding="async">
                 </div>
                 <div class="info-text">
                     <h2>Affordable Solution</h2>
@@ -407,7 +407,7 @@
         <div class="services-content">
 
             <a href="/pharmacy-products" class="service-card">
-                <img src="https://images.squarespace-cdn.com/content/v1/5efa0fe78713d718e5a23e0d/1607942729498-WN51MEZMIPW4R5NEWCFI/pharma-1600-px.jpg" alt="Pharmacy Products" class="service-image" loading="eager">
+                <img src="https://images.squarespace-cdn.com/content/v1/5efa0fe78713d718e5a23e0d/1607942729498-WN51MEZMIPW4R5NEWCFI/pharma-1600-px.jpg" alt="Pharmacy Products" class="service-image" loading="lazy" decoding="async">
                 <div class="service-content">
                     <h3>Pharmacy Products</h3>
                     <p>Explore reliable pharmacy essentials designed for everyday safety and convenience.</p>
@@ -415,7 +415,7 @@
             </a>
 
             <a href="/minor-ailments-prescribing-solution" class="service-card">
-                <img src="https://assets.avant.org.au/cdf6134c-01d7-0292-26f5-2f5cf1db96f8/9e3cf0b8-def9-4ce5-b895-a1f0926056f2/prescribing-drugs-of-dependence-.jpg" alt="Minor Ailments Prescribing" class="service-image" loading="eager">
+                <img src="https://assets.avant.org.au/cdf6134c-01d7-0292-26f5-2f5cf1db96f8/9e3cf0b8-def9-4ce5-b895-a1f0926056f2/prescribing-drugs-of-dependence-.jpg" alt="Minor Ailments Prescribing" class="service-image" loading="lazy" decoding="async">
                 <div class="service-content">
                     <h3>Minor Ailments Prescribing Solution</h3>
                     <p>Confidently assess, document, and prescribe for minor ailments. Fast, paperless, and secure.</p>
@@ -423,7 +423,7 @@
             </a>
 
             <a href="/Incident-Reporting.html" class="service-card">
-                <img src="/images/handshake.jpeg" alt="Incident Reporting System" class="service-image" loading="eager">
+                <img src="/images/handshake.jpeg" alt="Incident Reporting System" class="service-image" loading="lazy" decoding="async">
                 <div class="service-content">
                     <h3>Incident Reporting System</h3>
                     <p>A practical, compliant framework for pharmacists to document, analyze, and share safety learnings locally while the sector transitions to a permanent platform.</p>
@@ -437,30 +437,8 @@
     
 
      <script>
-        // Active menu item highlighting
-        window.addEventListener('scroll', function() {
-            const sections = document.querySelectorAll('section');
-            const navLinks = document.querySelectorAll('.nav-menu a');
-            
-            let current = '';
-            sections.forEach(section => {
-                const sectionTop = section.offsetTop;
-                const sectionHeight = section.clientHeight;
-                if (window.scrollY >= (sectionTop - 200)) {
-                    current = section.getAttribute('id');
-                }
-            });
-
-            navLinks.forEach(link => {
-                link.classList.remove('active');
-                if (link.getAttribute('href') === '#' + current) {
-                    link.classList.add('active');
-                }
-            });
-        });
-
         // Smooth scroll for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        document.querySelectorAll('a[href^="#"]:not([href="#"])').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
                 const target = document.querySelector(this.getAttribute('href'));
@@ -477,15 +455,15 @@
         document.addEventListener('DOMContentLoaded', function() {
             const images = document.querySelectorAll('img');
             images.forEach(img => {
+                // Already-painted images (incl. the navbar logo) are left alone so
+                // they don't blink; the rest fade in once loaded — or on error, so a
+                // broken image never stays invisible.
+                if (img.complete || img.closest('#header-placeholder, #footer-placeholder')) return;
                 img.style.opacity = '0';
                 img.style.transition = 'opacity 0.3s ease';
                 const reveal = () => { img.style.opacity = '1'; };
-                if (img.complete) {
-                    // Delay reveal to ensure CSS transition applies
-                    setTimeout(reveal, 100);
-                } else {
-                    img.addEventListener('load', reveal);
-                }
+                img.addEventListener('load', reveal, { once: true });
+                img.addEventListener('error', reveal, { once: true });
             });
         });
     </script>

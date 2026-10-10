@@ -26,15 +26,21 @@ export async function validateRecaptcha(token: string, remoteIp?: string): Promi
     body.set("remoteip", remoteIp);
   }
 
-  const response = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
-  });
-
-  if (!response.ok) return false;
-
-  const json = (await response.json()) as { success?: boolean; score?: number };
+  let json: { success?: boolean; score?: number };
+  try {
+    const response = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) return false;
+    json = (await response.json()) as { success?: boolean; score?: number };
+  } catch {
+    // Timeout / network failure: treat as unverified (the form redirects with an
+    // error status) rather than throwing a raw 500 at the visitor.
+    return false;
+  }
   if (!json.success) return false;
   // v3 only: enforce the score threshold (v2 responses have no score).
   if (typeof json.score === "number" && json.score < recaptchaMinScore) return false;

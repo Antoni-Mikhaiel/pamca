@@ -1,4 +1,4 @@
-import { supabase } from "../lib/supabase.js";
+import { supabase, selectAllRows } from "../lib/supabase.js";
 
 // Aggregated store statistics for the admin Dashboard. Everything is computed from
 // `orders` + `order_items`, with product `cost_price` joined in for profit (COGS).
@@ -60,20 +60,31 @@ function lastTwelveMonths(): Array<{ ym: string; label: string }> {
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const [{ data: orders, error: oErr }, { data: items, error: iErr }, { data: products, error: pErr }] =
-    await Promise.all([
-      supabase.from("orders").select("id, status, subtotal_cents, total_cents, amount_refunded_cents, completed_at, refunded_at, created_at"),
-      supabase.from("order_items").select("order_id, product_id, product_name, quantity, unit_price_cents, line_total_cents"),
-      supabase.from("products").select("id, cost_price"),
-    ]);
-  if (oErr) throw oErr;
-  if (iErr) throw iErr;
-  if (pErr) throw pErr;
+  // Paged reads: an unpaged select is silently capped at 1000 rows, which would
+  // under-report every total once the store passes that many orders/items.
+  const [orderRows, itemRows, products] = await Promise.all([
+    selectAllRows<OrderRow>((from, to) =>
+      supabase
+        .from("orders")
+        .select("id, status, subtotal_cents, total_cents, amount_refunded_cents, completed_at, refunded_at, created_at")
+        .neq("status", "pending")
+        .order("id")
+        .range(from, to),
+    ),
+    selectAllRows<ItemRow>((from, to) =>
+      supabase
+        .from("order_items")
+        .select("order_id, product_id, product_name, quantity, unit_price_cents, line_total_cents")
+        .order("id")
+        .range(from, to),
+    ),
+    selectAllRows<{ id: number; cost_price: number }>((from, to) =>
+      supabase.from("products").select("id, cost_price").order("id").range(from, to),
+    ),
+  ]);
 
-  const orderRows = (orders ?? []) as OrderRow[];
-  const itemRows = (items ?? []) as ItemRow[];
   const costByProduct = new Map<number, number>();
-  for (const p of (products ?? []) as Array<{ id: number; cost_price: number }>) {
+  for (const p of products) {
     costByProduct.set(Number(p.id), Math.round((Number(p.cost_price) || 0) * 100));
   }
 

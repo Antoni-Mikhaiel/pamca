@@ -52,6 +52,7 @@ export async function sendBrevoEmail(msg: BrevoMessage): Promise<void> {
       htmlContent: msg.html,
       ...(msg.text ? { textContent: msg.text } : {}),
     }),
+    signal: AbortSignal.timeout(10_000),
   });
 
   if (!response.ok) {

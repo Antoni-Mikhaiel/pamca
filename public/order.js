@@ -494,7 +494,7 @@
 
   async function init() {
     // Wait for auth.js so owner mode can read the session token.
-    if (!window.getSession) {
+    if (!window.authReady) {
       await new Promise((resolve) => {
         if (window.authReady) resolve();
         else window.addEventListener("authReady", resolve, { once: true });

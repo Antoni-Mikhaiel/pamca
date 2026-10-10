@@ -9,7 +9,9 @@
   // ---------------------------------------------------------------------------
   const API = {
     session: '/api/admin/session',
-    content: (key) => `/api/content/${key}`,
+    // Cache-busted: the public content endpoint is CDN-cached, but the editor must
+    // always see the latest saved copy.
+    content: (key) => `/api/content/${key}?_=${Date.now()}`,
     saveContent: '/api/admin/content',
     products: '/api/admin/products',
     upload: '/api/admin/upload',

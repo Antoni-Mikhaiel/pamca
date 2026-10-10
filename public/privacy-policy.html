@@ -33,7 +33,7 @@
         .container {
             max-width: 1000px;
             margin: 0 auto;
-
+            padding: 0 20px;
         }
 
         /* Page Header */
@@ -96,7 +96,7 @@
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
-        .nav-menu {
+        .privacy-nav .nav-menu {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
@@ -104,7 +104,7 @@
             list-style: none;
         }
 
-        .nav-menu li a {
+        .privacy-nav .nav-menu li a {
             color: #008080;
             text-decoration: none;
             font-weight: 600;
@@ -115,7 +115,7 @@
             border: 2px solid transparent;
         }
 
-        .nav-menu li a:hover {
+        .privacy-nav .nav-menu li a:hover {
             background: #008080;
             color: white;
             transform: translateY(-2px);
@@ -281,11 +281,11 @@
                 opacity: 0;
             }
 
-            .nav-menu {
+            .privacy-nav .nav-menu {
                 gap: 15px;
             }
 
-            .nav-menu li a {
+            .privacy-nav .nav-menu li a {
                 font-size: 0.85rem;
                 padding: 6px 12px;
             }
@@ -317,7 +317,7 @@
                 font-size: 1.8rem;
             }
 
-            .nav-menu {
+            .privacy-nav .nav-menu {
                 flex-direction: column;
                 align-items: center;
                 gap: 10px;
@@ -501,7 +501,7 @@
     <script>
         // Smooth scrolling for navigation links
         document.addEventListener('DOMContentLoaded', function() {
-            const navLinks = document.querySelectorAll('.nav-menu a[href^="#"]');
+            const navLinks = document.querySelectorAll('.privacy-nav .nav-menu a[href^="#"]');
             
             navLinks.forEach(link => {
                 link.addEventListener('click', function(e) {
@@ -523,7 +523,7 @@
         // Highlight active navigation item on scroll
         window.addEventListener('scroll', function() {
             const sections = document.querySelectorAll('.privacy-section[id]');
-            const navLinks = document.querySelectorAll('.nav-menu a[href^="#"]');
+            const navLinks = document.querySelectorAll('.privacy-nav .nav-menu a[href^="#"]');
             
             let currentSection = '';
             

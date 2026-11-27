@@ -44,7 +44,7 @@ const NCSHIPMENT_NS = "http://www.canadapost.ca/ws/ncshipment-v4";
 const senderCompany = process.env.CANADA_POST_SENDER_COMPANY ?? "Pharmacy Automated Mechanisms";
 const senderName = process.env.CANADA_POST_SENDER_NAME ?? senderCompany;
 const senderPhone = process.env.CANADA_POST_SENDER_PHONE ?? "416-322-3444";
-const senderStreet = process.env.CANADA_POST_SENDER_ADDRESS ?? "1920 Yonge Street";
+const senderStreet = process.env.CANADA_POST_SENDER_ADDRESS ?? "400-1920 Yonge Street";
 const senderCity = process.env.CANADA_POST_SENDER_CITY ?? "Toronto";
 const senderProvince = (process.env.CANADA_POST_SENDER_PROVINCE ?? "ON").toUpperCase();
 

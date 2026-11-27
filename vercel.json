@@ -139,6 +139,21 @@
       ],
       "destination": "/products/:slug",
       "permanent": true
+    },
+    {
+      "source": "/refund-policy.html",
+      "destination": "/refund-policy",
+      "permanent": true
+    },
+    {
+      "source": "/return-policy",
+      "destination": "/refund-policy",
+      "permanent": true
+    },
+    {
+      "source": "/returns-policy",
+      "destination": "/refund-policy",
+      "permanent": true
     }
   ],
   "rewrites": [
@@ -169,6 +184,10 @@
     {
       "source": "/terms-and-conditions",
       "destination": "/terms-and-conditions.html"
+    },
+    {
+      "source": "/refund-policy",
+      "destination": "/refund-policy.html"
     },
     {
       "source": "/products/:slug",

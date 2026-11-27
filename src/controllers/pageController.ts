@@ -20,6 +20,7 @@ const STATIC_PAGES = [
   "/contact-us",
   "/privacy-policy",
   "/terms-and-conditions",
+  "/refund-policy",
 ];
 
 function escapeHtml(value: unknown): string {

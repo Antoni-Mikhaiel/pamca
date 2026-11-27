@@ -13,7 +13,7 @@ const fromName = process.env.CONTACT_FROM_NAME ?? "PAMCA";
 const HST_REGISTRATION = "HST # 85016 4724 RT0001";
 
 // In-store pickup location shown to the customer when they choose pickup at checkout.
-const PICKUP_LOCATION = "1920 Yonge Street, Toronto, ON M4S 3E6";
+const PICKUP_LOCATION = "1920 Yonge Street, Suite 400, Toronto, ON M4S 3E6";
 
 /** True when the order is an in-store pickup (no address, no shipping charge). */
 function isPickupOrder(order: OrderRecord): boolean {

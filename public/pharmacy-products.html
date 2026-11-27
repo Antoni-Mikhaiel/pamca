@@ -7,9 +7,25 @@
   <link rel="stylesheet" href="/shared-styles.css">
   <link rel="preload" href="/partials/header.html" as="fetch" crossorigin>
   <link rel="preload" href="/partials/footer.html" as="fetch" crossorigin>
-  <title>PAMCA</title>
-    <link rel="icon" type="image/png" href="/images/pamca_tab_logo.png">
-    <link rel="apple-touch-icon" href="/images/pamca_tab_logo.png">
+  <!-- seo:start -->
+  <title>Pharmacy Products — Thermometers, Dispensers &amp; Supplies | PAMCA</title>
+  <meta name="description" content="Shop pharmacy essentials from PAMCA: digital thermometers, hands-free gel dispensers, alcohol prep pads, NFC counter-top stands and PharmaScript tools, shipped across Canada.">
+  <link rel="canonical" href="https://www.pamca.net/pharmacy-products">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="PAMCA">
+  <meta property="og:locale" content="en_CA">
+  <meta property="og:title" content="Pharmacy Products — Thermometers, Dispensers &amp; Supplies | PAMCA">
+  <meta property="og:description" content="Shop pharmacy essentials from PAMCA: digital thermometers, hands-free gel dispensers, alcohol prep pads, NFC counter-top stands and PharmaScript tools, shipped across Canada.">
+  <meta property="og:url" content="https://www.pamca.net/pharmacy-products">
+  <meta property="og:image" content="https://www.pamca.net/images/pamca.png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Pharmacy Products — Thermometers, Dispensers &amp; Supplies | PAMCA">
+  <meta name="twitter:description" content="Shop pharmacy essentials from PAMCA: digital thermometers, hands-free gel dispensers, alcohol prep pads, NFC counter-top stands and PharmaScript tools, shipped across Canada.">
+  <meta name="twitter:image" content="https://www.pamca.net/images/pamca.png">
+  <!-- seo:end -->
+    <link rel="icon" href="/favicon.ico" sizes="48x48">
+    <link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192.png">
+    <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
   </head>
 <body>
 <div id="header-placeholder"></div>
@@ -128,6 +144,15 @@
             overflow: hidden;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
             transition: transform 0.18s ease, box-shadow 0.2s ease;
+        }
+        /* Cards are links (crawlable + keyboard reachable): keep the card look. */
+        a.product-card {
+            color: inherit;
+            text-decoration: none;
+        }
+        a.product-card:focus-visible {
+            outline: 3px solid #008080;
+            outline-offset: 3px;
         }
         .product-card:hover {
             transform: translateY(-4px);

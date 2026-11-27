@@ -1,0 +1,7 @@
+# Account/admin pages are not disallowed on purpose: they send "noindex", and a
+# crawler has to be allowed to fetch a page to see that.
+User-agent: *
+Disallow: /api/
+Allow: /
+
+Sitemap: https://www.pamca.net/sitemap.xml

@@ -1,18 +1,163 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["dub1"],
+  "regions": [
+    "dub1"
+  ],
+  "functions": {
+    "api/[...path].ts": {
+      "includeFiles": "public/{product,404}.html"
+    }
+  },
+  "redirects": [
+    {
+      "source": "/index.html",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/page-landing.html",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/page-landing",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/pharmacy-products.html",
+      "destination": "/pharmacy-products",
+      "permanent": true
+    },
+    {
+      "source": "/pamca_about.html",
+      "destination": "/about-us",
+      "permanent": true
+    },
+    {
+      "source": "/contact-us.html",
+      "destination": "/contact-us",
+      "permanent": true
+    },
+    {
+      "source": "/pamca_minor_ailments.html",
+      "destination": "/minor-ailments-prescribing-solution",
+      "permanent": true
+    },
+    {
+      "source": "/Incident-Reporting.html",
+      "destination": "/incident-reporting",
+      "permanent": true
+    },
+    {
+      "source": "/privacy-policy.html",
+      "destination": "/privacy-policy",
+      "permanent": true
+    },
+    {
+      "source": "/terms-and-conditions.html",
+      "destination": "/terms-and-conditions",
+      "permanent": true
+    },
+    {
+      "source": "/digital-thermometer",
+      "destination": "/products/digital-thermometer",
+      "permanent": true
+    },
+    {
+      "source": "/thermometer-dual-readings",
+      "destination": "/products/thermometer-dual-readings",
+      "permanent": true
+    },
+    {
+      "source": "/gel-dispenser",
+      "destination": "/products/gel-dispenser",
+      "permanent": true
+    },
+    {
+      "source": "/nfc-counter",
+      "destination": "/products/nfc-counter",
+      "permanent": true
+    },
+    {
+      "source": "/thermometer-dual",
+      "destination": "/products/thermometer-dual-readings",
+      "permanent": true
+    },
+    {
+      "source": "/thermometer-dual.html",
+      "destination": "/products/thermometer-dual-readings",
+      "permanent": true
+    },
+    {
+      "source": "/thermometer-mono",
+      "destination": "/products/digital-thermometer",
+      "permanent": true
+    },
+    {
+      "source": "/thermometer-mono.html",
+      "destination": "/products/digital-thermometer",
+      "permanent": true
+    },
+    {
+      "source": "/gel-dispenser.html",
+      "destination": "/products/gel-dispenser",
+      "permanent": true
+    },
+    {
+      "source": "/product.html",
+      "has": [
+        {
+          "type": "query",
+          "key": "slug",
+          "value": "(?<slug>[A-Za-z0-9_-]+)"
+        }
+      ],
+      "destination": "/products/:slug",
+      "permanent": true
+    }
+  ],
   "rewrites": [
-    { "source": "/about-us", "destination": "/pamca_about.html" },
-    { "source": "/contact-us", "destination": "/contact-us.html" },
-    { "source": "/pharmacy-products", "destination": "/pharmacy-products.html" },
-    { "source": "/minor-ailments-prescribing-solution", "destination": "/pamca_minor_ailments.html" },
-    { "source": "/digital-thermometer", "destination": "/product.html" },
-    { "source": "/thermometer-dual-readings", "destination": "/product.html" },
-    { "source": "/gel-dispenser", "destination": "/product.html" },
-    { "source": "/nfc-counter", "destination": "/product.html" },
-    { "source": "/thermometer-dual", "destination": "/thermometer-dual.html" },
-    { "source": "/thermometer-mono", "destination": "/thermometer-mono.html" },
-    { "source": "/api/:path*", "destination": "/api/[...path]" }
+    {
+      "source": "/about-us",
+      "destination": "/pamca_about.html"
+    },
+    {
+      "source": "/contact-us",
+      "destination": "/contact-us.html"
+    },
+    {
+      "source": "/pharmacy-products",
+      "destination": "/pharmacy-products.html"
+    },
+    {
+      "source": "/minor-ailments-prescribing-solution",
+      "destination": "/pamca_minor_ailments.html"
+    },
+    {
+      "source": "/incident-reporting",
+      "destination": "/Incident-Reporting.html"
+    },
+    {
+      "source": "/privacy-policy",
+      "destination": "/privacy-policy.html"
+    },
+    {
+      "source": "/terms-and-conditions",
+      "destination": "/terms-and-conditions.html"
+    },
+    {
+      "source": "/products/:slug",
+      "destination": "/api/[...path]?path=pages/product/:slug"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/[...path]?path=sitemap"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/[...path]"
+    }
   ],
   "headers": [
     {
@@ -22,18 +167,114 @@
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://gqmzekycqvfxyblhjoqb.supabase.co; frame-src https://www.google.com https://recaptcha.google.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
         },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
-        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin"
+        }
       ]
     },
-    { "source": "/images/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }] },
-    { "source": "/partials/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=300, stale-while-revalidate=86400" }] },
-    { "source": "/(.*)\\.(js|css)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=300, stale-while-revalidate=86400" }] }
+    {
+      "source": "/images/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
+      ]
+    },
+    {
+      "source": "/partials/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(js|css)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/admin.html",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/profile.html",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/order.html",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/product.html",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/partials/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    }
   ],
   "crons": [
-    { "path": "/api/cron/keepalive", "schedule": "0 9 1 * *" }
+    {
+      "path": "/api/cron/keepalive",
+      "schedule": "0 9 1 * *"
+    }
   ]
 }

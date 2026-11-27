@@ -1048,14 +1048,14 @@
 				const saleMarkup = p.is_on_sale && sale != null
 					? `<div class="sale-price"><div class="sale-price-horizontal"><div class="original-price">$${regular.toFixed(2)}</div><div class="current-price">$${sale.toFixed(2)}</div></div></div>`
 					: `<div class="price">$${regular.toFixed(2)}</div>`;
-				// Link to the generic product page by slug. Using a query param (rather
-				// than a pretty URL) means it works identically on the local dev server
-				// and on Vercel with no rewrite config to keep in sync.
-				const href = `/product.html?slug=${encodeURIComponent(p.slug || "")}`;
+				// Canonical, server-rendered product URL (/products/<slug>, see vercel.json).
+				// A real <a> so search engines can follow it and keyboard users can reach it.
+				const href = `/products/${encodeURIComponent(p.slug || "")}`;
+				const name = escapeHtml(p.name || "");
 
 				// No entrance animation here on purpose — these cards are injected
 				// dynamically, and animating them caused a late "pop"/jiggle.
-				return `<div class="product-card${p.is_on_sale ? " on-sale-special" : ""}" onclick="window.location.href='${href}'" style="cursor: pointer;">${p.is_on_sale ? '<div class="sale-badge">Sale</div>' : ""}<div class="product-image">${p.image_url ? `<img src="${p.image_url}" alt="${p.name}">` : ""}</div><div class="product-content"><h3 class="product-name">${p.name}</h3><div class="product-price">${saleMarkup}</div></div></div>`;
+				return `<a class="product-card${p.is_on_sale ? " on-sale-special" : ""}" href="${href}">${p.is_on_sale ? '<div class="sale-badge">Sale</div>' : ""}<div class="product-image">${p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="${name}" loading="lazy" decoding="async">` : ""}</div><div class="product-content"><h3 class="product-name">${name}</h3><div class="product-price">${saleMarkup}</div></div></a>`;
 			})
 			.join("");
 	}
@@ -1086,70 +1086,6 @@
 				try { localStorage.setItem(PRODUCTS_CACHE_KEY, raw); } catch (_) {}
 			}
 		} catch (_) {}
-	}
-
-	async function hydrateProductDetails() {
-		const map = {
-			"/gel-dispenser.html": "gel-dispenser",
-			"/thermometer-dual.html": "thermometer-dual",
-			"/thermometer-mono.html": "thermometer-mono",
-		};
-
-		const slug = map[window.location.pathname];
-		if (!slug) return;
-
-		const response = await fetch(`/api/products/${slug}`, { credentials: "same-origin" });
-		if (!response.ok) return;
-
-		const payload = await response.json();
-		const product = payload?.data;
-		if (!product) return;
-
-		const priceEl = document.getElementById("product-price");
-		if (priceEl) {
-			const value = product.price_sale != null ? product.price_sale : product.price_regular;
-			priceEl.innerHTML = `$${Number(value).toFixed(2)}`;
-		}
-
-		const select = document.getElementById("style");
-		const variationId = document.getElementById("variation_id");
-		if (select && Array.isArray(product.variations) && product.variations.length > 0) {
-			select.innerHTML = product.variations
-				.map((v) => `<option value="${escapeHtml(v.value)}" data-id="${escapeHtml(v.id)}" data-price="$${Number((v.price_sale ?? v.price_regular)).toFixed(2)}">${escapeHtml(v.label)}</option>`)
-				.join("");
-
-			select.addEventListener("change", () => {
-				const selected = select.options[select.selectedIndex];
-				if (variationId) variationId.value = selected.getAttribute("data-id") || "";
-				if (priceEl) priceEl.innerHTML = selected.getAttribute("data-price") || "$0.00";
-			});
-
-			select.dispatchEvent(new Event("change"));
-		}
-
-		// Wire the legacy WooCommerce-style "Add to Cart" form on these static
-		// product pages to the real cart endpoint (it previously posted nowhere).
-		const form = document.querySelector("form.cart");
-		if (form) {
-			form.addEventListener("submit", async (e) => {
-				e.preventDefault();
-				const qtyInput = form.querySelector("input.qty, #quantity, input[name='quantity']");
-				const quantity = Math.max(1, parseInt(qtyInput && qtyInput.value, 10) || 1);
-				const options = [];
-				if (select && select.value) {
-					const selected = select.options[select.selectedIndex];
-					options.push({ label: "Option", value: (selected && selected.text) || select.value });
-				}
-				const btn = form.querySelector("button[type='submit'], .single_add_to_cart_button");
-				if (btn) btn.disabled = true;
-				try {
-					const ok = await addToCart({ slug, quantity, options });
-					if (ok) openCart();
-				} finally {
-					if (btn) btn.disabled = false;
-				}
-			});
-		}
 	}
 
 	function wireContactForm() {
@@ -1525,7 +1461,7 @@
 		// Kick off product data immediately (in parallel with header/footer/cart) so it
 		// is ready as early as possible instead of waiting on those network round-trips.
 		const productsReady = hydrateProductsPage();
-		const detailsReady = hydrateProductDetails();
+
 
 		await Promise.all([
 			loadPartial("#header-placeholder", "/partials/header.html"),
@@ -1549,7 +1485,7 @@
 		wireContactForm();
 		await initAuthModal();
 
-		await Promise.allSettled([cartReady, productsReady, detailsReady]);
+		await Promise.allSettled([cartReady, productsReady]);
 	}
 
 	document.addEventListener("DOMContentLoaded", bootstrap);

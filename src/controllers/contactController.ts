@@ -17,7 +17,7 @@ export async function handleContactSubmit(req: ApiRequest, res: ApiResponse): Pr
   const body = await parseBody(req);
 
   if ((body.website_hp ?? "").trim() !== "") {
-    redirect(res, "/contact-us.html?status=error&reason=spam");
+    redirect(res, "/contact-us?status=error&reason=spam");
     return;
   }
 
@@ -29,13 +29,13 @@ export async function handleContactSubmit(req: ApiRequest, res: ApiResponse): Pr
   const recaptchaResponse = (body["g-recaptcha-response"] ?? "").trim();
 
   if (!firstName || !lastName || !email || !message) {
-    redirect(res, "/contact-us.html?status=error&reason=required");
+    redirect(res, "/contact-us?status=error&reason=required");
     return;
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    redirect(res, "/contact-us.html?status=error&reason=email");
+    redirect(res, "/contact-us?status=error&reason=email");
     return;
   }
 
@@ -43,13 +43,13 @@ export async function handleContactSubmit(req: ApiRequest, res: ApiResponse): Pr
   // submission sends an email to the shop.
   const remoteIp = getClientIp(req);
   if (!(await allowRequest("contact", remoteIp))) {
-    redirect(res, "/contact-us.html?status=error&reason=rate");
+    redirect(res, "/contact-us?status=error&reason=rate");
     return;
   }
 
   const captchaOk = await validateRecaptcha(recaptchaResponse, remoteIp);
   if (!captchaOk) {
-    redirect(res, "/contact-us.html?status=error&reason=captcha");
+    redirect(res, "/contact-us?status=error&reason=captcha");
     return;
   }
 
@@ -64,8 +64,8 @@ export async function handleContactSubmit(req: ApiRequest, res: ApiResponse): Pr
       websiteHp: body.website_hp ?? "",
     });
 
-    redirect(res, "/contact-us.html?status=success");
+    redirect(res, "/contact-us?status=success");
   } catch {
-    redirect(res, "/contact-us.html?status=error&reason=send");
+    redirect(res, "/contact-us?status=error&reason=send");
   }
 }

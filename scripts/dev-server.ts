@@ -3,6 +3,7 @@
 import "./load-env.js";
 
 import http from "node:http";
+import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,18 +16,49 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const publicDir = path.join(rootDir, "public");
 const port = Number(process.env.PORT ?? "3000");
-const staticAliases: Record<string, string> = {
-  "/about-us": "/pamca_about.html",
-  "/contact-us": "/contact-us.html",
-  "/pharmacy-products": "/pharmacy-products.html",
-  "/minor-ailments-prescribing-solution": "/pamca_minor_ailments.html",
-  "/digital-thermometer": "/product.html",
-  "/thermometer-dual-readings": "/product.html",
-  "/gel-dispenser": "/product.html",
-  "/nfc-counter": "/product.html",
-  "/thermometer-dual": "/thermometer-dual.html",
-  "/thermometer-mono": "/thermometer-mono.html",
+type VercelRule = {
+  source: string;
+  destination: string;
+  permanent?: boolean;
+  has?: Array<{ type: string; key: string; value?: string }>;
 };
+
+// Mirror vercel.json's redirects + rewrites locally so dev behaves like production
+// (one source of truth: clean URLs, legacy redirects, /products/:slug, /sitemap.xml).
+const vercelConfig = JSON.parse(readFileSync(path.join(rootDir, "vercel.json"), "utf8")) as {
+  redirects?: VercelRule[];
+  rewrites?: VercelRule[];
+};
+
+/** Compiles a Vercel path pattern ("/products/:slug", "/api/:path*") to a RegExp + param names. */
+function compilePattern(source: string): { re: RegExp; names: string[] } {
+  const names: string[] = [];
+  const body = source.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/:(\w+)(\*)?/g, (_m, name: string, star?: string) => {
+    names.push(name);
+    return star ? "(.*)" : "([^/]+)";
+  });
+  return { re: new RegExp(`^${body}$`), names };
+}
+
+/** Matches a rule (path + optional `has` query conditions) and fills its destination params. */
+function applyRule(rule: VercelRule, pathname: string, search: URLSearchParams): string | null {
+  const { re, names } = compilePattern(rule.source);
+  const m = pathname.match(re);
+  if (!m) return null;
+  const params: Record<string, string> = {};
+  names.forEach((n, i) => (params[n] = m[i + 1] ?? ""));
+  for (const cond of rule.has ?? []) {
+    if (cond.type !== "query") return null;
+    const value = search.get(cond.key);
+    if (value == null) return null;
+    if (cond.value) {
+      const cm = value.match(new RegExp(`^(?:${cond.value})$`));
+      if (!cm) return null;
+      Object.assign(params, cm.groups ?? {});
+    }
+  }
+  return rule.destination.replace(/:(\w+)\*?/g, (_m, n: string) => params[n] ?? "");
+}
 
 function sendApiError(res: http.ServerResponse, error: unknown): void {
   res.statusCode = 500;
@@ -111,11 +143,13 @@ function getContentType(filePath: string): string {
   if (filePath.endsWith(".jpg") || filePath.endsWith(".jpeg")) return "image/jpeg";
   if (filePath.endsWith(".webp")) return "image/webp";
   if (filePath.endsWith(".ico")) return "image/x-icon";
+  if (filePath.endsWith(".txt")) return "text/plain; charset=utf-8";
+  if (filePath.endsWith(".xml")) return "application/xml; charset=utf-8";
   return "application/octet-stream";
 }
 
 async function serveStaticFile(res: http.ServerResponse, pathname: string): Promise<boolean> {
-  const normalized = staticAliases[pathname] ?? (pathname === "/" ? "/index.html" : pathname);
+  const normalized = pathname === "/" ? "/index.html" : pathname;
   const candidate = path.resolve(publicDir, `.${normalized}`);
 
   if (!candidate.startsWith(publicDir)) {
@@ -155,7 +189,35 @@ async function handleApiRequest(req: http.IncomingMessage, res: http.ServerRespo
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 
-  if (url.pathname.startsWith("/api/")) {
+  // 1) Redirects (permanent 308s), exactly as vercel.json declares them.
+  for (const rule of vercelConfig.redirects ?? []) {
+    const target = applyRule(rule, url.pathname, url.searchParams);
+    if (target != null) {
+      res.statusCode = rule.permanent === false ? 307 : 308;
+      res.setHeader("Location", target + (target.includes("?") ? "" : url.search));
+      res.end();
+      return;
+    }
+  }
+
+  // 2) Real files win over rewrites (same as Vercel's filesystem-first routing).
+  if (!url.pathname.startsWith("/api/") && (await serveStaticFile(res, url.pathname))) return;
+
+  // 3) Rewrites. "/api/[...path]?path=x/y" means "the API route /api/x/y".
+  let target = url.pathname;
+  for (const rule of vercelConfig.rewrites ?? []) {
+    const dest = applyRule(rule, url.pathname, url.searchParams);
+    if (dest == null) continue;
+    const [destPath, destQuery] = dest.split("?");
+    target =
+      destPath === "/api/[...path]"
+        ? "/api/" + (new URLSearchParams(destQuery ?? "").get("path") ?? url.pathname.replace(/^\/api\//, ""))
+        : destPath;
+    break;
+  }
+
+  if (target.startsWith("/api/")) {
+    req.url = target + url.search;
     const handled = await handleApiRequest(req, res);
     if (!handled) {
       res.statusCode = 404;
@@ -164,11 +226,18 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  const handled = await serveStaticFile(res, url.pathname);
-  if (handled) return;
+  if (await serveStaticFile(res, target)) return;
 
-  res.statusCode = 404;
-  res.end("Not found");
+  // 4) Same custom 404 page Vercel serves.
+  try {
+    const notFound = await readFile(path.join(publicDir, "404.html"));
+    res.statusCode = 404;
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.end(notFound);
+  } catch {
+    res.statusCode = 404;
+    res.end("Not found");
+  }
 });
 
 server.listen(port, () => {

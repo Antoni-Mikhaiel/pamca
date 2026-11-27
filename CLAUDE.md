@@ -56,7 +56,9 @@ Keep Supabase/Brevo calls in `src/services`; controllers should not touch the DB
 
 ### Frontend (`public/`)
 
-Plain static HTML pages, no framework/bundler. [public/shared-scripts.js](public/shared-scripts.js) is the single client bootstrap: it injects `partials/header.html` + `partials/footer.html`, wires the cart modal, and hydrates product/cart data from the API. Product **detail** pages are hydrated only for the slugs hardcoded in its `hydrateProductDetails` map. (`shared-scripts.js` is duplicated at the repo root; `public/shared-scripts.js` is the one actually served.)
+Plain static HTML pages, no framework/bundler. [public/shared-scripts.js](public/shared-scripts.js) is the single client bootstrap: it injects `partials/header.html` + `partials/footer.html`, wires the cart modal, and hydrates product/cart data from the API. (`shared-scripts.js` is duplicated at the repo root; `public/shared-scripts.js` is the one actually served.)
+
+**URLs & SEO.** Every page has one canonical clean URL (`/about-us`, `/pharmacy-products`, …); `vercel.json` rewrites it to the `.html` file and 308-redirects the `.html`/legacy URLs to it. Link to the clean URL, never the `.html`. Each indexable page carries a `<!-- seo:start -->…<!-- seo:end -->` head block (title, description, canonical, OG/Twitter); admin/profile/order are `noindex`. Product pages live at `/products/:slug` and are **server-rendered** by [src/controllers/pageController.ts](src/controllers/pageController.ts) (head + JSON-LD + inlined product data injected into the `public/product.html` template, which is bundled into the function via `functions.includeFiles`); `/sitemap.xml` is generated there too. The dev server reads `vercel.json` redirects/rewrites, so local routing matches production.
 
 `public/auth.js` is a separate browser Supabase auth client using the **anon** key and `sessionStorage`; it backs `admin.html`. The admin editor (`public/admin.js`) currently persists content to `localStorage` only.
 

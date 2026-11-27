@@ -136,8 +136,9 @@
       .features-grid { grid-template-columns: 1fr; }
     }
   </style>
-    <link rel="icon" type="image/png" href="/images/pamca_tab_logo.png">
-    <link rel="apple-touch-icon" href="/images/pamca_tab_logo.png">
+    <link rel="icon" href="/favicon.ico" sizes="48x48">
+    <link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192.png">
+    <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
   </head>
 <body>
   <div id="header-placeholder"></div>
@@ -145,7 +146,7 @@
 
   <section class="product-section">
     <div class="pd-wrap">
-      <a href="/pharmacy-products.html" class="back-to-products">Back to Products</a>
+      <a href="/pharmacy-products" class="back-to-products">Back to Products</a>
       <div id="pd-root"></div>
     </div>
   </section>
@@ -157,10 +158,15 @@
   <script>
     (function () {
       const root = document.getElementById('pd-root');
-      const pathSlug = location.pathname && !location.pathname.endsWith('.html')
-        ? location.pathname.replace(/^\/+|\/+$/g, '')
-        : '';
+      // Canonical URL is /products/<slug> (server-rendered head, see pageController.ts);
+      // ?slug= is kept for old links.
+      const pathMatch = location.pathname.match(/^\/products\/([^/]+)\/?$/);
+      const pathSlug = pathMatch ? decodeURIComponent(pathMatch[1]) : '';
       const slug = new URLSearchParams(location.search).get('slug') || pathSlug;
+      // Product data the server inlined into the page — render without an API round trip.
+      const preloaded = window.__PAMCA_PRODUCT__ && window.__PAMCA_PRODUCT__.slug === slug
+        ? window.__PAMCA_PRODUCT__
+        : null;
 
       function escapeHtml(s) {
         return String(s == null ? '' : s)
@@ -172,10 +178,16 @@
       function showState(title, message) {
         root.innerHTML =
           '<div class="pd-state"><h2>' + escapeHtml(title) + '</h2><p>' + escapeHtml(message) +
-          '</p><p><a class="back-to-products" href="/pharmacy-products.html">Back to Products</a></p></div>';
+          '</p><p><a class="back-to-products" href="/pharmacy-products">Back to Products</a></p></div>';
       }
 
       if (!slug) { showState('Product not specified', 'No product was selected.'); return; }
+
+      if (preloaded) {
+        render(preloaded);
+        try { localStorage.setItem('pamca_cache_product_' + slug, JSON.stringify(preloaded)); } catch (_) {}
+        return;
+      }
 
       // 1) Paint instantly from cache so the page isn't blank while the request runs.
       //    Prefer a per-product cache, then fall back to the products-list cache that
@@ -210,7 +222,7 @@
         .catch(function () { if (!shownFromCache) showState('Something went wrong', 'Please try again in a moment.'); });
 
       function render(p) {
-        document.title = (p.name || 'Product') + ' — PAMCA';
+        document.title = (p.name || 'Product') + ' | PAMCA';
         const nameEl = document.getElementById('pd-breadcrumb-name');
         if (nameEl) nameEl.textContent = p.name || 'Product';
 

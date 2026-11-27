@@ -1,5 +1,6 @@
 import { ApiRequest, ApiResponse } from "../lib/http.js";
-import { readPublicFile } from "../lib/publicFiles.js";
+import { readPublicFile, hashPublicFile } from "../lib/publicFiles.js";
+import { versionAssets } from "../lib/assets.js";
 import { inlinePartials } from "../lib/partials.js";
 import { optimizedImage } from "../lib/images.js";
 import { getProductBySlug, listProducts, listProductSitemapEntries, toPublicProduct } from "../services/productService.js";
@@ -46,7 +47,9 @@ function summarize(text: string, max = 155): string {
 
 /** A public/ page with the shared header/footer inlined (crawlable navigation). */
 async function readPage(name: string): Promise<string> {
-  return inlinePartials(await readPublicFile(name), (partial) => readPublicFile(`partials/${partial}.html`));
+  const html = await inlinePartials(await readPublicFile(name), (partial) => readPublicFile(`partials/${partial}.html`));
+  // Same ?v= content-hash stamps as the static build, so assets stay long-cacheable.
+  return versionAssets(html, hashPublicFile);
 }
 
 /** Replaces the template's <title> (or appends to <head>) with the server-rendered head. */

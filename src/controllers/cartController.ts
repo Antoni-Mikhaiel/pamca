@@ -1,4 +1,4 @@
-import { ensureCartToken, parseBody, ApiRequest, ApiResponse, toCurrency } from "../lib/http.js";
+import { ensureCartToken, readCartToken, parseBody, ApiRequest, ApiResponse, toCurrency } from "../lib/http.js";
 import { buildMiniCartHtml, computeCartTotals } from "../lib/miniCartHtml.js";
 import { addToCart, getCartItems, removeCartItem, updateCartQuantity, SelectedOption } from "../services/cartService.js";
 import { CartItem } from "../models/types.js";
@@ -156,7 +156,14 @@ export async function handleRemoveCartItem(req: ApiRequest, res: ApiResponse): P
 }
 
 export async function handleGetCart(req: ApiRequest, res: ApiResponse): Promise<void> {
-  const cartToken = ensureCartToken(req, res);
+  // Reading the cart never creates one: no token means an empty cart, and no
+  // Set-Cookie for every visitor/bot. The cookie is issued on the first add-to-cart.
+  const cartToken = readCartToken(req);
+  if (!cartToken) {
+    const hstPercent = await getHSTPercent();
+    res.status(200).json({ success: true, data: { ...buildCartPayload([], hstPercent), items: [] } });
+    return;
+  }
   const { items, payload } = await loadCart(cartToken);
 
   res.status(200).json({

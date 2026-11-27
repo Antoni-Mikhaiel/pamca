@@ -132,6 +132,19 @@
 	// recompute (recomputeCartLocally) can re-derive the tax before the next sync.
 	let cartHstPercent = 13;
 
+	// The last known cart item count, remembered across page views. Lets a visitor
+	// whose cart is empty skip the /api/cart/get round trip on every page (the
+	// drawer's built-in markup already shows an empty cart). Unknown (first visit)
+	// or non-zero still fetches, which also corrects a stale count — e.g. after a
+	// paid order the server clears the cart and the next fetch reports 0.
+	const CART_COUNT_KEY = "pamca_cart_count";
+	function rememberCartCount(count) {
+		try { localStorage.setItem(CART_COUNT_KEY, String(Math.max(0, Number(count) || 0))); } catch (_) {}
+	}
+	function cartMayHaveItems() {
+		try { return localStorage.getItem(CART_COUNT_KEY) !== "0"; } catch (_) { return true; }
+	}
+
 	function applyCartData(data) {
 		if (!data) return;
 		const items = document.getElementById("cart-items");
@@ -139,6 +152,7 @@
 
 		const badge = document.getElementById("cart-badge");
 		if (badge) badge.textContent = String(data.count ?? 0);
+		rememberCartCount(data.count ?? 0);
 
 		if (data.hst_percent != null) {
 			cartHstPercent = Number(data.hst_percent) || 0;
@@ -885,6 +899,7 @@
 		const taxCents = Math.round((subtotalCents * (Number(cartHstPercent) || 0)) / 100);
 		const badge = document.getElementById("cart-badge");
 		if (badge) badge.textContent = String(count);
+		rememberCartCount(count);
 		const subtotalEl = document.querySelector(".cart-subtotal-amount");
 		if (subtotalEl) subtotalEl.innerHTML = formatMoney(subtotalCents / 100);
 		const taxEl = document.querySelector(".cart-tax-amount");
@@ -1504,8 +1519,9 @@
 		wireRefundModal();
 		maybeShowOrderStatus();
 		// Don't block the login button / contact form on the cart API round-trip
-		// (a cold serverless start can take a second or more).
-		const cartReady = refreshCart().catch(() => {});
+		// (a cold serverless start can take a second or more), and skip it entirely
+		// when this browser's cart is known to be empty.
+		const cartReady = cartMayHaveItems() ? refreshCart().catch(() => {}) : Promise.resolve();
 		wireContactForm();
 		await initAuthModal();
 

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { contentHash } from "./assets.js";
 
 /**
  * Reads an HTML template from public/ for server-rendered pages. On Vercel the
@@ -32,4 +33,26 @@ export async function readPublicFile(name: string): Promise<string> {
 
   cache.set(name, html);
   return html;
+}
+
+const hashCache = new Map<string, string | null>();
+
+/**
+ * Content hash of a public/ asset (e.g. "/shared-scripts.js") for cache-busting
+ * ?v= stamps; null when the file isn't available to this function. Cached per
+ * warm instance. Must hash the same bytes as scripts/build-static.ts (the source).
+ */
+export async function hashPublicFile(publicPath: string): Promise<string | null> {
+  if (hashCache.has(publicPath)) return hashCache.get(publicPath) ?? null;
+  let hash: string | null = null;
+  for (const dir of [path.join(process.cwd(), "public"), path.join(process.cwd(), "..", "public")]) {
+    try {
+      hash = contentHash(await readFile(path.join(dir, publicPath)));
+      break;
+    } catch {
+      // try the next location
+    }
+  }
+  hashCache.set(publicPath, hash);
+  return hash;
 }

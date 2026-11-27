@@ -13,7 +13,8 @@ npm install
 npm run dev        # local server with hot reload (tsx watch), http://localhost:3000
 npm start          # local server, no watch
 npm run typecheck  # tsc --noEmit — the only "build"/CI check
-npm run build      # typecheck + scripts/build-static.ts: copies public/ -> dist/ with header/footer inlined (Vercel serves dist/)
+npm run build      # typecheck + scripts/build-static.ts: public/ -> dist/ (header/footer inlined, ?v= asset hashes, JS/CSS minified); Vercel serves dist/
+npm run preview    # build, then serve dist/ locally (what production serves)
 ```
 
 There is **no test runner and no linter** configured. `npm run typecheck` is the only automated verification. The app is run with `tsx` (TypeScript executed directly); TypeScript is never compiled. `dist/` is only the static site output of `npm run build` (git-ignored) — edit `public/`, never `dist/`.
@@ -58,7 +59,7 @@ Keep Supabase/Brevo calls in `src/services`; controllers should not touch the DB
 
 Plain static HTML pages, no framework/bundler. [public/shared-scripts.js](public/shared-scripts.js) is the single client bootstrap: it injects `partials/header.html` + `partials/footer.html`, wires the cart modal, and hydrates product/cart data from the API. (`shared-scripts.js` is duplicated at the repo root; `public/shared-scripts.js` is the one actually served.)
 
-**Header/footer are inlined server-side** (crawlable nav): pages keep empty `#header-placeholder`/`#footer-placeholder` divs in `public/`, and [src/lib/partials.ts](src/lib/partials.ts) fills them in the build, the dev server and the server-rendered pages; the client only fetches a partial if its placeholder is still empty. `/pharmacy-products` is server-rendered too (product cards + ItemList). Product photos go through Vercel Image Optimization (`/_vercel/image`, `vercel.json` `images`) via `optimizedImage()` — keep the server ([src/lib/images.ts](src/lib/images.ts)) and client (`public/shared-scripts.js`) versions identical.
+**Header/footer are inlined server-side** (crawlable nav): pages keep empty `#header-placeholder`/`#footer-placeholder` divs in `public/`, and [src/lib/partials.ts](src/lib/partials.ts) fills them in the build, the dev server and the server-rendered pages; the client only fetches a partial if its placeholder is still empty. Asset URLs in pages get `?v=<content hash>` ([src/lib/assets.ts](src/lib/assets.ts)) and are cached for a year (`immutable` in `vercel.json`) — reference assets with plain absolute paths (`/x.js`, `/images/y.webp`) and the build/SSR stamp them. `/pharmacy-products` is server-rendered too (product cards + ItemList). Product photos go through Vercel Image Optimization (`/_vercel/image`, `vercel.json` `images`) via `optimizedImage()` — keep the server ([src/lib/images.ts](src/lib/images.ts)) and client (`public/shared-scripts.js`) versions identical.
 
 **URLs & SEO.** Every page has one canonical clean URL (`/about-us`, `/pharmacy-products`, …); `vercel.json` rewrites it to the `.html` file and 308-redirects the `.html`/legacy URLs to it. Link to the clean URL, never the `.html`. Each indexable page carries a `<!-- seo:start -->…<!-- seo:end -->` head block (title, description, canonical, OG/Twitter); admin/profile/order are `noindex`. Product pages live at `/products/:slug` and are **server-rendered** by [src/controllers/pageController.ts](src/controllers/pageController.ts) (head + JSON-LD + inlined product data injected into the `public/product.html` template, which is bundled into the function via `functions.includeFiles`); `/sitemap.xml` is generated there too. The dev server reads `vercel.json` redirects/rewrites, so local routing matches production.
 

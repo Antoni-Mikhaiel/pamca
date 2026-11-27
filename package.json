@@ -7,7 +7,8 @@
     "build": "tsc --noEmit && tsx scripts/build-static.ts",
     "dev": "tsx watch scripts/dev-server.ts",
     "start": "tsx scripts/dev-server.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "preview": "npm run build && tsx scripts/dev-server.ts --dist"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
@@ -15,6 +16,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
+    "esbuild": "^0.27.7",
     "tsx": "^4.19.4",
     "typescript": "^5.7.2"
   }

@@ -5,6 +5,8 @@ import {
   FullOrderItem,
   OrderPaymentEntry,
   adjustProductStock,
+  claimOrderMoneyLock,
+  releaseOrderMoneyLock,
   getFullOrder,
   getOrderRecordById,
   isOrderEditable,
@@ -187,8 +189,31 @@ async function applyItemsAndStock(order: FullOrder, newItems: NewItem[]): Promis
   await replaceOrderItems(order.id, newItems);
 }
 
-/** Refunds `targetCents` across an order's payments, mutating the ledger entries. */
+/**
+ * Runs a money-moving action while holding the order's lock, against a freshly
+ * re-read copy of the order (the caller's copy may predate a concurrent refund).
+ * A second concurrent request is refused instead of moving money twice.
+ */
+async function withMoneyLock<T>(orderId: string, action: (fresh: FullOrder) => Promise<T>): Promise<T> {
+  if (!(await claimOrderMoneyLock(orderId))) {
+    throw new Error("This order is already being updated. Please wait a moment and refresh the page.");
+  }
+  try {
+    const fresh = await getFullOrder(orderId);
+    if (!fresh) throw new Error("Order not found.");
+    return await action(fresh);
+  } finally {
+    await releaseOrderMoneyLock(orderId);
+  }
+}
+
+/**
+ * Refunds `targetCents` across an order's payments, mutating the ledger entries.
+ * If a later payment's refund fails after earlier ones succeeded, the partial
+ * progress is saved before rethrowing, so a retry won't refund those again.
+ */
 async function refundAcrossPayments(
+  orderId: string,
   payments: OrderPaymentEntry[],
   targetCents: number,
 ): Promise<{ payments: OrderPaymentEntry[]; refundedCents: number }> {
@@ -199,7 +224,18 @@ async function refundAcrossPayments(
     const available = p.amount_cents - p.refunded_cents;
     const take = Math.min(remaining, available);
     if (take <= 0) continue;
-    await refundPayment({ paymentId: p.square_payment_id, amountCents: take, reason: "PAMCA order adjustment" });
+    try {
+      await refundPayment({ paymentId: p.square_payment_id, amountCents: take, reason: "PAMCA order adjustment" });
+    } catch (error) {
+      if (remaining < Math.round(targetCents)) {
+        try {
+          await recordRefund(orderId, ledger, false);
+        } catch (recordError) {
+          console.error(`[refund] could not save partial refund progress for order ${orderId}:`, recordError);
+        }
+      }
+      throw error;
+    }
     p.refunded_cents += take;
     remaining -= take;
   }
@@ -220,7 +256,11 @@ export interface CommitResult {
  * When they're owed money it's refunded and applied immediately; an even swap is
  * applied immediately with no money movement.
  */
-export async function commitEdit(order: FullOrder, edit: OrderEditRequest): Promise<CommitResult> {
+export function commitEdit(order: FullOrder, edit: OrderEditRequest): Promise<CommitResult> {
+  return withMoneyLock(order.id, (fresh) => commitEditLocked(fresh, edit));
+}
+
+async function commitEditLocked(order: FullOrder, edit: OrderEditRequest): Promise<CommitResult> {
   if (!isOrderEditable(order)) throw new Error("This order can no longer be edited.");
   const plan = await buildEditPlan(order, edit);
 
@@ -274,7 +314,7 @@ export async function commitEdit(order: FullOrder, edit: OrderEditRequest): Prom
   let refundedCents = 0;
   if (plan.deltaCents < 0) {
     const target = -plan.deltaCents;
-    const { payments, refundedCents: done } = await refundAcrossPayments(order.payments, target);
+    const { payments, refundedCents: done } = await refundAcrossPayments(order.id, order.payments, target);
     refundedCents = done;
     await recordRefund(order.id, payments, false);
   }
@@ -356,7 +396,11 @@ export async function applyEditBySquareOrderId(squareOrderId: string, squarePaym
  * Full refund of an order (within the 48h window): refunds whatever is still
  * unrefunded across its payments, restocks every item, and marks it refunded.
  */
-export async function refundOrderFull(order: FullOrder): Promise<{ refundedCents: number }> {
+export function refundOrderFull(order: FullOrder): Promise<{ refundedCents: number }> {
+  return withMoneyLock(order.id, refundOrderFullLocked);
+}
+
+async function refundOrderFullLocked(order: FullOrder): Promise<{ refundedCents: number }> {
   if (!isOrderRefundable(order)) throw new Error("This order can no longer be refunded.");
   if (!isSquareConfigured()) throw new Error("Refunds are not available right now.");
 
@@ -365,13 +409,15 @@ export async function refundOrderFull(order: FullOrder): Promise<{ refundedCents
   const target = totalPaid - alreadyRefunded;
   if (target <= 0) throw new Error("This order has already been fully refunded.");
 
-  const { payments, refundedCents } = await refundAcrossPayments(order.payments, target);
+  const { payments, refundedCents } = await refundAcrossPayments(order.id, order.payments, target);
+  // Record the refund before restocking: if a restock fails, the order must still
+  // show as refunded so nobody can trigger the refund a second time.
+  await recordRefund(order.id, payments, true);
 
   // Restock everything that was in the order.
   for (const item of order.items) {
     if (item.product_id != null) await adjustProductStock(item.product_id, item.variation_label, -item.quantity);
   }
-  await recordRefund(order.id, payments, true);
 
   // Notify the shop owner of the refund (best-effort).
   try {

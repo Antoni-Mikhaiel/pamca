@@ -10,7 +10,7 @@ import { handleGetProduct, handleListProducts } from "../controllers/productCont
 import { handleContactSubmit } from "../controllers/contactController.js";
 import { handleSignup } from "../controllers/authController.js";
 import { handleGetContent, handleSaveContent } from "../controllers/contentController.js";
-import { handleSession, handleUpload } from "../controllers/adminController.js";
+import { handleSession, handleUploadUrl } from "../controllers/adminController.js";
 import { handleGetHST, handleSetHST } from "../controllers/adminTaxController.js";
 import {
   handleAdminListProducts,
@@ -104,7 +104,7 @@ const routes: Route[] = [
   { method: "POST", pattern: /^\/api\/admin\/products$/, handler: handleSaveProduct },
   { method: "PUT", pattern: /^\/api\/admin\/products$/, handler: handleSaveProduct },
   { method: "DELETE", pattern: /^\/api\/admin\/products$/, handler: handleDeleteProduct },
-  { method: "POST", pattern: /^\/api\/admin\/upload$/, handler: handleUpload },
+  { method: "POST", pattern: /^\/api\/admin\/upload-url$/, handler: handleUploadUrl },
   { method: "GET", pattern: /^\/api\/admin\/tax\/hst$/, handler: handleGetHST },
   { method: "POST", pattern: /^\/api\/admin\/tax\/hst$/, handler: handleSetHST },
   { method: "POST", pattern: /^\/api\/checkout\/rates$/, handler: handleGetShippingRates },

@@ -5,38 +5,34 @@ const BUCKET = "product-images";
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 // Raster formats only: SVG can carry script, so it's refused here and by the bucket's
 // own allowed_mime_types (docs/supabase-schema.sql), which mirrors this list + limit.
-const ALLOWED = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+const EXTENSIONS: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
 
-export type UploadInput = { dataBase64: string; filename?: string; contentType?: string };
+export type UploadUrlInput = { contentType?: string; size?: number };
+export type UploadUrlResult = { uploadUrl: string; publicUrl: string };
 
-/** Decodes a base64 (or data-URL) image and stores it in Supabase Storage, returning its public URL. */
-export async function uploadImage({ dataBase64, filename, contentType }: UploadInput): Promise<string> {
-  let base64 = dataBase64 || "";
-  let type = contentType || "";
+/**
+ * Issues a one-time signed URL the admin's browser uploads the file to directly
+ * (PUT to Supabase Storage), plus the public URL it will be served from. The file
+ * never passes through the serverless function, so Vercel's 4.5 MB request-body
+ * limit doesn't apply; the bucket enforces the 5 MB / image-type rules itself.
+ */
+export async function createImageUploadUrl({ contentType, size }: UploadUrlInput): Promise<UploadUrlResult> {
+  const type = String(contentType ?? "").toLowerCase();
+  const ext = EXTENSIONS[type];
+  if (!ext) throw new Error("Unsupported image type. Use PNG, JPEG, WebP or GIF.");
+  if (typeof size === "number" && size > MAX_BYTES) throw new Error("Image exceeds the 5 MB upload limit");
 
-  const match = base64.match(/^data:([^;]+);base64,(.*)$/s);
-  if (match) {
-    type = type || match[1];
-    base64 = match[2];
-  }
-  if (!base64) throw new Error("No image data provided");
-  if (type && !ALLOWED.has(type)) throw new Error(`Unsupported image type: ${type}`);
-
-  const buffer = Buffer.from(base64, "base64");
-  if (!buffer.length) throw new Error("Image data could not be decoded");
-  if (buffer.length > MAX_BYTES) throw new Error("Image exceeds the 5 MB upload limit");
-
-  const ext =
-    filename && filename.includes(".")
-      ? filename.split(".").pop()!.toLowerCase().replace(/[^a-z0-9]/g, "")
-      : (type.split("/")[1] || "bin");
   const objectPath = `${new Date().getFullYear()}/${randomUUID()}.${ext}`;
-
-  const { error } = await supabase.storage.from(BUCKET).upload(objectPath, buffer, {
-    contentType: type || "application/octet-stream",
-    upsert: false,
-  });
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(objectPath);
   if (error) throw error;
 
-  return supabase.storage.from(BUCKET).getPublicUrl(objectPath).data.publicUrl;
+  return {
+    uploadUrl: data.signedUrl,
+    publicUrl: supabase.storage.from(BUCKET).getPublicUrl(objectPath).data.publicUrl,
+  };
 }

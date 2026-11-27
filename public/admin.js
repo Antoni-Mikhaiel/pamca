@@ -14,7 +14,7 @@
     content: (key) => `/api/content/${key}?_=${Date.now()}`,
     saveContent: '/api/admin/content',
     products: '/api/admin/products',
-    upload: '/api/admin/upload',
+    uploadUrl: '/api/admin/upload-url',
     orders: '/api/admin/orders',
     flagOrder: '/api/admin/orders/flag',
     completeOrder: '/api/admin/orders/complete',
@@ -881,13 +881,20 @@
         const dataUrl = await readFileAsDataUrl(file);
         setImagePreview(preview, dataUrl); // instant local preview
         status.textContent = 'Uploading…';
-        const result = await apiSend(API.upload, 'POST', {
-          dataBase64: dataUrl,
-          filename: file.name,
-          contentType: file.type
+        // Get a one-time signed URL, then send the file straight to Supabase Storage
+        // (not through our API), so large photos aren't cut off by Vercel's body limit.
+        const target = await apiSend(API.uploadUrl, 'POST', { contentType: file.type, size: file.size });
+        const put = await fetch(target.uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type, 'x-upsert': 'false' },
+          body: file
         });
-        row.dataset.url = result.url;
-        setImagePreview(preview, result.url);
+        if(!put.ok){
+          const err = await put.json().catch(() => ({}));
+          throw new Error(err.message || err.error || ('storage returned ' + put.status));
+        }
+        row.dataset.url = target.publicUrl;
+        setImagePreview(preview, target.publicUrl);
         chooseBtn.textContent = 'Replace';
         status.textContent = 'Uploaded ✓';
       }catch(e){

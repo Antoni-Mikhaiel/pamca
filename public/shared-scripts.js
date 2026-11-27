@@ -1176,7 +1176,10 @@
 			box.style.background = "#f8d7da";
 			box.style.color = "#721c24";
 			box.style.border = "1px solid #f5c6cb";
-			box.textContent = "Sorry, something went wrong. Please try again.";
+			const reason = new URLSearchParams(window.location.search).get("reason");
+			box.textContent = reason === "rate"
+				? "You've sent several messages recently. Please wait a while before sending another, or email sales@pamca.net."
+				: "Sorry, something went wrong. Please try again.";
 		}
 
 		const host = form.closest(".contact-form");

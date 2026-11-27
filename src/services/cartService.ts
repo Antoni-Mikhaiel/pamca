@@ -244,17 +244,59 @@ async function getItemStock(itemId: string, cartToken: string): Promise<number |
   };
   const prod = row.products;
   if (!prod) return null;
+  return stockForLine(prod, row.variation_label);
+}
 
+type StockFields = { stock: number; option_groups: unknown; variants: unknown };
+
+/** Available stock for one cart/order line of a product, identified by its variation label. */
+function stockForLine(prod: StockFields, variationLabel: string | null): number {
   const baseStock = Math.max(0, Math.round(Number(prod.stock) || 0));
   const groups = asOptionGroups(prod.option_groups);
   if (groups.filter((g) => g.options.length > 0).length === 0) return baseStock;
 
-  const selectedValues = (row.variation_label ?? "")
+  const selectedValues = (variationLabel ?? "")
     .split(" / ")
     .map((s) => s.trim())
     .filter(Boolean);
 
   return resolveCombinationStock(asVariants(prod.variants), groups, selectedValues, baseStock);
+}
+
+export interface StockShortfall {
+  productName: string;
+  variationLabel: string | null;
+  requested: number;
+  available: number;
+}
+
+/**
+ * Re-checks every cart line against current stock (one query). Run right before
+ * checkout: stock may have dropped since the items were added (other orders, admin
+ * edits), and charging for units that don't exist would oversell.
+ */
+export async function findStockShortfalls(items: CartItem[]): Promise<StockShortfall[]> {
+  const ids = [...new Set(items.map((i) => i.product_id).filter((v) => typeof v === "number"))];
+  if (ids.length === 0) return [];
+
+  const { data, error } = await supabase.from("products").select("id, stock, option_groups, variants").in("id", ids);
+  if (error) throw error;
+  const byId = new Map(((data ?? []) as Array<StockFields & { id: number }>).map((p) => [p.id, p]));
+
+  const shortfalls: StockShortfall[] = [];
+  for (const item of items) {
+    const prod = byId.get(item.product_id);
+    const available = prod ? stockForLine(prod, item.variation_label) : 0;
+    if (item.quantity > available) {
+      shortfalls.push({
+        productName: item.product_name,
+        variationLabel: item.variation_label,
+        requested: item.quantity,
+        available,
+      });
+    }
+  }
+  return shortfalls;
 }
 
 export async function removeCartItem(cartToken: string, itemId: string): Promise<boolean> {

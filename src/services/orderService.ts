@@ -1,7 +1,6 @@
 import { randomInt } from "node:crypto";
 import { supabase, selectAllRows } from "../lib/supabase.js";
 import { CartItem, CustomerDetails, OrderRecord, ShippingLine } from "../models/types.js";
-import { asVariants } from "../lib/variants.js";
 import { getHSTPercent, calculateTaxCents } from "./taxService.js";
 
 /** Parses a stored shipping_breakdown JSON value into typed ShippingLine[]. */
@@ -228,36 +227,14 @@ export async function adjustProductStock(
   soldDelta: number,
 ): Promise<void> {
   if (!soldDelta) return;
-  const { data: product, error } = await supabase
-    .from("products")
-    .select("id, stock, variants")
-    .eq("id", productId)
-    .maybeSingle();
+  // Done in one Postgres function that locks the product row, so two orders paid at
+  // the same moment can't both read stock=5 and both write 4 (a lost update).
+  const { error } = await supabase.rpc("adjust_product_stock", {
+    p_product_id: productId,
+    p_variation_label: variationLabel,
+    p_sold_delta: Math.round(soldDelta),
+  });
   if (error) throw error;
-  if (!product) return;
-
-  const prod = product as { stock: number; variants: unknown };
-  const variants = asVariants(prod.variants);
-
-  // No per-combination inventory → adjust the base stock column.
-  if (variants.length === 0) {
-    const newStock = Math.max(0, (Number(prod.stock) || 0) - soldDelta);
-    const { error: updateError } = await supabase.from("products").update({ stock: newStock }).eq("id", productId);
-    if (updateError) throw updateError;
-    return;
-  }
-
-  const key = (variationLabel ?? "").trim();
-  const newVariants = variants.map((v) =>
-    v.key === key ? { ...v, stock: Math.max(0, v.stock - soldDelta) } : v,
-  );
-  const newStock = newVariants.reduce((sum, v) => sum + v.stock, 0);
-
-  const { error: updateError } = await supabase
-    .from("products")
-    .update({ variants: newVariants, stock: newStock })
-    .eq("id", productId);
-  if (updateError) throw updateError;
 }
 
 /** Edit allowed within this window from order creation; refund within the longer one. */
@@ -603,4 +580,30 @@ export async function recordRefund(
   }
   const { error } = await supabase.from("orders").update(update).eq("id", orderId);
   if (error) throw error;
+}
+
+/** How long a money-moving action may hold an order before the lock is treated as stale. */
+const MONEY_LOCK_MS = 2 * 60 * 1000;
+
+/**
+ * Claims an order for a money-moving action (refund / edit) with a conditional
+ * update: succeeds only when no other action holds an unexpired lock. Two requests
+ * racing (double-click, two tabs) can't both pass, so a refund can't run twice.
+ */
+export async function claimOrderMoneyLock(orderId: string): Promise<boolean> {
+  const now = new Date();
+  const { data, error } = await supabase
+    .from("orders")
+    .update({ money_lock_until: new Date(now.getTime() + MONEY_LOCK_MS).toISOString() })
+    .eq("id", orderId)
+    .or(`money_lock_until.is.null,money_lock_until.lt.${now.toISOString()}`)
+    .select("id");
+  if (error) throw error;
+  return Array.isArray(data) && data.length > 0;
+}
+
+/** Releases the lock taken by {@link claimOrderMoneyLock} (best-effort; it also expires). */
+export async function releaseOrderMoneyLock(orderId: string): Promise<void> {
+  const { error } = await supabase.from("orders").update({ money_lock_until: null }).eq("id", orderId);
+  if (error) console.error(`[order-lock] release failed for order ${orderId}:`, error.message);
 }

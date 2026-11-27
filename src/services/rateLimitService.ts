@@ -78,6 +78,42 @@ async function recordHit(rules: Rule[]): Promise<void> {
   }
 }
 
+/**
+ * Per-IP request budgets for endpoints that cost something on every call: account
+ * creation (spam accounts), the contact form (email to the shop), checkout (a
+ * pending order + a Square payment link each time) and shipping quotes (Canada Post
+ * API quota). Generous for real customers; they only bite on automated abuse.
+ */
+const REQUEST_LIMITS = {
+  signup: { max: 5, windowSeconds: 60 * 60 },
+  contact: { max: 5, windowSeconds: 60 * 60 },
+  checkout: { max: 15, windowSeconds: 60 * 60 },
+  shippingRates: { max: 40, windowSeconds: 10 * 60 },
+} as const;
+
+export type LimitedAction = keyof typeof REQUEST_LIMITS;
+
+/**
+ * Counts one request for `action` from `ip` and returns whether it's within budget.
+ * One round trip. Allows the request when the IP is unknown (local dev) or the
+ * limiter errors (fail open, logged).
+ */
+export async function allowRequest(action: LimitedAction, ip: string): Promise<boolean> {
+  if (!ip) return true;
+  const { max, windowSeconds } = REQUEST_LIMITS[action];
+  const { data, error } = await supabase.rpc("rate_limit_hit", {
+    p_key: `${action}:ip:${hashed(ip)}`,
+    p_window_seconds: windowSeconds,
+  });
+  if (error) {
+    console.error(`[rate-limit] ${action} hit failed (allowing request):`, error.message);
+    return true;
+  }
+  return Number(data) <= max;
+}
+
+export const TOO_MANY_REQUESTS_MESSAGE = "Too many requests. Please wait a few minutes and try again.";
+
 /** Whether guest order access is currently blocked for this IP or phone number. */
 export function isGuestOrderAccessBlocked(ip: string, normalizedPhone: string): Promise<boolean> {
   return isLimited(guestOrderRules(ip, normalizedPhone));

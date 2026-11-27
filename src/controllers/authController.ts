@@ -1,9 +1,15 @@
-import { ApiRequest, ApiResponse } from "../lib/http.js";
+import { ApiRequest, ApiResponse, getClientIp } from "../lib/http.js";
+import { allowRequest, TOO_MANY_REQUESTS_MESSAGE } from "../services/rateLimitService.js";
 import { readJsonBody } from "../lib/adminAuth.js";
 import { createConfirmedUser, isValidEmail, validatePassword } from "../services/authService.js";
 
 /** Verification-free sign-up: creates a pre-confirmed account and returns success. */
 export async function handleSignup(req: ApiRequest, res: ApiResponse): Promise<void> {
+  if (!(await allowRequest("signup", getClientIp(req)))) {
+    res.status(429).json({ success: false, message: TOO_MANY_REQUESTS_MESSAGE });
+    return;
+  }
+
   const body = readJsonBody<{ email?: string; password?: string }>(req);
   const email = String(body.email ?? "").trim().toLowerCase();
   const password = String(body.password ?? "");

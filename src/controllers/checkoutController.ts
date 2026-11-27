@@ -1,7 +1,8 @@
-import { ApiRequest, ApiResponse, readCartToken, getHeader } from "../lib/http.js";
+import { ApiRequest, ApiResponse, readCartToken, getHeader, getClientIp } from "../lib/http.js";
 import { readJsonBody, getAuthUser } from "../lib/adminAuth.js";
 import { validateCustomerDetails, PICKUP_SERVICE_CODE, PICKUP_SERVICE_NAME } from "../lib/customer.js";
-import { getCartItems, clearCart } from "../services/cartService.js";
+import { getCartItems, clearCart, findStockShortfalls } from "../services/cartService.js";
+import { allowRequest, TOO_MANY_REQUESTS_MESSAGE } from "../services/rateLimitService.js";
 import {
   createPendingOrder,
   attachSquareDetails,
@@ -61,6 +62,12 @@ export async function handleGetShippingRates(req: ApiRequest, res: ApiResponse):
     return;
   }
 
+  // Every quote calls the Canada Post API, so cap it per IP.
+  if (!(await allowRequest("shippingRates", getClientIp(req)))) {
+    res.status(429).json({ success: false, message: TOO_MANY_REQUESTS_MESSAGE });
+    return;
+  }
+
   const body = readJsonBody<{ postalCode?: string }>(req);
   const postalCode = String(body.postalCode ?? "").trim();
   if (!POSTAL_RE.test(postalCode)) {
@@ -107,6 +114,12 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
     return;
   }
 
+  // Each checkout creates a pending order and a Square payment link, so cap it per IP.
+  if (!(await allowRequest("checkout", getClientIp(req)))) {
+    res.status(429).json({ success: false, message: TOO_MANY_REQUESTS_MESSAGE });
+    return;
+  }
+
   const body = readJsonBody<Record<string, unknown>>(req);
   // In-store pickup skips the shipping address (nothing is shipped) and any charge.
   const isPickup = String(body.deliveryMethod ?? "").toLowerCase() === "pickup";
@@ -121,6 +134,23 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
   const [items, authUser] = await Promise.all([getCartItems(cartToken), getAuthUser(req)]);
   if (items.length === 0) {
     res.status(400).json({ success: false, message: "Your cart is empty." });
+    return;
+  }
+
+  // Stock may have dropped since these were added to the cart; never charge for
+  // units that no longer exist.
+  const shortfalls = await findStockShortfalls(items);
+  if (shortfalls.length > 0) {
+    const list = shortfalls
+      .map((s) => {
+        const name = s.variationLabel ? `${s.productName} (${s.variationLabel})` : s.productName;
+        return s.available > 0 ? `${name}: only ${s.available} left` : `${name}: sold out`;
+      })
+      .join("; ");
+    res.status(409).json({
+      success: false,
+      message: `Some items in your cart are no longer available in that quantity — ${list}. Please update your cart and try again.`,
+    });
     return;
   }
 

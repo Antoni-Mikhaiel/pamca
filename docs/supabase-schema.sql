@@ -342,3 +342,60 @@ $$;
 -- server-only (otherwise anyone could inflate a victim's counter to lock them out).
 revoke execute on function rate_limit_hit(text, integer) from public, anon, authenticated;
 grant execute on function rate_limit_hit(text, integer) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- Atomic stock adjustment (orderService.adjustProductStock). Locks the product row
+-- (SELECT ... FOR UPDATE) so concurrent sales/restocks can't overwrite each other's
+-- read-modify-write. Positive p_sold_delta sells (decrements), negative restocks.
+-- Adjusts the matching per-combination entry in `variants` (keyed by the order
+-- item's variation label) and recomputes `stock` as their sum; products without
+-- variants adjust the base `stock`. Never goes below zero. Malformed variant
+-- entries are dropped, mirroring asVariants() in src/lib/variants.ts.
+-- ---------------------------------------------------------------------------
+create or replace function adjust_product_stock(p_product_id bigint, p_variation_label text, p_sold_delta integer)
+returns void
+language plpgsql
+set search_path = public
+as $$
+declare
+  v_variants jsonb;
+  v_key text := btrim(coalesce(p_variation_label, ''));
+begin
+  if coalesce(p_sold_delta, 0) = 0 then return; end if;
+
+  select variants into v_variants from products where id = p_product_id for update;
+  if not found then return; end if;
+
+  if v_variants is null or jsonb_typeof(v_variants) <> 'array' or jsonb_array_length(v_variants) = 0 then
+    update products set stock = greatest(0, coalesce(stock, 0) - p_sold_delta) where id = p_product_id;
+    return;
+  end if;
+
+  with elems as (
+    select ord, e->>'key' as k,
+      case
+        when jsonb_typeof(e->'stock') = 'number' then greatest(0, round((e->>'stock')::numeric))::int
+        when jsonb_typeof(e->'stock') = 'string' and btrim(e->>'stock') ~ '^-?[0-9]+(\.[0-9]+)?$'
+          then greatest(0, round(btrim(e->>'stock')::numeric))::int
+        else 0
+      end as cur
+    from jsonb_array_elements(v_variants) with ordinality as t(e, ord)
+    where jsonb_typeof(e->'key') = 'string' and e->>'key' <> ''
+  ), updated as (
+    select ord, k, case when k = v_key then greatest(0, cur - p_sold_delta) else cur end as s
+    from elems
+  )
+  update products
+  set variants = coalesce((select jsonb_agg(jsonb_build_object('key', k, 'stock', s) order by ord) from updated), '[]'::jsonb),
+      stock = coalesce((select sum(s) from updated), 0)
+  where id = p_product_id;
+end;
+$$;
+
+revoke execute on function adjust_product_stock(bigint, text, integer) from public, anon, authenticated;
+grant execute on function adjust_product_stock(bigint, text, integer) to service_role;
+
+-- Short-lived per-order lock for money-moving actions (full refund, order edit) so a
+-- double-click or two tabs can't refund twice. Claimed with a conditional update
+-- (null or expired) and cleared when the action finishes; expiry covers crashes.
+alter table orders add column if not exists money_lock_until timestamptz;

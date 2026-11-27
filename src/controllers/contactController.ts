@@ -1,4 +1,5 @@
-import { parseBody, ApiRequest, ApiResponse, getHeader } from "../lib/http.js";
+import { parseBody, ApiRequest, ApiResponse, getClientIp } from "../lib/http.js";
+import { allowRequest } from "../services/rateLimitService.js";
 import { sendContactEmail, validateRecaptcha } from "../services/contactService.js";
 
 function redirect(res: ApiResponse, location: string): void {
@@ -38,7 +39,14 @@ export async function handleContactSubmit(req: ApiRequest, res: ApiResponse): Pr
     return;
   }
 
-  const remoteIp = getHeader(req, "x-forwarded-for").split(",")[0]?.trim();
+  // Budget per IP even when reCAPTCHA passes (or isn't configured): each accepted
+  // submission sends an email to the shop.
+  const remoteIp = getClientIp(req);
+  if (!(await allowRequest("contact", remoteIp))) {
+    redirect(res, "/contact-us.html?status=error&reason=rate");
+    return;
+  }
+
   const captchaOk = await validateRecaptcha(recaptchaResponse, remoteIp);
   if (!captchaOk) {
     redirect(res, "/contact-us.html?status=error&reason=captcha");

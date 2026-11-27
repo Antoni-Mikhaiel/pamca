@@ -54,9 +54,12 @@
 		return partialRequests[path];
 	}
 
-	// Start both requests now, not at DOMContentLoaded, so they overlap page parsing.
-	requestPartial("/partials/header.html");
-	requestPartial("/partials/footer.html");
+	// Pages normally arrive with the header/footer already inlined (build step /
+	// server render), so only fetch a partial whose placeholder is still empty.
+	for (const [sel, path] of [["#header-placeholder", "/partials/header.html"], ["#footer-placeholder", "/partials/footer.html"]]) {
+		const el = document.querySelector(sel);
+		if (el && !el.childElementCount) requestPartial(path);
+	}
 
 	async function loadPartial(selector, path) {
 		const el = document.querySelector(selector);
@@ -1039,6 +1042,18 @@
 
 	const PRODUCTS_CACHE_KEY = "pamca_cache_products";
 
+	// Product photos are stored full-size in Supabase Storage; on the live site serve
+	// them through Vercel Image Optimization, resized to the slot (AVIF/WebP). Must
+	// match optimizedImage() in src/controllers/pageController.ts so server preloads
+	// and the page request the same URL. Local dev (no optimizer) uses the original.
+	const STORAGE_IMAGE = /^https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\//;
+	const IMAGE_OPTIMIZER = /(^|\.)pamca\.net$|\.vercel\.app$/.test(location.hostname);
+	function optimizedImage(src, width) {
+		if (!src || !IMAGE_OPTIMIZER || !STORAGE_IMAGE.test(src)) return src;
+		return `/_vercel/image?url=${encodeURIComponent(src)}&w=${width}&q=75`;
+	}
+	window.pamcaOptimizedImage = optimizedImage;
+
 	function renderProducts(grid, products) {
 		if (!Array.isArray(products)) return;
 		grid.innerHTML = products
@@ -1055,7 +1070,7 @@
 
 				// No entrance animation here on purpose — these cards are injected
 				// dynamically, and animating them caused a late "pop"/jiggle.
-				return `<a class="product-card${p.is_on_sale ? " on-sale-special" : ""}" href="${href}">${p.is_on_sale ? '<div class="sale-badge">Sale</div>' : ""}<div class="product-image">${p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="${name}" loading="lazy" decoding="async">` : ""}</div><div class="product-content"><h3 class="product-name">${name}</h3><div class="product-price">${saleMarkup}</div></div></a>`;
+				return `<a class="product-card${p.is_on_sale ? " on-sale-special" : ""}" href="${href}">${p.is_on_sale ? '<div class="sale-badge">Sale</div>' : ""}<div class="product-image">${p.image_url ? `<img src="${escapeHtml(optimizedImage(p.image_url, 384))}" srcset="${[256, 384, 640].map((w) => `${escapeHtml(optimizedImage(p.image_url, w))} ${w}w`).join(", ")}" sizes="(max-width: 600px) 45vw, 260px" alt="${name}" loading="lazy" decoding="async">` : ""}</div><div class="product-content"><h3 class="product-name">${name}</h3><div class="product-price">${saleMarkup}</div></div></a>`;
 			})
 			.join("");
 	}
@@ -1063,6 +1078,15 @@
 	async function hydrateProductsPage() {
 		const grid = document.querySelector(".products-grid");
 		if (!grid) return;
+
+		// Server-rendered (GET /pharmacy-products): the cards are already in the HTML
+		// and fresh (CDN-cached ≤5 min). Just seed the cache product pages read from.
+		if (grid.dataset.ssr === "1") {
+			if (Array.isArray(window.__PAMCA_PRODUCTS__)) {
+				try { localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(window.__PAMCA_PRODUCTS__)); } catch (_) {}
+			}
+			return;
+		}
 
 		// 1) Paint instantly from the last-known list so there is no late "pop".
 		let cachedRaw = null;

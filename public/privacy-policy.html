@@ -1,12 +1,10 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="en-CA">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/shared-styles.css">
-  <link rel="preload" href="/partials/header.html" as="fetch" crossorigin>
-  <link rel="preload" href="/partials/footer.html" as="fetch" crossorigin>
   <!-- seo:start -->
   <title>Privacy Policy | PAMCA</title>
   <meta name="description" content="How Pharmacy Automated Mechanisms collects, uses, shares and protects your personal information.">
@@ -17,11 +15,14 @@
   <meta property="og:title" content="Privacy Policy | PAMCA">
   <meta property="og:description" content="How Pharmacy Automated Mechanisms collects, uses, shares and protects your personal information.">
   <meta property="og:url" content="https://www.pamca.net/privacy-policy">
-  <meta property="og:image" content="https://www.pamca.net/images/pamca.png">
-  <meta name="twitter:card" content="summary">
+  <meta property="og:image" content="https://www.pamca.net/images/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="PAMCA — Pharmacy Automated Mechanisms">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Privacy Policy | PAMCA">
   <meta name="twitter:description" content="How Pharmacy Automated Mechanisms collects, uses, shares and protects your personal information.">
-  <meta name="twitter:image" content="https://www.pamca.net/images/pamca.png">
+  <meta name="twitter:image" content="https://www.pamca.net/images/og-image.jpg">
   <!-- seo:end -->
     <link rel="icon" href="/favicon.ico" sizes="48x48">
     <link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192.png">
@@ -29,7 +30,6 @@
   </head>
 <body>
 <div id="header-placeholder"></div>
-<script>try{document.getElementById("header-placeholder").innerHTML=localStorage.getItem("pamca_partial:/partials/header.html")||""}catch(e){}</script>
 
     <style>
         * {
@@ -108,6 +108,10 @@
         }
 
         /* Navigation Menu */
+        .section-content a {
+            overflow-wrap: anywhere;
+        }
+
         .privacy-nav {
             background: white;
  
@@ -115,7 +119,7 @@
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
-        .privacy-nav .nav-menu {
+        .privacy-nav .privacy-nav-menu {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
@@ -123,7 +127,7 @@
             list-style: none;
         }
 
-        .privacy-nav .nav-menu li a {
+        .privacy-nav .privacy-nav-menu li a {
             color: #008080;
             text-decoration: none;
             font-weight: 600;
@@ -134,7 +138,7 @@
             border: 2px solid transparent;
         }
 
-        .privacy-nav .nav-menu li a:hover {
+        .privacy-nav .privacy-nav-menu li a:hover {
             background: #008080;
             color: white;
             transform: translateY(-2px);
@@ -207,6 +211,11 @@
         .section-content strong {
             color: #008080;
             font-weight: 600;
+        }
+
+        .section-content .highlight-box strong,
+        .section-content .highlight-box a {
+            color: #007b7b; /* 4.6:1 on the light-blue box */
         }
 
         .section-content a {
@@ -297,14 +306,14 @@
             }
 
             .privacy-nav {
-                opacity: 0;
+                display: none;
             }
 
-            .privacy-nav .nav-menu {
+            .privacy-nav .privacy-nav-menu {
                 gap: 15px;
             }
 
-            .privacy-nav .nav-menu li a {
+            .privacy-nav .privacy-nav-menu li a {
                 font-size: 0.85rem;
                 padding: 6px 12px;
             }
@@ -336,7 +345,7 @@
                 font-size: 1.8rem;
             }
 
-            .privacy-nav .nav-menu {
+            .privacy-nav .privacy-nav-menu {
                 flex-direction: column;
                 align-items: center;
                 gap: 10px;
@@ -375,7 +384,7 @@
     <!-- Navigation Menu -->
     <section class="privacy-nav">
         <div class="container">
-            <ul class="nav-menu">
+            <ul class="privacy-nav-menu">
                 <li><a href="#personal-info">Personal Information</a></li>
                 <li><a href="#how-we-use">How We Use Info</a></li>
                 <li><a href="#sharing">Sharing Information</a></li>
@@ -460,10 +469,10 @@
                     <h2>Behavioral Advertising</h2>
                 </div>
                 <div class="section-content">
-                    <p>As described above, we use your Personal Information to provide you with targeted advertisements or marketing communications we believe may be of interest to you. For more information about how targeted advertising works, you can visit the Network Advertising Initiative's ("NAI") educational page at <a href="http://www.networkadvertising.org/understanding-online-advertising/how-does-it-work" target="_blank">http://www.networkadvertising.org/understanding-online-advertising/how-does-it-work</a>.</p>
+                    <p>As described above, we use your Personal Information to provide you with targeted advertisements or marketing communications we believe may be of interest to you. For more information about how targeted advertising works, you can visit the Network Advertising Initiative's ("NAI") educational page at <a href="https://thenai.org/about-online-advertising/" target="_blank">https://thenai.org/about-online-advertising/</a>.</p>
                     
                     <div class="highlight-box">
-                        <p><strong>Opt-Out Options:</strong> Additionally, you can opt out of some of these services by visiting the Digital Advertising Alliance's opt-out portal at: <a href="http://optout.aboutads.info/" target="_blank">http://optout.aboutads.info/</a>.</p>
+                        <p><strong>Opt-Out Options:</strong> Additionally, you can opt out of some of these services by visiting the Digital Advertising Alliance's opt-out portal at: <a href="https://optout.aboutads.info/" target="_blank">https://optout.aboutads.info/</a>.</p>
                     </div>
                 </div>
             </div>
@@ -522,7 +531,7 @@
     <script>
         // Smooth scrolling for navigation links
         document.addEventListener('DOMContentLoaded', function() {
-            const navLinks = document.querySelectorAll('.privacy-nav .nav-menu a[href^="#"]');
+            const navLinks = document.querySelectorAll('.privacy-nav .privacy-nav-menu a[href^="#"]');
             
             navLinks.forEach(link => {
                 link.addEventListener('click', function(e) {
@@ -545,7 +554,7 @@
         // the section/link lists looked up once rather than on every scroll event.
         (function() {
             const sections = document.querySelectorAll('.privacy-section[id]');
-            const navLinks = document.querySelectorAll('.privacy-nav .nav-menu a[href^="#"]');
+            const navLinks = document.querySelectorAll('.privacy-nav .privacy-nav-menu a[href^="#"]');
             let queued = false;
 
             function update() {

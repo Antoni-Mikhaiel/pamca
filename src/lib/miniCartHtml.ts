@@ -1,5 +1,6 @@
 import { CartItem } from "../models/types.js";
 import { toCurrency } from "./http.js";
+import { optimizedImage } from "./images.js";
 
 // Renders the inner markup of the cart drawer (#cart-items). Class names match
 // the cart styles in public/shared-styles.css, and the data-* hooks match the
@@ -15,7 +16,7 @@ export function buildMiniCartHtml(items: CartItem[]): string {
       const subtotal = item.unit_price * item.quantity;
 
       const image = item.image_url
-        ? `<img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.product_name)}" />`
+        ? `<img src="${escapeHtml(optimizedImage(item.image_url, 128))}" alt="${escapeHtml(item.product_name)}" width="64" height="64" loading="lazy" decoding="async" />`
         : '<span class="cart-item-emoji" aria-hidden="true">📦</span>';
 
       const variation = item.variation_label

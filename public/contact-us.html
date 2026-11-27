@@ -1,27 +1,28 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="en-CA">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/shared-styles.css">
-  <link rel="preload" href="/partials/header.html" as="fetch" crossorigin>
-  <link rel="preload" href="/partials/footer.html" as="fetch" crossorigin>
   <!-- seo:start -->
-  <title>Contact PAMCA — Get in Touch</title>
+  <title>Contact PAMCA | Pharmacy Automated Mechanisms, Toronto</title>
   <meta name="description" content="Contact Pharmacy Automated Mechanisms at 1920 Yonge Street, Toronto. Send us a message, check our business hours, or email sales@pamca.net.">
   <link rel="canonical" href="https://www.pamca.net/contact-us">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="PAMCA">
   <meta property="og:locale" content="en_CA">
-  <meta property="og:title" content="Contact PAMCA — Get in Touch">
+  <meta property="og:title" content="Contact PAMCA | Pharmacy Automated Mechanisms, Toronto">
   <meta property="og:description" content="Contact Pharmacy Automated Mechanisms at 1920 Yonge Street, Toronto. Send us a message, check our business hours, or email sales@pamca.net.">
   <meta property="og:url" content="https://www.pamca.net/contact-us">
-  <meta property="og:image" content="https://www.pamca.net/images/pamca.png">
-  <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Contact PAMCA — Get in Touch">
+  <meta property="og:image" content="https://www.pamca.net/images/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="PAMCA — Pharmacy Automated Mechanisms">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Contact PAMCA | Pharmacy Automated Mechanisms, Toronto">
   <meta name="twitter:description" content="Contact Pharmacy Automated Mechanisms at 1920 Yonge Street, Toronto. Send us a message, check our business hours, or email sales@pamca.net.">
-  <meta name="twitter:image" content="https://www.pamca.net/images/pamca.png">
+  <meta name="twitter:image" content="https://www.pamca.net/images/og-image.jpg">
   <!-- seo:end -->
     <link rel="icon" href="/favicon.ico" sizes="48x48">
     <link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192.png">
@@ -29,7 +30,6 @@
   </head>
 <body>
 <div id="header-placeholder"></div>
-<script>try{document.getElementById("header-placeholder").innerHTML=localStorage.getItem("pamca_partial:/partials/header.html")||""}catch(e){}</script>
 
     <style>
         * {
@@ -829,26 +829,45 @@
                 </div>
                 
                 <div class="map-container">
-                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2883.6439686107395!2d-79.39482842404734!3d43.70090747111759!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x882b3338f2c18bbf%3A0x1a3c0b0f8c8b1234!2s1920%20Yonge%20St%2C%20Toronto%2C%20ON%20M4S%203E6%2C%20Canada!5e0!3m2!1sen!2sus!4v1642084737123!5m2!1sen!2sus" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2883.6439686107395!2d-79.39482842404734!3d43.70090747111759!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x882b3338f2c18bbf%3A0x1a3c0b0f8c8b1234!2s1920%20Yonge%20St%2C%20Toronto%2C%20ON%20M4S%203E6%2C%20Canada!5e0!3m2!1sen!2sus!4v1642084737123!5m2!1sen!2sus" title="Map: Pharmacy Automated Mechanisms, 1920 Yonge Street, Toronto" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
                 </div>
             </div>
         </div>
     </section>
 
-    <script src="https://www.google.com/recaptcha/api.js?render=6Le6NA8tAAAAAK5Ee1PecmX-edcwwDLDaKimk5GA" async defer></script>
     <script>
 /* ---------- reCAPTCHA v3 (score based) — execute on submit ---------- */
 var RECAPTCHA_SITE_KEY = '6Le6NA8tAAAAAK5Ee1PecmX-edcwwDLDaKimk5GA'; // v3 site key (pairs with RECAPTCHA_SECRET)
 
+// reCAPTCHA is loaded only once someone starts using the form (first focus/tap),
+// not on page load: visitors who just read the page don't download Google's script
+// or receive its third-party cookie, and the page loads faster.
+var recaptchaReady = null;
+function loadRecaptcha() {
+  if (recaptchaReady) return recaptchaReady;
+  recaptchaReady = new Promise(function (resolve, reject) {
+    var s = document.createElement('script');
+    s.src = 'https://www.google.com/recaptcha/api.js?render=' + RECAPTCHA_SITE_KEY;
+    s.async = true;
+    s.onload = function () { grecaptcha.ready(resolve); };
+    s.onerror = function () { recaptchaReady = null; reject(new Error('reCAPTCHA failed to load')); };
+    document.head.appendChild(s);
+  });
+  return recaptchaReady;
+}
+document.addEventListener('DOMContentLoaded', function () {
+  var form = document.getElementById('contactForm');
+  if (!form) return;
+  ['focusin', 'pointerdown'].forEach(function (ev) {
+    form.addEventListener(ev, function () { loadRecaptcha().catch(function () {}); }, { once: true });
+  });
+});
+
 // Called when the user clicks Send: get a fresh v3 token, attach it to the form
 // (as g-recaptcha-response, which the server reads), then submit.
 function onContactSubmit() {
-  if (typeof grecaptcha === 'undefined' || typeof grecaptcha.execute !== 'function') {
-    alert('reCAPTCHA is still loading — please try again in a moment.');
-    return;
-  }
-  grecaptcha.ready(function () {
-    grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'contact' })
+  loadRecaptcha().then(function () {
+    return grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'contact' })
       .then(function (token) {
         var form = document.getElementById('contactForm');
         if (!form) { console.error('contactForm element not found'); return; }
@@ -863,10 +882,9 @@ function onContactSubmit() {
         input.value = token;
         form.submit();
       })
-      .catch(function (e) {
-        console.error('grecaptcha.execute error:', e);
-        alert('reCAPTCHA error — please try again.');
-      });
+  }).catch(function (e) {
+    console.error('reCAPTCHA error:', e);
+    alert('reCAPTCHA error — please try again.');
   });
 }
         // Phone number formatting
@@ -890,25 +908,12 @@ function onContactSubmit() {
                 e.target.value = formatted;
             });
 
-            // Handle backspace and delete properly
+            // Block stray characters, but never shortcuts (Ctrl/Cmd+V/C/A, Enter, Tab…):
+            // pasted text is formatted by the 'input' handler above, so paste is not
+            // intercepted (blocking paste hurts usability and accessibility).
             phoneInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Backspace' || e.key === 'Delete') {
-                    // Allow normal backspace/delete behavior
-                    return;
-                }
-                
-                // Only allow numbers and certain keys
-                if (!/[\d]/.test(e.key) && !['Tab', 'Shift', 'Control', 'Alt', 'Meta', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
-                    e.preventDefault();
-                }
-            });
-
-            // Paste event handler
-            phoneInput.addEventListener('paste', function(e) {
-                e.preventDefault();
-                const pastedText = (e.clipboardData || window.clipboardData).getData('text');
-                const formatted = formatPhoneNumber(pastedText);
-                e.target.value = formatted;
+                if (e.ctrlKey || e.metaKey || e.altKey || e.key.length > 1) return;
+                if (!/\d/.test(e.key)) e.preventDefault();
             });
         });
 

@@ -1,12 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-CA">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/shared-styles.css">
-  <link rel="preload" href="/partials/header.html" as="fetch" crossorigin>
-  <link rel="preload" href="/partials/footer.html" as="fetch" crossorigin>
   <title>Product — PAMCA</title>
   <style>
     /* Site-wide base — matches every other page so the injected header/footer
@@ -57,11 +55,11 @@
     .product-details h1 { font-size: 1.9rem; color: #008080; margin-bottom: 14px; font-weight: 700; line-height: 1.2; }
     .product-price { margin-bottom: 24px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
     .pd-current { font-size: 1.9rem; font-weight: 700; color: #008080; }
-    .pd-original { font-size: 1.1rem; color: #999; text-decoration: line-through; }
+    .pd-original { font-size: 1.1rem; color: #757575; text-decoration: line-through; }
     .pd-current.is-sale { color: #e74c3c; }
 
     .pd-stock { font-size: 0.95rem; font-weight: 600; margin-bottom: 22px; }
-    .pd-stock.in { color: #27ae60; }
+    .pd-stock.in { color: #1e864a; }
     .pd-stock.out { color: #e74c3c; }
 
     .product-options { margin-bottom: 26px; display: grid; gap: 16px; }
@@ -78,6 +76,7 @@
     .quantity-btn:hover { background: #e9ecef; }
     .quantity-input { border: none; padding: 12px; text-align: center; font-size: 0.95rem; font-weight: 600; width: 64px; }
     .quantity-input:focus { outline: none; }
+    .quantity-input:focus-visible { outline: 2px solid #008080; outline-offset: -2px; }
     .add-to-cart-btn {
       background: linear-gradient(135deg, #008080, #87CEEB); color: #fff; padding: 14px 32px; border: none;
       border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; flex: 1; min-width: 180px;
@@ -85,18 +84,18 @@
     .add-to-cart-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,128,128,0.3); }
     .add-to-cart-btn.sold-out { background: #6c757d; cursor: not-allowed; }
     .add-to-cart-btn.sold-out:hover { transform: none; box-shadow: none; }
-    .pd-available { font-size: 0.95rem; font-weight: 600; color: #27ae60; margin: -4px 0 18px; }
-    .pd-available.low-stock { color: #e67e22; }
+    .pd-available { font-size: 0.95rem; font-weight: 600; color: #1e864a; margin: -4px 0 18px; }
+    .pd-available.low-stock { color: #b0601a; }
     .pd-available.out-of-stock { color: #c0392b; }
     .pd-msg { font-size: 0.9rem; color: #008080; margin-bottom: 24px; min-height: 1.2em; }
 
     .product-description { margin-top: 30px; padding-top: 26px; border-top: 1px solid #eef2f5; }
-    .product-description h3 {
+    .product-description h2 {
       font-size: 1.15rem; color: #0f5f5c; font-weight: 700; letter-spacing: -0.01em;
       margin: 30px 0 16px; padding-bottom: 10px; position: relative;
     }
-    .product-description h3:first-child { margin-top: 0; }
-    .product-description h3::after {
+    .product-description h2:first-child { margin-top: 0; }
+    .product-description h2::after {
       content: ''; position: absolute; left: 0; bottom: 0;
       width: 46px; height: 3px; border-radius: 3px;
       background: linear-gradient(90deg, #008080, #87CEEB);
@@ -142,7 +141,6 @@
   </head>
 <body>
   <div id="header-placeholder"></div>
-<script>try{document.getElementById("header-placeholder").innerHTML=localStorage.getItem("pamca_partial:/partials/header.html")||""}catch(e){}</script>
 
   <section class="product-section">
     <div class="pd-wrap">
@@ -158,6 +156,9 @@
   <script>
     (function () {
       const root = document.getElementById('pd-root');
+      // Resized product photos on the live site (same URLs the server preloads).
+      // Declared first: render() can run immediately below (server-inlined data).
+      const img = window.pamcaOptimizedImage || function (src) { return src; };
       // Canonical URL is /products/<slug> (server-rendered head, see pageController.ts);
       // ?slug= is kept for old links.
       const pathMatch = location.pathname.match(/^\/products\/([^/]+)\/?$/);
@@ -232,7 +233,7 @@
 
         const thumbs = images.map(function (src, i) {
           return '<div class="thumbnail' + (i === 0 ? ' active' : '') + '" style="background-image:url(\'' +
-            escapeHtml(src) + '\')" data-src="' + escapeHtml(src) + '"></div>';
+            escapeHtml(img(src, 128)) + '\')" data-src="' + escapeHtml(img(src, 828)) + '"></div>';
         }).join('');
 
         const optionsHtml = (Array.isArray(p.option_groups) ? p.option_groups : []).map(function (g, gi) {
@@ -247,13 +248,13 @@
           }).join('');
           if (!opts) return '';
           const groupLabel = g.label || ('Option ' + (gi + 1));
-          return '<div class="option-group"><label>' + escapeHtml(groupLabel) +
-            '</label><select data-group="' + gi + '" data-affects="' + affects + '" data-label="' + escapeHtml(groupLabel) + '">' + opts + '</select></div>';
+          return '<div class="option-group"><label for="pd-opt-' + gi + '">' + escapeHtml(groupLabel) +
+            '</label><select id="pd-opt-' + gi + '" data-group="' + gi + '" data-affects="' + affects + '" data-label="' + escapeHtml(groupLabel) + '">' + opts + '</select></div>';
         }).join('');
 
         const features = (Array.isArray(p.key_features) ? p.key_features : []);
         const featuresHtml = features.length
-          ? '<h3>Specifications</h3><ul>' + features.map(function (f) { return '<li>' + escapeHtml(f) + '</li>'; }).join('') + '</ul>'
+          ? '<h2>Specifications</h2><ul>' + features.map(function (f) { return '<li>' + escapeHtml(f) + '</li>'; }).join('') + '</ul>'
           : '';
 
         // Base (fallback) figures — used directly in "Mode 1" and as the starting
@@ -268,7 +269,7 @@
           '<div class="product-container">' +
             '<div class="product-images">' +
               '<div class="main-image' + (images.length ? '' : ' is-empty') + '" id="pd-main"' +
-                (images.length ? ' style="background-image:url(\'' + escapeHtml(images[0]) + '\')"' : '') + '>' +
+                (images.length ? ' style="background-image:url(\'' + escapeHtml(img(images[0], 828)) + '\')"' : '') + '>' +
                 '<div class="sale-badge" id="pd-sale-badge" style="display:none;"></div>' +
               '</div>' +
               (images.length > 1 ? '<div class="thumbnail-images">' + thumbs + '</div>' : '') +
@@ -281,14 +282,14 @@
               '<div class="purchase-section">' +
                 '<div class="quantity-selector">' +
                   '<button type="button" class="quantity-btn" id="pd-minus">-</button>' +
-                  '<input type="number" class="quantity-input" id="pd-qty" value="1" min="1" max="1">' +
+                  '<input type="number" class="quantity-input" id="pd-qty" value="1" min="1" max="1" aria-label="Quantity" inputmode="numeric">' +
                   '<button type="button" class="quantity-btn" id="pd-plus">+</button>' +
                 '</div>' +
                 '<button type="button" class="add-to-cart-btn" id="pd-add">Add to Cart</button>' +
               '</div>' +
               '<div class="pd-available" id="pd-available"></div>' +
               '<div class="pd-msg" id="pd-msg"></div>' +
-              (p.description ? '<div class="product-description"><h3>Product Description</h3><p>' +
+              (p.description ? '<div class="product-description"><h2>Product Description</h2><p>' +
                 escapeHtml(p.description) + '</p>' + featuresHtml + '</div>' : (featuresHtml ? '<div class="product-description">' + featuresHtml + '</div>' : '')) +
             '</div>' +
           '</div>';
@@ -425,7 +426,7 @@
               ? await window.pamcaAddToCart({ slug: slug, quantity: quantity, options: options })
               : false;
             if (ok) {
-              if (msg) { msg.style.color = '#27ae60'; msg.textContent = 'Added to cart ✓'; }
+              if (msg) { msg.style.color = '#1e864a'; msg.textContent = 'Added to cart ✓'; }
               if (window.pamcaOpenCart) window.pamcaOpenCart();
             } else {
               if (msg) { msg.style.color = '#e74c3c'; msg.textContent = 'Could not add to cart. Please try again.'; }

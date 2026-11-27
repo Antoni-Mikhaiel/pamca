@@ -367,3 +367,24 @@ export async function getProductShippingInfo(ids: number[]): Promise<Map<number,
   }
   return out;
 }
+
+export interface ProductSitemapEntry {
+  slug: string;
+  name: string;
+  updatedAt: string | null;
+  images: string[];
+}
+
+/** Active products for /sitemap.xml: URL slug, last-modified time and image URLs. */
+export async function listProductSitemapEntries(): Promise<ProductSitemapEntry[]> {
+  const { data, error } = await supabase
+    .from("products")
+    .select("slug, name, updated_at, image_url, images")
+    .eq("status", "active")
+    .order("id", { ascending: true });
+  if (error) throw error;
+  return ((data ?? []) as Array<{ slug: string; name: string; updated_at: string | null; image_url: string | null; images: unknown }>).map((r) => {
+    const images = Array.isArray(r.images) ? r.images.filter((x): x is string => typeof x === "string" && !!x) : [];
+    return { slug: r.slug, name: r.name, updatedAt: r.updated_at, images: images.length ? images : r.image_url ? [r.image_url] : [] };
+  });
+}

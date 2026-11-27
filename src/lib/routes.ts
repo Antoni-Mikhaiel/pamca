@@ -29,7 +29,7 @@ import {
 } from "../controllers/adminOrderController.js";
 import { handleGetOrder, handleEditPreview, handleEditCommit, handleRefundOrder, handleOrderTracking } from "../controllers/orderEditController.js";
 import { handleKeepalive } from "../controllers/keepaliveController.js";
-import { handleProductPage, handleSitemap } from "../controllers/pageController.js";
+import { handleProductPage, handleProductsListPage, handleSitemap } from "../controllers/pageController.js";
 
 /**
  * Single source of truth for API routing, shared by the Vercel catch-all
@@ -127,11 +127,9 @@ const routes: Route[] = [
   { method: "GET", pattern: /^\/api\/admin\/dashboard$/, handler: handleAdminDashboard },
   // Invoked by the Vercel cron in vercel.json, not by the frontend. Guarded by CRON_SECRET.
   { method: "GET", pattern: /^\/api\/cron\/keepalive$/, handler: handleKeepalive },
-  // Server-rendered pages, reached via vercel.json rewrites (/products/:slug, /sitemap.xml).
+  // Server-rendered pages, reached via vercel.json rewrites (/products/:slug, /pharmacy-products, /sitemap.xml).
   { method: "GET", pattern: /^\/api\/pages\/product\/([^/]+)$/, handler: handleProductPage, param: "slug" },
-  { method: "GET", pattern: /^\/api\/sitemap$/, handler: handleSitemap },
-  // Server-rendered pages, reached via vercel.json rewrites (/products/:slug, /sitemap.xml).
-  { method: "GET", pattern: /^\/api\/pages\/product\/([^/]+)$/, handler: handleProductPage, param: "slug" },
+  { method: "GET", pattern: /^\/api\/pages\/products$/, handler: handleProductsListPage },
   { method: "GET", pattern: /^\/api\/sitemap$/, handler: handleSitemap },
 ];
 

@@ -3,9 +3,33 @@
   "regions": [
     "dub1"
   ],
+  "outputDirectory": "dist",
+  "trailingSlash": false,
+  "images": {
+    "sizes": [
+      128,
+      256,
+      384,
+      640,
+      828,
+      1080
+    ],
+    "formats": [
+      "image/avif",
+      "image/webp"
+    ],
+    "minimumCacheTTL": 2678400,
+    "remotePatterns": [
+      {
+        "protocol": "https",
+        "hostname": "gqmzekycqvfxyblhjoqb.supabase.co",
+        "pathname": "/storage/v1/object/public/**"
+      }
+    ]
+  },
   "functions": {
     "api/[...path].ts": {
-      "includeFiles": "public/{product,404}.html"
+      "includeFiles": "public/{product.html,pharmacy-products.html,404.html,partials/header.html,partials/footer.html}"
     }
   },
   "redirects": [
@@ -128,7 +152,7 @@
     },
     {
       "source": "/pharmacy-products",
-      "destination": "/pharmacy-products.html"
+      "destination": "/api/[...path]?path=pages/products"
     },
     {
       "source": "/minor-ailments-prescribing-solution",

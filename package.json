@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit",
+    "build": "tsc --noEmit && tsx scripts/build-static.ts",
     "dev": "tsx watch scripts/dev-server.ts",
     "start": "tsx scripts/dev-server.ts",
     "typecheck": "tsc --noEmit"

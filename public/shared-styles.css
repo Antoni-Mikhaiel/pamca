@@ -18,7 +18,7 @@ body {
 /* Announcement Bar */
 .announcement-bar {
     background: #162950;
-    color: #E93713;
+    color: #EF694E; /* #E93713 lightened to 4.6:1 on navy */
     text-align: center;
     padding: 10px 0;
     font-weight: 600;
@@ -632,9 +632,9 @@ input.quantity-display::-webkit-inner-spin-button {
     gap: 60px;
 }
 
-.footer-left h4 {
+.footer-left h2 {
     font-size: 1.3rem;
-    margin-bottom: 20px;
+    margin: 0 0 20px;
     color: #87CEEB;
 }
 
@@ -650,6 +650,9 @@ input.quantity-display::-webkit-inner-spin-button {
     color: white;
     text-decoration: none;
     transition: color 0.3s ease;
+    /* >= 24px tall tap target (WCAG 2.5.8) without changing the list spacing much */
+    display: inline-block;
+    padding: 3px 0;
 }
 
 .footer-left ul li a:hover {
@@ -662,9 +665,10 @@ input.quantity-display::-webkit-inner-spin-button {
     gap: 30px;
 }
 
-.contact-info h4 {
+.contact-info h2 {
+    font-size: 1rem;
     color: #87CEEB;
-    margin-bottom: 15px;
+    margin: 0 0 15px;
 }
 
 .contact-info p {
@@ -693,6 +697,11 @@ input.quantity-display::-webkit-inner-spin-button {
     font-weight: 600;
     margin-top: 15px;
     transition: background 0.3s ease;
+}
+
+.contact-info a.directions-btn,
+.contact-info a.directions-btn:hover {
+    color: #fff;
 }
 
 .directions-btn:hover {

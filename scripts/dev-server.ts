@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 
 import type { ApiRequest, ApiResponse } from "../src/lib/http.js";
 import { dispatch } from "../src/lib/routes.js";
+import { inlinePartials } from "../src/lib/partials.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -159,7 +160,11 @@ async function serveStaticFile(res: http.ServerResponse, pathname: string): Prom
   }
 
   try {
-    const file = await readFile(candidate);
+    let file: Buffer | string = await readFile(candidate);
+    // Inline the header/footer like the production build (scripts/build-static.ts).
+    if (candidate.endsWith(".html") && !candidate.includes(`${path.sep}partials${path.sep}`)) {
+      file = await inlinePartials(file.toString("utf8"), (name) => readFile(path.join(publicDir, "partials", `${name}.html`), "utf8"));
+    }
     res.statusCode = 200;
     res.setHeader("Content-Type", getContentType(candidate));
     res.end(file);
@@ -230,7 +235,9 @@ const server = http.createServer(async (req, res) => {
 
   // 4) Same custom 404 page Vercel serves.
   try {
-    const notFound = await readFile(path.join(publicDir, "404.html"));
+    const notFound = await inlinePartials(await readFile(path.join(publicDir, "404.html"), "utf8"), (name) =>
+      readFile(path.join(publicDir, "partials", `${name}.html`), "utf8"),
+    );
     res.statusCode = 404;
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.end(notFound);

@@ -1,5 +1,6 @@
 import { ApiRequest, ApiResponse, readCartToken, getHeader, getClientIp } from "../lib/http.js";
 import { readJsonBody, getAuthUser } from "../lib/adminAuth.js";
+import { publicErrorMessage } from "../lib/errors.js";
 import { validateCustomerDetails, PICKUP_SERVICE_CODE, PICKUP_SERVICE_NAME } from "../lib/customer.js";
 import { getCartItems, clearCart, findStockShortfalls } from "../services/cartService.js";
 import { allowRequest, TOO_MANY_REQUESTS_MESSAGE } from "../services/rateLimitService.js";
@@ -265,7 +266,7 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
   } catch (error) {
     res.status(502).json({
       success: false,
-      message: error instanceof Error ? error.message : "Could not start checkout",
+      message: publicErrorMessage(error, "checkout", "We couldn't start the payment. Please try again or contact us."),
     });
   }
 }

@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase.js";
+import { UserError } from "../lib/errors.js";
 import { resolveProductLine, SelectedOption } from "./cartService.js";
 import {
   FullOrder,
@@ -83,7 +84,7 @@ export async function buildEditPlan(order: FullOrder, edit: OrderEditRequest): P
     const overridden = existingOverrides.has(item.id);
     const newQty = overridden ? (existingOverrides.get(item.id) as number) : item.quantity;
     if (newQty > item.quantity) {
-      throw new Error("To add more of an item, add it as a new line instead of increasing the existing one.");
+      throw new UserError("To add more of an item, add it as a new line instead of increasing the existing one.");
     }
     if (newQty < item.quantity) {
       const removedQty = item.quantity - newQty;
@@ -117,13 +118,13 @@ export async function buildEditPlan(order: FullOrder, edit: OrderEditRequest): P
     if (qty <= 0) continue;
     const resolved = await resolveProductLine(add.slug, Array.isArray(add.options) ? add.options : []);
     if (!resolved.ok) {
-      throw new Error(resolved.reason === "sold_out" ? "An item you added is sold out." : "An item you added no longer exists.");
+      throw new UserError(resolved.reason === "sold_out" ? "An item you added is sold out." : "An item you added no longer exists.");
     }
     const line = resolved.line;
     const lineKey = keyOf(line.productId, line.variationLabel);
     const cumulativeQty = (addedByLine.get(lineKey) ?? 0) + qty;
     if (cumulativeQty > line.stock) {
-      throw new Error(`Only ${line.stock} of ${line.productName} ${line.variationLabel ? `(${line.variationLabel}) ` : ""}in stock.`);
+      throw new UserError(`Only ${line.stock} of ${line.productName} ${line.variationLabel ? `(${line.variationLabel}) ` : ""}in stock.`);
     }
     addedByLine.set(lineKey, cumulativeQty);
     const unitCents = Math.round(line.unitPrice * 100);
@@ -146,7 +147,7 @@ export async function buildEditPlan(order: FullOrder, edit: OrderEditRequest): P
   }
 
   if (newItems.length === 0) {
-    throw new Error("An order can't be emptied — cancel it with a full refund instead.");
+    throw new UserError("An order can't be emptied — cancel it with a full refund instead.");
   }
 
   const newSubtotalCents = newItems.reduce((s, i) => s + i.line_total_cents, 0);
@@ -196,11 +197,11 @@ async function applyItemsAndStock(order: FullOrder, newItems: NewItem[]): Promis
  */
 async function withMoneyLock<T>(orderId: string, action: (fresh: FullOrder) => Promise<T>): Promise<T> {
   if (!(await claimOrderMoneyLock(orderId))) {
-    throw new Error("This order is already being updated. Please wait a moment and refresh the page.");
+    throw new UserError("This order is already being updated. Please wait a moment and refresh the page.");
   }
   try {
     const fresh = await getFullOrder(orderId);
-    if (!fresh) throw new Error("Order not found.");
+    if (!fresh) throw new UserError("Order not found.");
     return await action(fresh);
   } finally {
     await releaseOrderMoneyLock(orderId);
@@ -261,11 +262,11 @@ export function commitEdit(order: FullOrder, edit: OrderEditRequest): Promise<Co
 }
 
 async function commitEditLocked(order: FullOrder, edit: OrderEditRequest): Promise<CommitResult> {
-  if (!isOrderEditable(order)) throw new Error("This order can no longer be edited.");
+  if (!isOrderEditable(order)) throw new UserError("This order can no longer be edited.");
   const plan = await buildEditPlan(order, edit);
 
   if (plan.deltaCents > 0) {
-    if (!isSquareConfigured()) throw new Error("Online payment is not available right now.");
+    if (!isSquareConfigured()) throw new UserError("Online payment is not available right now.");
 
     // Replace any prior pending edit so only one top-up can be outstanding.
     await supabase.from("order_edits").delete().eq("order_id", order.id).eq("status", "pending");
@@ -401,13 +402,13 @@ export function refundOrderFull(order: FullOrder): Promise<{ refundedCents: numb
 }
 
 async function refundOrderFullLocked(order: FullOrder): Promise<{ refundedCents: number }> {
-  if (!isOrderRefundable(order)) throw new Error("This order can no longer be refunded.");
-  if (!isSquareConfigured()) throw new Error("Refunds are not available right now.");
+  if (!isOrderRefundable(order)) throw new UserError("This order can no longer be refunded.");
+  if (!isSquareConfigured()) throw new UserError("Refunds are not available right now.");
 
   const totalPaid = order.payments.reduce((s, p) => s + p.amount_cents, 0);
   const alreadyRefunded = order.payments.reduce((s, p) => s + p.refunded_cents, 0);
   const target = totalPaid - alreadyRefunded;
-  if (target <= 0) throw new Error("This order has already been fully refunded.");
+  if (target <= 0) throw new UserError("This order has already been fully refunded.");
 
   const { payments, refundedCents } = await refundAcrossPayments(order.id, order.payments, target);
   // Record the refund before restocking: if a restock fails, the order must still

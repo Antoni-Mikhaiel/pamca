@@ -202,3 +202,17 @@ export function verifyWebhookSignature(rawBody: string, signature: string, notif
     return expected.length === received.length && timingSafeEqual(expected, received);
   });
 }
+
+/**
+ * Deletes a Square Payment Link so it can no longer be paid. Used when an abandoned
+ * checkout is cleaned up: without this, an old link could still be paid after its
+ * order was deleted. Returns true when the link is gone (including "already deleted").
+ */
+export async function deletePaymentLink(paymentLinkId: string): Promise<boolean> {
+  if (!isSquareConfigured() || !paymentLinkId) return false;
+  const response = await fetch(`${baseUrl}/v2/online-checkout/payment-links/${encodeURIComponent(paymentLinkId)}`, {
+    method: "DELETE",
+    headers: { "Square-Version": apiVersion, Authorization: `Bearer ${accessToken}` },
+  });
+  return response.ok || response.status === 404;
+}

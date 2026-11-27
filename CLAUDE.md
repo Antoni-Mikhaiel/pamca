@@ -12,12 +12,13 @@ PAMCA is a pharmacy/e-commerce site that was migrated from WordPress/PHP to a Ty
 npm install
 npm run dev        # local server with hot reload (tsx watch), http://localhost:3000
 npm start          # local server, no watch
-npm run typecheck  # tsc --noEmit — the only "build"/CI check
+npm run typecheck  # tsc --noEmit
+npm test           # unit tests (tests/*.test.ts, Node test runner via tsx; offline, no DB)
 npm run build      # typecheck + scripts/build-static.ts: public/ -> dist/ (header/footer inlined, ?v= asset hashes, JS/CSS minified); Vercel serves dist/
 npm run preview    # build, then serve dist/ locally (what production serves)
 ```
 
-There is **no test runner and no linter** configured. `npm run typecheck` is the only automated verification. The app is run with `tsx` (TypeScript executed directly); TypeScript is never compiled. `dist/` is only the static site output of `npm run build` (git-ignored) — edit `public/`, never `dist/`.
+There is no linter. `npm test` runs offline unit tests for the money/security-critical pure logic; `npm run build` runs typecheck + tests before producing `dist/`, so a failing test blocks the deploy. The app is run with `tsx` (TypeScript executed directly); TypeScript is never compiled. `dist/` is only the static site output of `npm run build` (git-ignored) — edit `public/`, never `dist/`.
 
 Before the server will boot you need a `.env` (see existing `.env` for keys) and the schema in `docs/supabase-schema.sql` applied to the Supabase project.
 
@@ -57,14 +58,19 @@ Keep Supabase/Brevo calls in `src/services`; controllers should not touch the DB
 
 ### Frontend (`public/`)
 
-Plain static HTML pages, no framework/bundler. [public/shared-scripts.js](public/shared-scripts.js) is the single client bootstrap: it injects `partials/header.html` + `partials/footer.html`, wires the cart modal, and hydrates product/cart data from the API. (`shared-scripts.js` is duplicated at the repo root; `public/shared-scripts.js` is the one actually served.)
+Plain static HTML pages, no framework/bundler. [public/shared-scripts.js](public/shared-scripts.js) is the single client bootstrap: it injects `partials/header.html` + `partials/footer.html`, wires the cart modal, and hydrates product/cart data from the API.
 
 **Header/footer are inlined server-side** (crawlable nav): pages keep empty `#header-placeholder`/`#footer-placeholder` divs in `public/`, and [src/lib/partials.ts](src/lib/partials.ts) fills them in the build, the dev server and the server-rendered pages; the client only fetches a partial if its placeholder is still empty. Asset URLs in pages get `?v=<content hash>` ([src/lib/assets.ts](src/lib/assets.ts)) and are cached for a year (`immutable` in `vercel.json`) — reference assets with plain absolute paths (`/x.js`, `/images/y.webp`) and the build/SSR stamp them. `/pharmacy-products` is server-rendered too (product cards + ItemList). Product photos go through Vercel Image Optimization (`/_vercel/image`, `vercel.json` `images`) via `optimizedImage()` — keep the server ([src/lib/images.ts](src/lib/images.ts)) and client (`public/shared-scripts.js`) versions identical.
 
 **URLs & SEO.** Every page has one canonical clean URL (`/about-us`, `/pharmacy-products`, …); `vercel.json` rewrites it to the `.html` file and 308-redirects the `.html`/legacy URLs to it. Link to the clean URL, never the `.html`. Each indexable page carries a `<!-- seo:start -->…<!-- seo:end -->` head block (title, description, canonical, OG/Twitter); admin/profile/order are `noindex`. Product pages live at `/products/:slug` and are **server-rendered** by [src/controllers/pageController.ts](src/controllers/pageController.ts) (head + JSON-LD + inlined product data injected into the `public/product.html` template, which is bundled into the function via `functions.includeFiles`); `/sitemap.xml` is generated there too. The dev server reads `vercel.json` redirects/rewrites, so local routing matches production.
 
-`public/auth.js` is a separate browser Supabase auth client using the **anon** key and `sessionStorage`; it backs `admin.html`. The admin editor (`public/admin.js`) currently persists content to `localStorage` only.
+`public/auth.js` is the browser Supabase Auth client (anon key; session kept in `localStorage`). The admin console (`public/admin.js`) saves products, content, tax and orders through the `/api/admin/*` endpoints (Supabase), guarded by `requireAdmin`.
 
 ## Supabase keys
 
-Server code (`src/lib/supabase.ts`) uses `SUPABASE_SERVICE_ROLE_KEY` (full access, server-only). Browser code uses `SUPABASE_ANON_KEY`. Never use the service-role key in anything under `public/`. Note: `.env` (containing the service-role key) is currently committed and only `.vercel` is git-ignored — treat the live keys as sensitive and rotate them rather than copying them into new files.
+Server code (`src/lib/supabase.ts`) uses `SUPABASE_SERVICE_ROLE_KEY` (full access, server-only). Browser code uses `SUPABASE_ANON_KEY`. Never use the service-role key in anything under `public/`. Note: `.env` is git-ignored now, but it was committed in early history, so the keys it held must be treated as exposed until rotated. Never copy live keys into new files.
+
+## Errors, cron jobs
+
+- Throw `UserError` ([src/lib/errors.ts](src/lib/errors.ts)) for messages meant for the customer; any other error is logged and replaced by a generic message (`publicErrorMessage`) so DB/provider internals never reach the browser. Admin-only endpoints may return detail.
+- Vercel crons (`vercel.json`): `/api/cron/keepalive` (monthly Brevo ping) and `/api/cron/cleanup` (daily: abandoned checkouts > 7 days incl. their Square payment links, carts > 45 days, old rate-limit rows). Both are guarded by `CRON_SECRET` via `requireCron`.

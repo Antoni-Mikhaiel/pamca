@@ -1,4 +1,5 @@
 import { ApiRequest, ApiResponse, parseBody } from "./http.js";
+import { UserError, publicErrorMessage } from "./errors.js";
 import {
   handleAddToCart,
   handleGetCart,
@@ -29,6 +30,7 @@ import {
 } from "../controllers/adminOrderController.js";
 import { handleGetOrder, handleEditPreview, handleEditCommit, handleRefundOrder, handleOrderTracking } from "../controllers/orderEditController.js";
 import { handleKeepalive } from "../controllers/keepaliveController.js";
+import { handleCleanup } from "../controllers/cleanupController.js";
 import { handleProductPage, handleProductsListPage, handleSitemap } from "../controllers/pageController.js";
 
 /**
@@ -83,10 +85,8 @@ async function handleAjax(req: ApiRequest, res: ApiResponse): Promise<void> {
 
     res.status(400).json({ success: false, data: { message: "Unknown action" } });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      data: { message: error instanceof Error ? error.message : "Internal error" },
-    });
+    const status = error instanceof UserError ? error.status : 500;
+    res.status(status).json({ success: false, data: { message: publicErrorMessage(error, "api/ajax") } });
   }
 }
 
@@ -127,6 +127,7 @@ const routes: Route[] = [
   { method: "GET", pattern: /^\/api\/admin\/dashboard$/, handler: handleAdminDashboard },
   // Invoked by the Vercel cron in vercel.json, not by the frontend. Guarded by CRON_SECRET.
   { method: "GET", pattern: /^\/api\/cron\/keepalive$/, handler: handleKeepalive },
+  { method: "GET", pattern: /^\/api\/cron\/cleanup$/, handler: handleCleanup },
   // Server-rendered pages, reached via vercel.json rewrites (/products/:slug, /pharmacy-products, /sitemap.xml).
   { method: "GET", pattern: /^\/api\/pages\/product\/([^/]+)$/, handler: handleProductPage, param: "slug" },
   { method: "GET", pattern: /^\/api\/pages\/products$/, handler: handleProductsListPage },
@@ -155,11 +156,13 @@ export async function dispatch(req: ApiRequest, res: ApiResponse, pathname: stri
     try {
       await route.handler(req, res);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Internal error";
+      // Never send internal error text (DB/provider details) to the browser.
+      const status = error instanceof UserError ? error.status : 500;
+      const message = publicErrorMessage(error, `${requestMethod} ${pathname}`);
       if (route.errorEnvelope === "data") {
-        res.status(500).json({ success: false, data: { message } });
+        res.status(status).json({ success: false, data: { message } });
       } else {
-        res.status(500).json({ success: false, message });
+        res.status(status).json({ success: false, message });
       }
     }
     return true;

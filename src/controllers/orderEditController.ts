@@ -1,4 +1,5 @@
 import { ApiRequest, ApiResponse, getClientIp } from "../lib/http.js";
+import { publicErrorMessage } from "../lib/errors.js";
 import {
   isGuestOrderAccessBlocked,
   recordGuestOrderAccessFailure,
@@ -108,7 +109,7 @@ export async function handleOrderTracking(req: ApiRequest, res: ApiResponse): Pr
   } catch (error) {
     res.status(200).json({
       success: true,
-      data: { tracking: { pin, status: "", expectedDelivery: null, events: [], error: error instanceof Error ? error.message : "Tracking unavailable" } },
+      data: { tracking: { pin, status: "", expectedDelivery: null, events: [], error: publicErrorMessage(error, "tracking", "Tracking details aren't available yet — please check back later.") } },
     });
   }
 }
@@ -137,7 +138,7 @@ export async function handleEditPreview(req: ApiRequest, res: ApiResponse): Prom
       },
     });
   } catch (error) {
-    res.status(400).json({ success: false, message: error instanceof Error ? error.message : "Could not preview the edit." });
+    res.status(400).json({ success: false, message: publicErrorMessage(error, "order-edit-preview", "Could not preview the change. Please try again.") });
   }
 }
 
@@ -163,7 +164,7 @@ export async function handleEditCommit(req: ApiRequest, res: ApiResponse): Promi
       data: { applied: true, refundedCents: result.refundedCents ?? 0, order: updated },
     });
   } catch (error) {
-    res.status(400).json({ success: false, message: error instanceof Error ? error.message : "Could not apply the edit." });
+    res.status(400).json({ success: false, message: publicErrorMessage(error, "order-edit-commit", "Could not apply the change. Please try again.") });
   }
 }
 
@@ -182,6 +183,6 @@ export async function handleRefundOrder(req: ApiRequest, res: ApiResponse): Prom
     const updated = await getOrderRecordById(order.id);
     res.status(200).json({ success: true, data: { refundedCents: result.refundedCents, order: updated } });
   } catch (error) {
-    res.status(400).json({ success: false, message: error instanceof Error ? error.message : "Could not refund the order." });
+    res.status(400).json({ success: false, message: publicErrorMessage(error, "order-refund", "Could not refund the order. Please try again or contact us.") });
   }
 }

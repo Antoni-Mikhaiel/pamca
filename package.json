@@ -4,20 +4,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit && tsx scripts/build-static.ts",
+    "build": "tsc --noEmit && npm test && tsx scripts/build-static.ts",
     "dev": "tsx watch scripts/dev-server.ts",
     "start": "tsx scripts/dev-server.ts",
     "typecheck": "tsc --noEmit",
-    "preview": "npm run build && tsx scripts/dev-server.ts --dist"
+    "preview": "npm run build && tsx scripts/dev-server.ts --dist",
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.4",
-    "resend": "^4.4.1"
+    "@supabase/supabase-js": "^2.119.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
-    "esbuild": "^0.27.7",
-    "tsx": "^4.19.4",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.2"
   }
 }

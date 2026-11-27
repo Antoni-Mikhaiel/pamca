@@ -1,4 +1,5 @@
-import { ApiRequest, ApiResponse, getHeader } from "../lib/http.js";
+import { ApiRequest, ApiResponse } from "../lib/http.js";
+import { requireCron } from "../lib/cronAuth.js";
 import { sendBrevoEmail, isEmailConfigured } from "../services/emailService.js";
 
 /**
@@ -12,20 +13,10 @@ import { sendBrevoEmail, isEmailConfigured } from "../services/emailService.js";
  * `Authorization: Bearer $CRON_SECRET` when CRON_SECRET is set; without that
  * guard the route would be an open send-mail endpoint for anyone who found it.
  */
-const cronSecret = process.env.CRON_SECRET ?? "";
 const keepaliveTo = process.env.KEEPALIVE_TO_EMAIL ?? process.env.CONTACT_TO_EMAIL ?? "sales@pamca.net";
 
 export async function handleKeepalive(req: ApiRequest, res: ApiResponse): Promise<void> {
-  // Fail closed: an unset secret would otherwise leave the endpoint world-callable.
-  if (!cronSecret) {
-    res.status(503).json({ success: false, message: "CRON_SECRET is not configured" });
-    return;
-  }
-
-  if (getHeader(req, "authorization") !== `Bearer ${cronSecret}`) {
-    res.status(401).json({ success: false, message: "Unauthorized" });
-    return;
-  }
+  if (!requireCron(req, res)) return;
 
   if (!isEmailConfigured()) {
     res.status(500).json({ success: false, message: "BREVO_API_KEY is not configured" });

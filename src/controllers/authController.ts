@@ -1,4 +1,5 @@
 import { ApiRequest, ApiResponse, getClientIp } from "../lib/http.js";
+import { publicErrorMessage } from "../lib/errors.js";
 import { allowRequest, TOO_MANY_REQUESTS_MESSAGE } from "../services/rateLimitService.js";
 import { readJsonBody } from "../lib/adminAuth.js";
 import { createConfirmedUser, isValidEmail, validatePassword } from "../services/authService.js";
@@ -28,10 +29,11 @@ export async function handleSignup(req: ApiRequest, res: ApiResponse): Promise<v
     await createConfirmedUser(email, password);
     res.status(200).json({ success: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Sign up failed";
-    const friendly = /registered|already|exists/i.test(message)
-      ? "An account with this email already exists."
-      : message;
-    res.status(400).json({ success: false, message: friendly });
+    const raw = error instanceof Error ? error.message : "";
+    if (/registered|already|exists/i.test(raw)) {
+      res.status(400).json({ success: false, message: "An account with this email already exists." });
+      return;
+    }
+    res.status(400).json({ success: false, message: publicErrorMessage(error, "signup", "Sign up failed. Please try again.") });
   }
 }

@@ -1,4 +1,9 @@
-import { ApiRequest, ApiResponse } from "../lib/http.js";
+import { ApiRequest, ApiResponse, getClientIp } from "../lib/http.js";
+import {
+  isGuestOrderAccessBlocked,
+  recordGuestOrderAccessFailure,
+  TOO_MANY_ATTEMPTS_MESSAGE,
+} from "../services/rateLimitService.js";
 import { getAuthUser, readJsonBody } from "../lib/adminAuth.js";
 import { validateCustomerDetails, normalizePhone } from "../lib/customer.js";
 import { getProfile, updateProfile } from "../services/profileService.js";
@@ -49,8 +54,15 @@ export async function handleLookupOrder(req: ApiRequest, res: ApiResponse): Prom
     return;
   }
 
+  const ip = getClientIp(req);
+  if (await isGuestOrderAccessBlocked(ip, phone)) {
+    res.status(429).json({ success: false, message: TOO_MANY_ATTEMPTS_MESSAGE });
+    return;
+  }
+
   const order = await lookupOrder(purchaseId, phone);
   if (!order) {
+    await recordGuestOrderAccessFailure(ip, phone);
     res.status(404).json({ success: false, message: "No order matches that Purchase ID and phone number." });
     return;
   }

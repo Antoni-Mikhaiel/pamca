@@ -22,6 +22,17 @@ export function getHeader(req: ApiRequest, key: string): string {
   return value ?? "";
 }
 
+/**
+ * The caller's IP address, or "" when unknown (e.g. the local dev server). On
+ * Vercel, `x-real-ip` / `x-forwarded-for` are set by the platform and client-sent
+ * values are overwritten, so they can be trusted for rate limiting.
+ */
+export function getClientIp(req: ApiRequest): string {
+  const realIp = getHeader(req, "x-real-ip").trim();
+  if (realIp) return realIp;
+  return getHeader(req, "x-forwarded-for").split(",")[0]?.trim() ?? "";
+}
+
 export function parseCookies(req: ApiRequest): Record<string, string> {
   if (req.cookies) return req.cookies;
   const raw = getHeader(req, "cookie");

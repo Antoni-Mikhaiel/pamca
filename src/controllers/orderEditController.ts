@@ -1,4 +1,9 @@
-import { ApiRequest, ApiResponse } from "../lib/http.js";
+import { ApiRequest, ApiResponse, getClientIp } from "../lib/http.js";
+import {
+  isGuestOrderAccessBlocked,
+  recordGuestOrderAccessFailure,
+  TOO_MANY_ATTEMPTS_MESSAGE,
+} from "../services/rateLimitService.js";
 import { getAuthUser, readJsonBody } from "../lib/adminAuth.js";
 import { normalizePhone } from "../lib/customer.js";
 import { FullOrder, getFullOrder, getOrderRecordById, lookupOrder } from "../services/orderService.js";
@@ -9,25 +14,41 @@ import { getTracking, TrackingInfo } from "../services/canadaPostService.js";
 const trackingCache = new Map<string, { at: number; info: TrackingInfo }>();
 const TRACKING_TTL_MS = 5 * 60 * 1000;
 
+type OrderAccess =
+  | { ok: true; order: FullOrder }
+  | { ok: false; status: 403 | 429; message: string };
+
+const NO_ACCESS: OrderAccess = { ok: false, status: 403, message: "You don't have access to this order." };
+const TOO_MANY_ATTEMPTS: OrderAccess = { ok: false, status: 429, message: TOO_MANY_ATTEMPTS_MESSAGE };
+
 /**
  * Resolves the order the caller is allowed to act on: a signed-in owner (Bearer
  * token + their own `orderId`), or a guest who supplies the matching Purchase ID +
- * phone. Returns null when neither path authorizes access.
+ * phone. Guest attempts are rate limited (failures only) because this pair also
+ * authorizes edits and refunds — without a limit the 6-digit ID could be
+ * brute-forced for a known phone number.
  */
-async function resolveAccessibleOrder(req: ApiRequest, body: Record<string, unknown>): Promise<FullOrder | null> {
+async function resolveAccessibleOrder(req: ApiRequest, body: Record<string, unknown>): Promise<OrderAccess> {
   const user = await getAuthUser(req);
   if (user && body.orderId) {
     const order = await getFullOrder(String(body.orderId));
-    if (order && order.user_id === user.id) return order;
+    if (order && order.user_id === user.id) return { ok: true, order };
   }
 
   const purchaseId = String(body.purchaseId ?? "").trim();
   const phone = normalizePhone(body.phone);
-  if (/^\d{6}$/.test(purchaseId) && phone) {
-    const record = await lookupOrder(purchaseId, phone);
-    if (record) return getFullOrder(record.id);
+  if (!/^\d{6}$/.test(purchaseId) || !phone) return NO_ACCESS;
+
+  const ip = getClientIp(req);
+  if (await isGuestOrderAccessBlocked(ip, phone)) return TOO_MANY_ATTEMPTS;
+
+  const record = await lookupOrder(purchaseId, phone);
+  if (!record) {
+    await recordGuestOrderAccessFailure(ip, phone);
+    return NO_ACCESS;
   }
-  return null;
+  const order = await getFullOrder(record.id);
+  return order ? { ok: true, order } : NO_ACCESS;
 }
 
 /**
@@ -37,11 +58,12 @@ async function resolveAccessibleOrder(req: ApiRequest, body: Record<string, unkn
  */
 export async function handleGetOrder(req: ApiRequest, res: ApiResponse): Promise<void> {
   const body = readJsonBody<Record<string, unknown>>(req);
-  const order = await resolveAccessibleOrder(req, body);
-  if (!order) {
-    res.status(403).json({ success: false, message: "You don't have access to this order." });
+  const access = await resolveAccessibleOrder(req, body);
+  if (!access.ok) {
+    res.status(access.status).json({ success: false, message: access.message });
     return;
   }
+  const order = access.order;
   const record = await getOrderRecordById(order.id);
   res.status(200).json({ success: true, data: { order: record } });
 }
@@ -56,11 +78,12 @@ export async function handleGetOrder(req: ApiRequest, res: ApiResponse): Promise
  */
 export async function handleOrderTracking(req: ApiRequest, res: ApiResponse): Promise<void> {
   const body = readJsonBody<Record<string, unknown>>(req);
-  const order = await resolveAccessibleOrder(req, body);
-  if (!order) {
-    res.status(403).json({ success: false, message: "You don't have access to this order." });
+  const access = await resolveAccessibleOrder(req, body);
+  if (!access.ok) {
+    res.status(access.status).json({ success: false, message: access.message });
     return;
   }
+  const order = access.order;
 
   const record = await getOrderRecordById(order.id);
   const pin = record?.tracking_pin ?? "";
@@ -93,11 +116,12 @@ export async function handleOrderTracking(req: ApiRequest, res: ApiResponse): Pr
 /** POST /api/orders/edit/preview — money breakdown + diff for a proposed edit. */
 export async function handleEditPreview(req: ApiRequest, res: ApiResponse): Promise<void> {
   const body = readJsonBody<Record<string, unknown>>(req);
-  const order = await resolveAccessibleOrder(req, body);
-  if (!order) {
-    res.status(403).json({ success: false, message: "You don't have access to this order." });
+  const access = await resolveAccessibleOrder(req, body);
+  if (!access.ok) {
+    res.status(access.status).json({ success: false, message: access.message });
     return;
   }
+  const order = access.order;
 
   try {
     const plan = await buildEditPlan(order, body as OrderEditRequest);
@@ -120,11 +144,12 @@ export async function handleEditPreview(req: ApiRequest, res: ApiResponse): Prom
 /** POST /api/orders/edit/commit — applies the edit (or returns a Square URL for the top-up). */
 export async function handleEditCommit(req: ApiRequest, res: ApiResponse): Promise<void> {
   const body = readJsonBody<Record<string, unknown>>(req);
-  const order = await resolveAccessibleOrder(req, body);
-  if (!order) {
-    res.status(403).json({ success: false, message: "You don't have access to this order." });
+  const access = await resolveAccessibleOrder(req, body);
+  if (!access.ok) {
+    res.status(access.status).json({ success: false, message: access.message });
     return;
   }
+  const order = access.order;
 
   try {
     const result = await commitEdit(order, body as OrderEditRequest);
@@ -145,11 +170,12 @@ export async function handleEditCommit(req: ApiRequest, res: ApiResponse): Promi
 /** POST /api/orders/refund — full refund within the 48h window. */
 export async function handleRefundOrder(req: ApiRequest, res: ApiResponse): Promise<void> {
   const body = readJsonBody<Record<string, unknown>>(req);
-  const order = await resolveAccessibleOrder(req, body);
-  if (!order) {
-    res.status(403).json({ success: false, message: "You don't have access to this order." });
+  const access = await resolveAccessibleOrder(req, body);
+  if (!access.ok) {
+    res.status(access.status).json({ success: false, message: access.message });
     return;
   }
+  const order = access.order;
 
   try {
     const result = await refundOrderFull(order);

@@ -177,26 +177,28 @@ export async function refundPayment(params: {
   return { refundId: String(refund.id ?? ""), status: String(refund.status ?? "PENDING") };
 }
 
+export function isWebhookSignatureKeyConfigured(): boolean {
+  return Boolean(process.env.SQUARE_WEBHOOK_SIGNATURE_KEY);
+}
+
 /**
  * Verifies a Square webhook signature. Square signs HMAC-SHA256 over
  * (notificationUrl + rawRequestBody) with the endpoint's signature key, base64
- * encoded. When no signature key is configured yet, verification is skipped so
- * the endpoint can be wired up before secrets are in place.
+ * encoded. `notificationUrls` lists the URLs the subscription may be registered
+ * under; the signature is accepted if it matches any of them (the URL is only
+ * part of the signed input — the secret key is what authenticates the sender).
+ *
+ * Fails closed: with no signature key configured every event is rejected, since
+ * accepting unsigned events would let anyone mark an unpaid order as paid.
  */
-export function verifyWebhookSignature(rawBody: string, signature: string, notificationUrl: string): boolean {
+export function verifyWebhookSignature(rawBody: string, signature: string, notificationUrls: string[]): boolean {
   const key = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY ?? "";
-  if (!key) return true;
-  if (!signature) return false;
+  if (!key || !signature) return false;
 
-  const expected = createHmac("sha256", key)
-    .update(notificationUrl + rawBody)
-    .digest("base64");
-
-  try {
-    const a = Buffer.from(expected);
-    const b = Buffer.from(signature);
-    return a.length === b.length && timingSafeEqual(a, b);
-  } catch {
-    return false;
-  }
+  const received = Buffer.from(signature);
+  return notificationUrls.some((url) => {
+    if (!url) return false;
+    const expected = Buffer.from(createHmac("sha256", key).update(url + rawBody).digest("base64"));
+    return expected.length === received.length && timingSafeEqual(expected, received);
+  });
 }

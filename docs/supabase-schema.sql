@@ -279,3 +279,62 @@ drop trigger if exists orders_touch_updated_at on orders;
 create trigger orders_touch_updated_at
 before update on orders
 for each row execute function touch_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- Row Level Security. Every table is reachable through Supabase's public REST
+-- API with the anon key (which ships to the browser in public/auth.js), so RLS
+-- MUST be on for all of them. No policies are defined on purpose: with RLS on
+-- and no policy, the anon and authenticated roles can neither read nor write,
+-- while the server's service-role key (src/lib/supabase.ts) bypasses RLS. The
+-- browser only talks to Supabase Auth, never to these tables, so nothing else
+-- needs access. Without this, anyone could read every order/customer record or
+-- set their own user_profiles.role to 'admin'. Idempotent; safe to re-run.
+-- ---------------------------------------------------------------------------
+alter table products enable row level security;
+alter table site_content enable row level security;
+alter table product_variations enable row level security;
+alter table user_profiles enable row level security;
+alter table cart_items enable row level security;
+alter table orders enable row level security;
+alter table order_items enable row level security;
+alter table order_edits enable row level security;
+
+-- ---------------------------------------------------------------------------
+-- Rate limiting (src/services/rateLimitService.ts). Fixed-window counters shared
+-- by every serverless instance. Keys are HMAC hashes (no raw IPs or phone
+-- numbers are stored). Used to stop brute-forcing the guest order lookup
+-- (6-digit Purchase ID + phone), which also authorizes guest edits/refunds.
+-- ---------------------------------------------------------------------------
+create table if not exists rate_limits (
+  key text primary key,
+  window_start timestamptz not null default now(),
+  hits integer not null default 0
+);
+
+alter table rate_limits enable row level security;
+
+-- Atomically records one hit for `p_key` and returns the hit count in the current
+-- window (starting a fresh window once the previous one has expired).
+create or replace function rate_limit_hit(p_key text, p_window_seconds integer)
+returns integer
+language sql
+set search_path = public
+as $$
+  insert into rate_limits as r (key, window_start, hits)
+  values (p_key, now(), 1)
+  on conflict (key) do update set
+    hits = case
+      when r.window_start <= now() - make_interval(secs => p_window_seconds) then 1
+      else r.hits + 1
+    end,
+    window_start = case
+      when r.window_start <= now() - make_interval(secs => p_window_seconds) then now()
+      else r.window_start
+    end
+  returning hits;
+$$;
+
+-- Supabase exposes public functions over RPC to anon by default; this one is
+-- server-only (otherwise anyone could inflate a victim's counter to lock them out).
+revoke execute on function rate_limit_hit(text, integer) from public, anon, authenticated;
+grant execute on function rate_limit_hit(text, integer) to service_role;

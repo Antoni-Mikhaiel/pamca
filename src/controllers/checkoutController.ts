@@ -17,12 +17,33 @@ import {
   isSquareConfigured,
   getSquareCurrency,
   verifyWebhookSignature,
+  isWebhookSignatureKeyConfigured,
   SquareLineItem,
 } from "../services/squareService.js";
 import { quoteCartShipping, resolveCartShipping } from "../services/shippingService.js";
 import { ShippingLine } from "../models/types.js";
 
 const SITE_URL = (process.env.SITE_URL ?? "").replace(/\/$/, "");
+
+const WEBHOOK_PATH = "/api/checkout/webhook";
+
+/**
+ * Every URL the Square subscription might be registered under, for signature
+ * verification: the explicit SQUARE_WEBHOOK_URL, the one derived from SITE_URL,
+ * and the URL this request actually arrived on. Accepting the request's own URL
+ * means a SITE_URL/SQUARE_WEBHOOK_URL that drifts (apex vs www, trailing slash)
+ * doesn't silently drop every payment notification. This doesn't weaken the
+ * check: the HMAC still requires the secret signature key.
+ */
+function webhookUrlCandidates(req: ApiRequest): string[] {
+  const host = (getHeader(req, "x-forwarded-host") || getHeader(req, "host")).split(",")[0].trim();
+  const candidates = [
+    process.env.SQUARE_WEBHOOK_URL ?? "",
+    SITE_URL ? `${SITE_URL}${WEBHOOK_PATH}` : "",
+    host ? `https://${host}${WEBHOOK_PATH}` : "",
+  ];
+  return [...new Set(candidates.filter(Boolean))];
+}
 
 /** Canadian postal code, with or without the middle space (e.g. "M4S 3E6"). */
 const POSTAL_RE = /^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/;
@@ -228,9 +249,24 @@ export async function handleCreateCheckout(req: ApiRequest, res: ApiResponse): P
 export async function handleWebhook(req: ApiRequest, res: ApiResponse): Promise<void> {
   const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body ?? {});
   const signature = getHeader(req, "x-square-hmacsha256-signature");
-  const notificationUrl = process.env.SQUARE_WEBHOOK_URL ?? (SITE_URL ? `${SITE_URL}/api/checkout/webhook` : "");
 
-  if (!verifyWebhookSignature(rawBody, signature, notificationUrl)) {
+  if (!isWebhookSignatureKeyConfigured()) {
+    // Fail closed, loudly: Square will retry, so no payment is lost once it's fixed.
+    console.error("[webhook] SQUARE_WEBHOOK_SIGNATURE_KEY is not set — rejecting all Square events");
+    res.status(503).json({ success: false, message: "Webhook not configured" });
+    return;
+  }
+
+  if (!verifyWebhookSignature(rawBody, signature, webhookUrlCandidates(req))) {
+    if (signature) {
+      // A signed request that doesn't verify is almost always a URL mismatch between
+      // the Square subscription and SQUARE_WEBHOOK_URL/SITE_URL — make it visible.
+      console.error(
+        "[webhook] Square signature did not match any of:",
+        webhookUrlCandidates(req).join(", "),
+        "— check the subscription URL in the Square dashboard.",
+      );
+    }
     res.status(401).json({ success: false, message: "Invalid signature" });
     return;
   }

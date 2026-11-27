@@ -142,17 +142,21 @@ create trigger site_content_touch_updated_at
 before update on site_content
 for each row execute function touch_updated_at();
 
--- Storage bucket for admin-uploaded product images (device upload). Public read so the
--- store can display them; writes go through the server (service-role) upload endpoint.
-insert into storage.buckets (id, name, public)
-values ('product-images', 'product-images', true)
-on conflict (id) do nothing;
+-- Storage bucket for admin-uploaded product images (device upload). Public bucket, so
+-- each file is readable at its public URL (/storage/v1/object/public/...); writes go
+-- only through the server (service-role) upload endpoint. The size/type limits mirror
+-- src/services/uploadService.ts (5 MB, raster images only — no SVG, which can carry script).
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('product-images', 'product-images', true, 5242880,
+        array['image/png','image/jpeg','image/webp','image/gif'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
--- Allow public read of objects in the product-images bucket.
+-- No SELECT policy on storage.objects for this bucket on purpose: public URLs work
+-- without one, and a policy would additionally let anyone LIST every file in it.
 drop policy if exists "Public read product-images" on storage.objects;
-create policy "Public read product-images"
-on storage.objects for select
-using (bucket_id = 'product-images');
 
 -- To grant a user admin rights for the console:
 --   update user_profiles set role = 'admin' where email = 'you@example.com';

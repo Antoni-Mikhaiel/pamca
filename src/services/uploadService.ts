@@ -3,7 +3,9 @@ import { supabase } from "../lib/supabase.js";
 
 const BUCKET = "product-images";
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
-const ALLOWED = new Set(["image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml"]);
+// Raster formats only: SVG can carry script, so it's refused here and by the bucket's
+// own allowed_mime_types (docs/supabase-schema.sql), which mirrors this list + limit.
+const ALLOWED = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 
 export type UploadInput = { dataBase64: string; filename?: string; contentType?: string };
 

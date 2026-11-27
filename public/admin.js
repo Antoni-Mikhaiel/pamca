@@ -829,7 +829,7 @@
 
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
-    fileInput.accept = 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml';
+    fileInput.accept = 'image/png,image/jpeg,image/webp,image/gif';
     fileInput.className = 'pm-file-input';
 
     const chooseBtn = document.createElement('button');

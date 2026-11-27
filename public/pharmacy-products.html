@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/shared-styles.css">
   <!-- seo:start -->
   <title>Pharmacy Products: Thermometers &amp; Supplies | PAMCA</title>
@@ -259,11 +258,10 @@
 /* Original price small & grey on sale cards */
 .on-sale-special .original-price,
 .on-sale-special del {
-    color: #95a5a6;
+    color: #6d7777; /* was #95a5a6 at 0.9 opacity (2.3:1); now 4.6:1 */
     font-size: 0.75rem;
     text-decoration: line-through;
     font-weight: 500;
-    opacity: 0.9;
 }
 
 /* Keep non-sale original price styling (fallback) */

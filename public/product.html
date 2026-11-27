@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/shared-styles.css">
   <title>Product — PAMCA</title>
   <style>
@@ -88,6 +87,10 @@
     .pd-available.low-stock { color: #b0601a; }
     .pd-available.out-of-stock { color: #c0392b; }
     .pd-msg { font-size: 0.9rem; color: #008080; margin-bottom: 24px; min-height: 1.2em; }
+
+    /* Hold a screen's height while the product is rendered (the inlined footer would
+       otherwise paint right under the empty area and jump down: layout shift). */
+    #pd-root:empty { min-height: 100vh; }
 
     .product-description { margin-top: 30px; padding-top: 26px; border-top: 1px solid #eef2f5; }
     .product-description h2 {

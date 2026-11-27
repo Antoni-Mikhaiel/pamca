@@ -4,6 +4,10 @@
       Visit <a href="https://pharmascript.ca" target="_blank" rel="noopener">PharmaScript.ca</a> for not only the Minor Ailment Prescribing Tool, but also the Biosimilar Assessment Tool.
     </div>
   </div>
+  <!-- Measure the bar before the page below is painted, so the fixed navbar/content
+       offset is right on first paint (no layout shift). shared-scripts.js keeps it
+       updated on resize. Only runs when the header is inlined server-side. -->
+  <script>(function(){var b=document.currentScript&&document.currentScript.previousElementSibling;if(b)document.documentElement.style.setProperty("--pamca-announce-h",b.offsetHeight+"px")})()</script>
 
   <nav class="navbar" id="navbar">
     <div class="nav-container">
